@@ -1,0 +1,48 @@
+# ===== Cursor =====
+.cursor/
+.cursorignore
+.cursorrules
+backend/.cursorrules
+frontend/.cursorrules
+docs/cursor-implementation-guide.md
+*.cursor-tmp
+
+# ===== Backend (Spring Boot / Maven / Java) =====
+backend/target/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+backend/HELP.md
+*.class
+*.jar
+*.war
+*.iml
+.idea/
+*.log
+
+# ===== Frontend (Next.js / Node) =====
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.env*.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.turbo/
+
+# ===== Env & secrets (both) =====
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ===== Docker =====
+docker-compose.override.yml
+
+# ===== OS / Editor =====
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp

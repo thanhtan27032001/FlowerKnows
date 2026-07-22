@@ -15,6 +15,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        globally_quoted_identifiers: true
         jdbc:
           time_zone: UTC
     open-in-view: false
@@ -31,4 +32,7 @@ logging:
   level:
     root: INFO
     org.hibernate.SQL: DEBUG
-    com.flowerknows.blindbag: DEBUG
+    com.gaden.flowerknows: DEBUG
+
+app:
+  low-stock-threshold: 5

@@ -1,0 +1,97 @@
+package com.gaden.flowerknows.campaign;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+public final class CampaignDtos {
+
+    private CampaignDtos() {
+    }
+
+    public record PoolItemRequest(
+            @NotNull(message = "productId is required") UUID productId,
+            @Min(value = 1, message = "loadedQuantity must be at least 1") int loadedQuantity
+    ) {
+    }
+
+    public record CreateCampaignRequest(
+            @NotBlank(message = "name is required") String name,
+            @NotNull(message = "eventDate is required") LocalDate eventDate,
+            @NotNull(message = "bagPrice is required")
+            @DecimalMin(value = "0", inclusive = false, message = "bagPrice must be positive")
+            BigDecimal bagPrice,
+            @Min(value = 1, message = "totalBags must be at least 1") int totalBags,
+            @NotEmpty(message = "pool must not be empty")
+            @Valid List<PoolItemRequest> pool
+    ) {
+    }
+
+    public record PoolItemResponse(
+            UUID id,
+            UUID productId,
+            String productName,
+            int loadedQuantity,
+            int remainingQuantity
+    ) {
+    }
+
+    public record ParticipantSummaryResponse(
+            UUID id,
+            UUID customerId,
+            String customerName,
+            String customerPhone,
+            int totalBagsPurchased,
+            BigDecimal prepaidAmount
+    ) {
+    }
+
+    public record ClosePreviewResponse(
+            UUID campaignId,
+            String message,
+            List<ReturnItemResponse> productsToReturn
+    ) {
+    }
+
+    public record ReturnItemResponse(
+            UUID productId,
+            String productName,
+            int quantity
+    ) {
+    }
+
+    public record CampaignSummaryResponse(
+            UUID id,
+            String name,
+            LocalDate eventDate,
+            BigDecimal bagPrice,
+            int totalBags,
+            CampaignStatus status,
+            long bagsSold,
+            Instant createdAt
+    ) {
+    }
+
+    public record CampaignDetailResponse(
+            UUID id,
+            String name,
+            LocalDate eventDate,
+            BigDecimal bagPrice,
+            int totalBags,
+            CampaignStatus status,
+            long bagsSold,
+            Instant createdAt,
+            List<PoolItemResponse> pool,
+            List<ParticipantSummaryResponse> participants
+    ) {
+    }
+}

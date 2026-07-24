@@ -37,8 +37,11 @@ public class OrderController {
     }
 
     @GetMapping
-    public List<OrderDtos.OrderResponse> listByCustomer(@RequestParam UUID customerId) {
-        return orderService.listByCustomer(customerId);
+    public List<OrderDtos.OrderResponse> list(@RequestParam(required = false) UUID customerId) {
+        if (customerId != null) {
+            return orderService.listByCustomer(customerId);
+        }
+        return orderService.listAll();
     }
 
     @PatchMapping("/{id}/shipping-status")

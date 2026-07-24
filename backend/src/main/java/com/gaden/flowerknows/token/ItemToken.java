@@ -37,6 +37,9 @@ public class ItemToken {
     @Column(name = "token_value", nullable = false, precision = 12, scale = 0)
     private BigDecimal tokenValue;
 
+    @Column(name = "cost_basis", precision = 12, scale = 2)
+    private BigDecimal costBasis;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private TokenStatus status = TokenStatus.HOLDING;
@@ -61,12 +64,14 @@ public class ItemToken {
             Product product,
             Customer customer,
             BigDecimal tokenValue,
+            BigDecimal costBasis,
             SourceType sourceType,
             UUID sourceId
     ) {
         this.product = product;
         this.customer = customer;
         this.tokenValue = tokenValue;
+        this.costBasis = costBasis;
         this.status = TokenStatus.HOLDING;
         this.sourceType = sourceType;
         this.sourceId = sourceId;
@@ -87,6 +92,10 @@ public class ItemToken {
 
     public BigDecimal getTokenValue() {
         return tokenValue;
+    }
+
+    public BigDecimal getCostBasis() {
+        return costBasis;
     }
 
     public TokenStatus getStatus() {

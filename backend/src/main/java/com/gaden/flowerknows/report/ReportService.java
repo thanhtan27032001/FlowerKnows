@@ -72,6 +72,15 @@ public class ReportService {
         BigDecimal revenueFromOrders = orderRepository.sumRecognizedRevenueBetween(from, to);
         BigDecimal revenueFromCancelled = itemTokenRepository.sumCancelledTokenValueBetween(from, to);
         BigDecimal totalRevenue = revenueFromOrders.add(revenueFromCancelled);
+        BigDecimal orderGrossMargin = orderRepository.sumGrossMarginBetween(from, to);
+        BigDecimal cancelledTokenMargin = revenueFromCancelled;
+        BigDecimal totalGrossMargin = orderGrossMargin.add(cancelledTokenMargin);
+        BigDecimal grossMarginPercent = totalRevenue.compareTo(BigDecimal.ZERO) == 0
+                ? BigDecimal.ZERO
+                : totalGrossMargin
+                .multiply(BigDecimal.valueOf(100))
+                .divide(totalRevenue, 2, java.math.RoundingMode.HALF_UP);
+        long ordersWithMissingCostBasis = orderRepository.countOrdersWithNullCostBasisBetween(from, to);
         BigDecimal totalRefunded = exchangeRepository.sumActualRefundBetween(from, to);
 
         ReportDtos.ReconciliationResponse reconciliation = buildReconciliation();
@@ -86,6 +95,12 @@ public class ReportService {
                 revenueFromOrders,
                 revenueFromCancelled,
                 totalRevenue,
+                orderGrossMargin,
+                cancelledTokenMargin,
+                totalGrossMargin,
+                grossMarginPercent,
+                ordersWithMissingCostBasis,
+                ordersWithMissingCostBasis > 0,
                 totalRefunded,
                 reconciliation,
                 campaignBreakdown

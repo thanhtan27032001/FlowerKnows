@@ -27,6 +27,9 @@ public class Product {
     @Column(name = "stock_quantity", nullable = false)
     private int stockQuantity;
 
+    @Column(name = "average_cost_price", precision = 12, scale = 2)
+    private BigDecimal averageCostPrice;
+
     protected Product() {
     }
 
@@ -62,5 +65,13 @@ public class Product {
 
     public void setStockQuantity(int stockQuantity) {
         this.stockQuantity = stockQuantity;
+    }
+
+    public BigDecimal getAverageCostPrice() {
+        return averageCostPrice;
+    }
+
+    public void setAverageCostPrice(BigDecimal averageCostPrice) {
+        this.averageCostPrice = averageCostPrice;
     }
 }

@@ -1,6 +1,7 @@
 package com.gaden.flowerknows.stock;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.time.Instant;
 import java.util.List;
@@ -13,4 +14,14 @@ public interface StockTransactionRepository extends JpaRepository<StockTransacti
             Instant from,
             Instant to
     );
+
+    List<StockTransaction> findByProductIdOrderByCreatedAtDesc(UUID productId);
+
+    List<StockTransaction> findByProductIdOrderByCreatedAtAsc(UUID productId);
+
+    @Query("""
+            SELECT COALESCE(SUM(s.quantityChange), 0) FROM StockTransaction s
+            WHERE s.product.id = :productId
+            """)
+    long sumQuantityChangeByProductId(UUID productId);
 }

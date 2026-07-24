@@ -12,11 +12,27 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     List<Order> findByCustomerIdOrderByCreatedAtDesc(UUID customerId);
 
+    List<Order> findAllByOrderByCreatedAtDesc();
+
     @Query("""
             SELECT COALESCE(SUM(o.recognizedRevenue), 0) FROM Order o
             WHERE o.createdAt >= :from AND o.createdAt < :to
             """)
     BigDecimal sumRecognizedRevenueBetween(Instant from, Instant to);
+
+    @Query("""
+            SELECT COALESCE(SUM(o.grossMargin), 0) FROM Order o
+            WHERE o.createdAt >= :from AND o.createdAt < :to
+            """)
+    BigDecimal sumGrossMarginBetween(Instant from, Instant to);
+
+    @Query("""
+            SELECT COUNT(DISTINCT o.id) FROM Order o
+            JOIN o.tokens t
+            WHERE o.createdAt >= :from AND o.createdAt < :to
+              AND t.costBasis IS NULL
+            """)
+    long countOrdersWithNullCostBasisBetween(Instant from, Instant to);
 
     @Query("""
             SELECT COALESCE(SUM(o.recognizedRevenue), 0) FROM Order o

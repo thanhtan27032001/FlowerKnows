@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 1.2 (Includes Module 9 — Product & Inventory Management)
+**Version:** 1.3 (Adds cost price tracking & gross margin)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -43,8 +43,9 @@ This is the single source of truth for schema design across the whole document.
 |---|---|---|
 | `id` | PK | |
 | `name` | string | Product name |
-| `list_price` | decimal | List price |
+| `list_price` | decimal | List (selling) price |
 | `stock_quantity` | int | Current available stock |
+| `average_cost_price` | decimal, nullable | Weighted-average cost price, recalculated on every `stock_in` transaction (see US-13). Only `stock_in` changes this value — all other stock movements (returns, adjustments) change `stock_quantity` but NOT `average_cost_price`. |
 
 ### `stock_transaction` (Inventory movement ledger — audit trail)
 | Field | Type | Description |
@@ -53,6 +54,7 @@ This is the single source of truth for schema design across the whole document.
 | `product_id` | FK → product | |
 | `type` | enum | `stock_in` / `stock_adjustment` / `campaign_lock` / `campaign_return` / `exchange_in` / `exchange_out` / `cash_out_return` / `token_cancel_return` / `order_fulfillment` |
 | `quantity_change` | int | Positive = stock added/returned, negative = stock removed/locked |
+| `cost_price` | decimal, nullable | **Required when `type = stock_in`** — the cost price of this specific batch. Null for all other transaction types (they don't introduce new cost, only move existing stock). |
 | `note` | string, nullable | Required for `stock_adjustment` (reason); optional for other types |
 | `created_at` | datetime | |
 
@@ -93,6 +95,7 @@ This is the single source of truth for schema design across the whole document.
 | `product_id` | FK → product | Product currently linked to the token |
 | `customer_id` | FK → customer | |
 | `token_value` | decimal | Current redeemable value |
+| `cost_basis` | decimal, nullable | Snapshot of `product.average_cost_price` at the moment this token was created (from a campaign) or re-generated (from an exchange). This value is FIXED once set — it does NOT update if the product's `average_cost_price` changes later, so historical margin figures stay accurate. |
 | `status` | enum | `holding` / `exchanged` / `cashed_out` / `ordered` / `cancelled` |
 | `source_type` | enum | `campaign` / `exchange` |
 | `source_id` | FK (polymorphic) | Points to `campaign_participant.id` or `exchange_transaction.id` |
@@ -128,6 +131,8 @@ This is the single source of truth for schema design across the whole document.
 | `customer_id` | FK → customer | |
 | `created_at` | datetime | |
 | `recognized_revenue` | decimal | Recognized revenue = sum of token_value included |
+| `total_cost` | decimal | Sum of `cost_basis` for every token included in this order (computed and stored at order creation time) |
+| `gross_margin` | decimal | = `recognized_revenue` − `total_cost` (computed and stored at order creation time) |
 | `shipping_status` | enum | `pending` / `shipping` / `completed` |
 
 ### `order_token` (Which tokens belong to which order — many-to-many join table, enables order consolidation)
@@ -210,7 +215,7 @@ This is the single source of truth for schema design across the whole document.
 | # | Given | When | Then |
 |---|---|---|---|
 | 1 | A `customer` has a `campaign_participant` with N bags purchased, not all opened yet | Staff goes to the customer's page within that campaign and clicks "Record item" | A form is shown to select a `product` (only products with `remaining_quantity` > 0 in the pool are listed), and enter the quantity of bags recorded for that product |
-| 2 | Staff selects product A, enters quantity = 2 | Clicks submit | The system generates **2 separate `item_token` records**, each: `product_id = A`, `customer_id`, `token_value = bag_price`, `status = holding`, `source_type = campaign`, `source_id = campaign_participant.id` |
+| 2 | Staff selects product A, enters quantity = 2 | Clicks submit | The system generates **2 separate `item_token` records**, each: `product_id = A`, `customer_id`, `token_value = bag_price`, **`cost_basis = product.average_cost_price` at this moment (snapshot, may be null if the product has never been stocked in with a cost price)**, `status = holding`, `source_type = campaign`, `source_id = campaign_participant.id` |
 | 3 | Total tokens generated for this customer = `total_bags_purchased` | Staff attempts to record more | The system shows "The customer has already recorded all purchased bags (N/N)" and blocks the action |
 | 4 | Quantity recorded for one product > that product's `remaining_quantity` | Clicks submit | The system shows an error and blocks submission |
 | 5 | Successfully recorded | — | `campaign_pool.remaining_quantity` decreases accordingly; the new token appears on the "Customer Page" with `status = holding` |
@@ -250,7 +255,7 @@ This is the single source of truth for schema design across the whole document.
 |---|---|---|---|
 | 1 | Staff has selected N tokens (`status = holding`) for one customer | Clicks "Item Exchange" | A form is shown: (a) the list of selected tokens (given up) with total `token_value`, (b) an area to select `product`(s) to receive from `stock_quantity` (search, choose quantity), (c) an `additional_payment` field (number, can be negative/positive/0, default 0, optional) |
 | 2 | Staff selects one or more products to receive | Total quantity selected > available `stock_quantity` | The system shows an error and blocks submission |
-| 3 | The form is valid | Clicks "Confirm Exchange" | Transaction: (a) the N old tokens → `status = exchanged`, (b) **add back `product.stock_quantity`** for each product of the old tokens, (c) **deduct `stock_quantity`** for the newly selected products, (d) generate new tokens for each new product, with `token_value` allocated so that **the sum of new token_value = sum of old token_value + additional_payment**, (e) create an `exchange_transaction` (`type = item_exchange`), linking old tokens via `exchange_token_in` and new tokens via `exchange_token_out`, storing `additional_payment` |
+| 3 | The form is valid | Clicks "Confirm Exchange" | Transaction: (a) the N old tokens → `status = exchanged`, (b) **add back `product.stock_quantity`** for each product of the old tokens, (c) **deduct `stock_quantity`** for the newly selected products, (d) generate new tokens for each new product, with `token_value` allocated so that **the sum of new token_value = sum of old token_value + additional_payment**, and **`cost_basis = the new product's `average_cost_price` at this moment** (snapshot, same rule as US-04), (e) create an `exchange_transaction` (`type = item_exchange`), linking old tokens via `exchange_token_in` and new tokens via `exchange_token_out`, storing `additional_payment` |
 | 4 | `additional_payment` > 0 | After a successful exchange | The extra payment is recorded at this moment (added to the reconciliation ledger, NOT counted into an Order's `recognized_revenue`) |
 | 5 | Exchanging 1 old token for multiple new products (1→N), or multiple old tokens for 1 new product (N→1) | Confirm | The system correctly handles any N-N ratio, not limited to 1-1 |
 | 6 | A selected token has a `status` other than `holding` | Staff attempts to select it | Not allowed (only `holding` tokens appear in the selectable list — per Rule #9) |
@@ -290,7 +295,7 @@ This is the single source of truth for schema design across the whole document.
 |---|---|---|---|
 | 1 | There is an `item_token` with `status = holding` and `created_at` more than 30 days ago | Staff opens the "Overdue Token Alerts" screen | A list is shown: `customer`, `product`, `created_at`, days held, `token_value` — sorted by days held descending |
 | 2 | Staff selects a token | Clicks "Cancel Token" | A confirmation is shown: "Cancelling this token will: return the product to general stock and immediately recognize [token_value] VND as revenue. Confirm?" |
-| 3 | Staff confirms cancellation | — | The system: (a) the token → `status = cancelled`, (b) **adds back `product.stock_quantity`**, (c) **immediately recognizes revenue = `token_value`** (kept separate from an Order's `recognized_revenue`, tagged "Revenue from cancelled token" so reports can distinguish the source) |
+| 3 | Staff confirms cancellation | — | The system: (a) the token → `status = cancelled`, (b) **adds back `product.stock_quantity`**, (c) **immediately recognizes revenue = `token_value`** (kept separate from an Order's `recognized_revenue`, tagged "Revenue from cancelled token" so reports can distinguish the source). **For gross margin reporting purposes, this revenue is treated as 100% margin (no associated cost)** — since the goods returned to stock and no cost was consumed by this transaction. |
 | 4 | The token has been cancelled | Staff views the Customer Page again | The token appears in History with `status = cancelled` and is no longer counted in the customer's `prepaid_balance` |
 | 5 | A token is not yet over 30 days old | Staff goes to the Customer Page and clicks "Cancel" (if the button is present there) | The system allows manual cancellation at any time — **but the prominent warning only shows for tokens over 30 days** |
 
@@ -310,10 +315,10 @@ This is the single source of truth for schema design across the whole document.
 
 | # | Given | When | Then |
 |---|---|---|---|
-| 1 | Staff is on the Customer Page, the customer has ≥ 1 `holding` token | Selects one or more tokens, clicks "Create Order" | A confirmation form is shown: the list of selected tokens (product, token_value, source campaign/date), **expected `recognized_revenue` = sum of the selected token_values** |
+| 1 | Staff is on the Customer Page, the customer has ≥ 1 `holding` token | Selects one or more tokens, clicks "Create Order" | A confirmation form is shown: the list of selected tokens (product, token_value, cost_basis, source campaign/date), **expected `recognized_revenue` = sum of the selected token_values**, **expected `total_cost` = sum of `cost_basis`** (treated as 0 for any token with a null `cost_basis`), **expected `gross_margin` = revenue − cost** |
 | 2 | The customer has tokens from 3 different campaigns, Staff only selects tokens from 2 campaigns | Clicks "Create Order" | The system merges only the selected tokens into the order; the remaining tokens **stay `status = holding`**, and continue to appear on the Customer Page for a future consolidated order |
-| 3 | Staff confirms creation | — | Transaction: (a) create the `order` with `recognized_revenue` = sum of token values, `shipping_status = pending`, (b) create the linking `order_token` rows, (c) all selected tokens → `status = ordered`, (d) **deduct `product.stock_quantity`** accordingly (the only true stock-outflow point in the whole system) |
-| 4 | The order has been created | Staff views the customer's order list | The order is shown with all included tokens, `recognized_revenue`, `shipping_status` |
+| 3 | Staff confirms creation | — | Transaction: (a) create the `order` with `recognized_revenue` = sum of token values, **`total_cost` = sum of token cost_basis, `gross_margin` = recognized_revenue − total_cost**, `shipping_status = pending`, (b) create the linking `order_token` rows, (c) all selected tokens → `status = ordered`, (d) **deduct `product.stock_quantity`** accordingly (the only true stock-outflow point in the whole system) |
+| 4 | The order has been created | Staff views the customer's order list | The order is shown with all included tokens, `recognized_revenue`, `total_cost`, `gross_margin`, `shipping_status` |
 | 5 | The order has been created and the goods have actually been shipped | Staff updates the status | Allows transitioning `shipping_status`: `pending` → `shipping` → `completed` — **does not affect tokens/stock/revenue again** (already finalized at order creation) |
 | 6 | A token is already `status = ordered` | Staff tries to select it for Exchange/Cash Out/Cancel | Not allowed, not shown in the selectable list (per Rule #9 — only applies to `holding` tokens) |
 | 7 | Shipping fees are collected directly from the customer by the shipping carrier | Creating an order | No shipping fee field in the form (out of scope for this system — Rule #8); an optional free-text `shipping_note` field may exist (not used in calculations) |
@@ -338,9 +343,9 @@ This is the single source of truth for schema design across the whole document.
 | 2 | A product is currently in the `campaign_pool` of an `open` campaign | Views the product's details | Also shows the quantity "locked" in currently open campaigns (total `remaining_quantity` across campaigns), so Staff knows the total asset including unopened bags |
 | 3 | `stock_quantity` ≤ a configured threshold (e.g. ≤ 5) | Viewing the list | The product is flagged with a "Low stock" warning |
 
-### US-11: View Revenue Report
+### US-11: View Revenue & Gross Margin Report
 
-**As** Staff, **I want to** see revenue over a time range, broken down by source, **so that** I can evaluate business performance.
+**As** Staff, **I want to** see revenue and gross margin over a time range, broken down by source, **so that** I can evaluate business performance.
 
 **Acceptance Criteria:**
 
@@ -350,6 +355,8 @@ This is the single source of truth for schema design across the whole document.
 | 2 | There is an `actual_refund_amount` (cash-out) within the time range | Viewing the report | A separate "Total Refunded (Cash Out)" line is shown — not directly subtracted from revenue (it's a different flow), but displayed for reconciling actual cash flow |
 | 3 | Staff views the report for a specific `campaign` | Selects the campaign | Shows: the campaign's total `prepaid_amount`, bags sold / `total_bags`, and a **breakdown** of that campaign's tokens by `status` (`holding`/`exchanged`/`cashed_out`/`ordered`/`cancelled`) — showing what % of revenue has been "finalized" |
 | 4 | Staff wants to verify data correctness | Viewing the report | The system shows the reconciliation formula: Total Prepaid = Holding Tokens + Recognized Revenue + Total Refunded — if it doesn't balance, a data-error warning is shown |
+| 5 | Staff selects a time range | Views the Gross Margin section | Shows: (a) **Order gross margin** = Σ `order.gross_margin` for orders in range, (b) **Cancelled Token margin** = Σ `token_value` for cancelled tokens in range (treated as 100% margin, no cost), (c) **Total Gross Margin** = (a) + (b), (d) **Gross Margin %** = Total Gross Margin / Total Revenue |
+| 6 | A token included in an order has a null `cost_basis` (e.g. the product was never stocked in with a cost price before the token was created) | Viewing the Gross Margin report | That token's cost is treated as 0 in the `total_cost`/`gross_margin` calculation, and the report shows a small warning noting N orders contain tokens with missing cost data (so Staff knows the margin figure may be overstated) |
 
 ---
 
@@ -374,18 +381,25 @@ This is the single source of truth for schema design across the whole document.
 
 ### US-13: Stock In
 
-**As** Staff, **I want to** record newly received quantities for one or more `product`s, **so that** `stock_quantity` accurately reflects the real warehouse state.
+**As** Staff, **I want to** record newly received quantities (and their cost price) for one or more `product`s, **so that** `stock_quantity` accurately reflects the real warehouse state and `average_cost_price` stays accurate for gross margin reporting.
 
 **Acceptance Criteria:**
 
 | # | Given | When | Then |
 |---|---|---|---|
-| 1 | Staff is on the product list or a product's detail page | Clicks "Stock In" | A multi-row stock-in form is shown: each row has `product` (select, defaults to the currently viewed product if opened from its detail page) + quantity received + `note` (optional, e.g. "August batch received") |
-| 2 | Staff adds several different product rows in one stock-in action | Clicks "Confirm Stock In" | The system processes everything in one transaction: for each row, (a) **adds to `product.stock_quantity`** by the received quantity, (b) creates one `stock_transaction` (`type = stock_in`, `quantity_change = +quantity`, `note`) |
-| 3 | Staff enters a quantity ≤ 0 or leaves it blank on a row | Clicks submit | The system shows an error right at that row and blocks submission of the entire form |
-| 4 | Stock in succeeds | — | The new `stock_quantity` for each product is shown; the new `stock_transaction` rows appear first in the Stock Movement History (US-15) |
+| 1 | Staff is on the product list or a product's detail page | Clicks "Stock In" | A multi-row stock-in form is shown: each row has `product` (select, defaults to the currently viewed product if opened from its detail page) + quantity received + **`cost_price` (required)** + `note` (optional, e.g. "August batch received") |
+| 2 | Staff adds several different product rows in one stock-in action | Clicks "Confirm Stock In" | The system processes everything in one transaction: for each row, (a) **adds to `product.stock_quantity`** by the received quantity, (b) **recalculates `product.average_cost_price`** using the weighted-average formula below, (c) creates one `stock_transaction` (`type = stock_in`, `quantity_change = +quantity`, `cost_price`, `note`) |
+| 3 | Staff enters a quantity ≤ 0, or leaves `cost_price` blank/≤ 0, on a row | Clicks submit | The system shows an error right at that row and blocks submission of the entire form |
+| 4 | Stock in succeeds | — | The new `stock_quantity` and `average_cost_price` for each product are shown; the new `stock_transaction` rows (including `cost_price`) appear first in the Stock Movement History (US-15) |
 
-**Note:** Per the shop's confirmation, stock-in does **not** need to track supplier or cost price — only quantity and a free-text note.
+**Weighted-average cost formula (applied on every `stock_in`, and ONLY on `stock_in`):**
+```
+new_average_cost_price = (old_average_cost_price × old_stock_quantity + cost_price × quantity_received)
+                          / (old_stock_quantity + quantity_received)
+```
+If `old_average_cost_price` is null (first-ever stock in for this product), `new_average_cost_price = cost_price`.
+
+**Note:** All other stock-affecting flows (campaign close return, item exchange, cash out, token cancel) move existing stock back into inventory — they change `stock_quantity` but must NOT change `average_cost_price`, since no new cost was incurred.
 
 ---
 
@@ -463,6 +477,7 @@ This is the single source of truth for schema design across the whole document.
 3. The "Low stock" warning threshold in US-10 — staff-configurable or hardcoded.
 4. **US-14 (Stock Adjustment):** Should every Staff member have permission to adjust stock, or is separate role-based access needed (e.g. only a Manager can approve decreases) — the current spec assumes all Staff have equal permissions (no RBAC yet).
 5. **US-13 (Stock In):** Is a printed/saved "goods receipt" document needed after each stock-in, or is a system record sufficient?
+6. **US-06 (Item Exchange) + cost_basis:** When one exchange creates multiple new tokens (1→N), how should `cost_basis` be assigned to each new token? Suggested default: each new token gets the full `average_cost_price` of its own product (not split/prorated) — since `cost_basis` represents unit cost, not a share of the old tokens' value. Please confirm this matches expectations.
 
 ---
 

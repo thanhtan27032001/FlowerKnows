@@ -40,6 +40,12 @@ public class Order {
     @Column(name = "recognized_revenue", nullable = false, precision = 12, scale = 0)
     private BigDecimal recognizedRevenue;
 
+    @Column(name = "total_cost", nullable = false, precision = 12, scale = 2)
+    private BigDecimal totalCost;
+
+    @Column(name = "gross_margin", nullable = false, precision = 12, scale = 2)
+    private BigDecimal grossMargin;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "shipping_status", nullable = false, length = 20)
     private ShippingStatus shippingStatus = ShippingStatus.PENDING;
@@ -55,9 +61,16 @@ public class Order {
     protected Order() {
     }
 
-    public Order(Customer customer, BigDecimal recognizedRevenue) {
+    public Order(
+            Customer customer,
+            BigDecimal recognizedRevenue,
+            BigDecimal totalCost,
+            BigDecimal grossMargin
+    ) {
         this.customer = customer;
         this.recognizedRevenue = recognizedRevenue;
+        this.totalCost = totalCost;
+        this.grossMargin = grossMargin;
         this.shippingStatus = ShippingStatus.PENDING;
         this.createdAt = Instant.now();
     }
@@ -80,6 +93,14 @@ public class Order {
 
     public ShippingStatus getShippingStatus() {
         return shippingStatus;
+    }
+
+    public BigDecimal getTotalCost() {
+        return totalCost;
+    }
+
+    public BigDecimal getGrossMargin() {
+        return grossMargin;
     }
 
     public void setShippingStatus(ShippingStatus shippingStatus) {

@@ -26,6 +26,12 @@ public final class ReportDtos {
             BigDecimal revenueFromOrders,
             BigDecimal revenueFromCancelledTokens,
             BigDecimal totalRevenue,
+            BigDecimal orderGrossMargin,
+            BigDecimal cancelledTokenMargin,
+            BigDecimal totalGrossMargin,
+            BigDecimal grossMarginPercent,
+            long ordersWithMissingCostBasis,
+            boolean marginMayBeUnderstated,
             BigDecimal totalRefundedCashOut,
             ReconciliationResponse reconciliation,
             CampaignBreakdownResponse campaignBreakdown

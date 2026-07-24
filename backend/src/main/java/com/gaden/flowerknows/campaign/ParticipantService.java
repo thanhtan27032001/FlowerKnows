@@ -118,6 +118,7 @@ public class ParticipantService {
                     product,
                     participant.getCustomer(),
                     campaign.getBagPrice(),
+                    product.getAverageCostPrice(),
                     SourceType.CAMPAIGN,
                     participant.getId()
             ));

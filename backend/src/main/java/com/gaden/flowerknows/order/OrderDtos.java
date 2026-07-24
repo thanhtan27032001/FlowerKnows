@@ -29,6 +29,7 @@ public final class OrderDtos {
             UUID productId,
             String productName,
             BigDecimal tokenValue,
+            BigDecimal costBasis,
             String status
     ) {
     }
@@ -39,6 +40,8 @@ public final class OrderDtos {
             String customerName,
             Instant createdAt,
             BigDecimal recognizedRevenue,
+            BigDecimal totalCost,
+            BigDecimal grossMargin,
             ShippingStatus shippingStatus,
             List<OrderTokenResponse> tokens
     ) {

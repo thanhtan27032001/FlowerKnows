@@ -1,7 +1,6 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 if (!API_BASE_URL) {
-  // Fails fast in dev if .env.local is missing/misconfigured
   console.warn(
     "NEXT_PUBLIC_API_URL is not set. Check frontend/.env.local and restart `npm run dev`."
   );
@@ -42,13 +41,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  // Handle "no content" responses (e.g. 204 from a PATCH/DELETE)
   const isJson = response.headers.get("content-type")?.includes("application/json");
   const data = isJson ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
-    // Matches the backend's standardized error shape:
-    // { error: string, message: string, timestamp: string }
     const message =
       (data && typeof data === "object" && "message" in data
         ? (data as { message?: string }).message

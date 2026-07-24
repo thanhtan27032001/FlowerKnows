@@ -13,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -35,6 +36,9 @@ public class StockTransaction {
     @Column(name = "quantity_change", nullable = false)
     private int quantityChange;
 
+    @Column(name = "cost_price", precision = 12, scale = 2)
+    private BigDecimal costPrice;
+
     @Column(length = 500)
     private String note;
 
@@ -45,9 +49,20 @@ public class StockTransaction {
     }
 
     public StockTransaction(Product product, StockTransactionType type, int quantityChange, String note) {
+        this(product, type, quantityChange, null, note);
+    }
+
+    public StockTransaction(
+            Product product,
+            StockTransactionType type,
+            int quantityChange,
+            BigDecimal costPrice,
+            String note
+    ) {
         this.product = product;
         this.type = type;
         this.quantityChange = quantityChange;
+        this.costPrice = costPrice;
         this.note = note;
         this.createdAt = Instant.now();
     }
@@ -70,6 +85,10 @@ public class StockTransaction {
 
     public String getNote() {
         return note;
+    }
+
+    public BigDecimal getCostPrice() {
+        return costPrice;
     }
 
     public Instant getCreatedAt() {

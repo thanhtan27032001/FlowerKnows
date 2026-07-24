@@ -113,6 +113,7 @@ public class ExchangeService {
                     unit.product(),
                     customer,
                     unit.tokenValue(),
+                    unit.product().getAverageCostPrice(),
                     SourceType.EXCHANGE,
                     savedTx.getId()
             );

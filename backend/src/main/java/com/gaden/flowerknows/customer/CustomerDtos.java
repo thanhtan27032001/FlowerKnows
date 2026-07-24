@@ -2,7 +2,9 @@ package com.gaden.flowerknows.customer;
 
 import jakarta.validation.constraints.NotBlank;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public final class CustomerDtos {
@@ -33,5 +35,34 @@ public final class CustomerDtos {
                     customer.getCreatedAt()
             );
         }
+    }
+
+    public record TokenCardResponse(
+            UUID id,
+            UUID productId,
+            String productName,
+            BigDecimal tokenValue,
+            BigDecimal costBasis,
+            String status,
+            String sourceType,
+            UUID sourceId,
+            String sourceLabel,
+            Instant createdAt,
+            long daysHeld,
+            boolean overdue
+    ) {
+    }
+
+    public record CustomerDetailResponse(
+            UUID id,
+            String name,
+            String phone,
+            String address,
+            Instant createdAt,
+            BigDecimal prepaidBalance,
+            int overdueHoldingCount,
+            List<TokenCardResponse> holdingTokens,
+            List<TokenCardResponse> history
+    ) {
     }
 }

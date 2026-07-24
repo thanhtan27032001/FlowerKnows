@@ -56,6 +56,10 @@ public class OrderService {
         BigDecimal revenue = tokens.stream()
                 .map(ItemToken::getTokenValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalCost = tokens.stream()
+                .map(token -> token.getCostBasis() == null ? BigDecimal.ZERO : token.getCostBasis())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal grossMargin = revenue.subtract(totalCost);
 
         Map<UUID, Integer> fulfillCounts = new HashMap<>();
         for (ItemToken token : tokens) {
@@ -77,7 +81,7 @@ public class OrderService {
             );
         }
 
-        Order order = new Order(customer, revenue);
+        Order order = new Order(customer, revenue, totalCost, grossMargin);
         order.getTokens().addAll(tokens);
         Order saved = orderRepository.save(order);
         return toResponse(saved);
@@ -95,6 +99,16 @@ public class OrderService {
     public List<OrderDtos.OrderResponse> listByCustomer(UUID customerId) {
         customerService.requireCustomer(customerId);
         return orderRepository.findByCustomerIdOrderByCreatedAtDesc(customerId).stream()
+                .map(order -> {
+                    order.getTokens().size();
+                    return toResponse(order);
+                })
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderDtos.OrderResponse> listAll() {
+        return orderRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(order -> {
                     order.getTokens().size();
                     return toResponse(order);
@@ -133,6 +147,8 @@ public class OrderService {
                 order.getCustomer().getName(),
                 order.getCreatedAt(),
                 order.getRecognizedRevenue(),
+                order.getTotalCost(),
+                order.getGrossMargin(),
                 order.getShippingStatus(),
                 order.getTokens().stream()
                         .map(t -> new OrderDtos.OrderTokenResponse(
@@ -140,6 +156,7 @@ public class OrderService {
                                 t.getProduct().getId(),
                                 t.getProduct().getName(),
                                 t.getTokenValue(),
+                                t.getCostBasis(),
                                 t.getStatus().name()
                         ))
                         .toList()

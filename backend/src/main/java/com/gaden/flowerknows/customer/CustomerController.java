@@ -30,7 +30,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}")
-    public CustomerDtos.CustomerResponse getById(@PathVariable UUID id) {
+    public CustomerDtos.CustomerDetailResponse getById(@PathVariable UUID id) {
         return customerService.getById(id);
     }
 

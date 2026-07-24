@@ -81,7 +81,7 @@ public class OrderService {
             );
         }
 
-        Order order = new Order(customer, revenue, totalCost, grossMargin);
+        Order order = new Order(customer, revenue, totalCost, grossMargin, request.carrierOrderId());
         order.getTokens().addAll(tokens);
         Order saved = orderRepository.save(order);
         return toResponse(saved);
@@ -123,14 +123,17 @@ public class OrderService {
 
         validateShippingTransition(order.getShippingStatus(), request.shippingStatus());
         order.setShippingStatus(request.shippingStatus());
+        if (request.carrierOrderId() != null) {
+            order.setCarrierOrderId(request.carrierOrderId());
+        }
         order.getTokens().size();
         return toResponse(order);
     }
 
     private void validateShippingTransition(ShippingStatus current, ShippingStatus next) {
         boolean valid = switch (current) {
-            case PENDING -> next == ShippingStatus.SHIPPING || next == ShippingStatus.PENDING;
-            case SHIPPING -> next == ShippingStatus.COMPLETED || next == ShippingStatus.SHIPPING;
+            case ORDER_CREATED -> next == ShippingStatus.SHIPPED || next == ShippingStatus.ORDER_CREATED;
+            case SHIPPED -> next == ShippingStatus.COMPLETED || next == ShippingStatus.SHIPPED;
             case COMPLETED -> next == ShippingStatus.COMPLETED;
         };
         if (!valid) {
@@ -150,6 +153,7 @@ public class OrderService {
                 order.getTotalCost(),
                 order.getGrossMargin(),
                 order.getShippingStatus(),
+                order.getCarrierOrderId(),
                 order.getTokens().stream()
                         .map(t -> new OrderDtos.OrderTokenResponse(
                                 t.getId(),

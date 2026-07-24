@@ -3,6 +3,7 @@ package com.gaden.flowerknows.campaign;
 import com.gaden.flowerknows.common.BusinessException;
 import com.gaden.flowerknows.common.ResourceNotFoundException;
 import com.gaden.flowerknows.customer.Customer;
+import com.gaden.flowerknows.customer.CustomerActionStatus;
 import com.gaden.flowerknows.customer.CustomerDtos;
 import com.gaden.flowerknows.customer.CustomerService;
 import com.gaden.flowerknows.exchange.ExchangeTransaction;
@@ -84,6 +85,8 @@ public class ParticipantService {
         if (participant == null) {
             participant = new CampaignParticipant(campaign, customer, request.bagsPurchased(), amount);
             campaign.getParticipants().add(participant);
+            // US-18 / US-03 AC #7: new campaign engagement resets pre-order workflow
+            customer.setActionStatus(CustomerActionStatus.UNDETERMINED);
         } else {
             participant.addBags(request.bagsPurchased(), amount);
         }

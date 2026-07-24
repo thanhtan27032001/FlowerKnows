@@ -3,6 +3,7 @@ package com.gaden.flowerknows.customer;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,5 +39,13 @@ public class CustomerController {
     @ResponseStatus(HttpStatus.CREATED)
     public CustomerDtos.CustomerResponse create(@Valid @RequestBody CustomerDtos.CreateCustomerRequest request) {
         return customerService.create(request);
+    }
+
+    @PatchMapping("/{id}/action-status")
+    public CustomerDtos.CustomerDetailResponse updateActionStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody CustomerDtos.UpdateActionStatusRequest request
+    ) {
+        return customerService.updateActionStatus(id, request);
     }
 }

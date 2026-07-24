@@ -10,6 +10,8 @@ import { productKeys } from "@/src/lib/api/product";
 import { reportKeys } from "@/src/lib/api/report";
 import { formatCostPrice, formatDateTime, vnd, vndCost } from "@/src/lib/format";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +49,7 @@ export function CreateOrderForm({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
+  const [carrierOrderId, setCarrierOrderId] = useState("");
 
   // Display-only preview of figures the backend will persist on create (US-09 AC #1)
   const expectedRevenue = useMemo(
@@ -68,6 +71,7 @@ export function CreateOrderForm({
       await queryClient.invalidateQueries({ queryKey: orderKeys.all });
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
       await queryClient.invalidateQueries({ queryKey: reportKeys.all });
+      setCarrierOrderId("");
       onOpenChange(false);
       onSuccess?.();
       router.push(`/orders?highlight=${order.id}`);
@@ -84,6 +88,7 @@ export function CreateOrderForm({
     mutation.mutate({
       customerId,
       tokenIds: tokens.map((t) => t.id),
+      carrierOrderId: carrierOrderId.trim() || null,
     });
   };
 
@@ -134,6 +139,16 @@ export function CreateOrderForm({
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="carrier-order-id">Carrier order ID (optional)</Label>
+        <Input
+          id="carrier-order-id"
+          value={carrierOrderId}
+          onChange={(e) => setCarrierOrderId(e.target.value)}
+          placeholder="Leave blank and fill in later"
+        />
       </div>
 
       {formError && <p className="text-sm text-destructive">{formError}</p>}

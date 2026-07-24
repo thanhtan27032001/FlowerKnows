@@ -1,7 +1,7 @@
 package com.gaden.flowerknows.order;
 
 public enum ShippingStatus {
-    PENDING,
-    SHIPPING,
+    ORDER_CREATED,
+    SHIPPED,
     COMPLETED
 }

@@ -15,12 +15,14 @@ public final class OrderDtos {
 
     public record CreateOrderRequest(
             @NotNull(message = "customerId is required") UUID customerId,
-            @NotEmpty(message = "tokenIds must not be empty") List<UUID> tokenIds
+            @NotEmpty(message = "tokenIds must not be empty") List<UUID> tokenIds,
+            String carrierOrderId
     ) {
     }
 
     public record UpdateShippingStatusRequest(
-            @NotNull(message = "shippingStatus is required") ShippingStatus shippingStatus
+            @NotNull(message = "shippingStatus is required") ShippingStatus shippingStatus,
+            String carrierOrderId
     ) {
     }
 
@@ -43,6 +45,7 @@ public final class OrderDtos {
             BigDecimal totalCost,
             BigDecimal grossMargin,
             ShippingStatus shippingStatus,
+            String carrierOrderId,
             List<OrderTokenResponse> tokens
     ) {
     }

@@ -10,6 +10,7 @@ import {
   type Order,
   type ShippingStatus,
 } from "@/src/lib/api/order";
+import { customerKeys } from "@/src/lib/api/customer";
 import { formatCostPrice, formatDateTime, vnd, vndCost } from "@/src/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ type Props = {
 
 function statusVariant(status: ShippingStatus) {
   if (status === "COMPLETED") return "secondary" as const;
-  if (status === "SHIPPING") return "default" as const;
+  if (status === "SHIPPED") return "default" as const;
   return "outline" as const;
 }
 
@@ -44,9 +45,15 @@ function OrderStatusSelect({ order }: { order: Order }) {
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: (shippingStatus: ShippingStatus) =>
-      orderApi.updateShippingStatus(order.id, shippingStatus),
+      orderApi.updateShippingStatus(order.id, {
+        shippingStatus,
+        carrierOrderId: order.carrierOrderId,
+      }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: orderKeys.all });
+      await queryClient.invalidateQueries({
+        queryKey: customerKeys.detail(order.customerId),
+      });
     },
   });
 
@@ -61,7 +68,7 @@ function OrderStatusSelect({ order }: { order: Order }) {
       }}
       disabled={mutation.isPending || order.shippingStatus === "COMPLETED"}
     >
-      <SelectTrigger className="h-8 w-[140px]">
+      <SelectTrigger className="h-8 w-[150px]">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -162,6 +169,12 @@ export function OrderList({ highlightId }: Props) {
                   </p>
                 </div>
               </div>
+              <div>
+                <p className="text-muted-foreground">Carrier order ID</p>
+                <p className="font-medium">
+                  {order.carrierOrderId || "Not set yet"}
+                </p>
+              </div>
               <ul className="space-y-1.5 text-muted-foreground">
                 {order.tokens.map((t) => (
                   <li key={t.id} className="flex justify-between gap-2">
@@ -196,6 +209,7 @@ export function OrderList({ highlightId }: Props) {
               <TableHead>Revenue</TableHead>
               <TableHead>Total cost</TableHead>
               <TableHead>Gross margin</TableHead>
+              <TableHead>Carrier ID</TableHead>
               <TableHead>Shipping</TableHead>
             </TableRow>
           </TableHeader>
@@ -225,6 +239,9 @@ export function OrderList({ highlightId }: Props) {
                 </TableCell>
                 <TableCell className="tabular-nums">
                   {vndCost.format(order.grossMargin)}
+                </TableCell>
+                <TableCell className="max-w-[140px] truncate text-muted-foreground">
+                  {order.carrierOrderId || "Not set yet"}
                 </TableCell>
                 <TableCell>
                   <OrderStatusSelect order={order} />

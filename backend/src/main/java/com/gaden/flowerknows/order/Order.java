@@ -48,7 +48,10 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "shipping_status", nullable = false, length = 20)
-    private ShippingStatus shippingStatus = ShippingStatus.PENDING;
+    private ShippingStatus shippingStatus = ShippingStatus.ORDER_CREATED;
+
+    @Column(name = "carrier_order_id", length = 100)
+    private String carrierOrderId;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -65,13 +68,15 @@ public class Order {
             Customer customer,
             BigDecimal recognizedRevenue,
             BigDecimal totalCost,
-            BigDecimal grossMargin
+            BigDecimal grossMargin,
+            String carrierOrderId
     ) {
         this.customer = customer;
         this.recognizedRevenue = recognizedRevenue;
         this.totalCost = totalCost;
         this.grossMargin = grossMargin;
-        this.shippingStatus = ShippingStatus.PENDING;
+        this.shippingStatus = ShippingStatus.ORDER_CREATED;
+        this.carrierOrderId = blankToNull(carrierOrderId);
         this.createdAt = Instant.now();
     }
 
@@ -103,11 +108,27 @@ public class Order {
         return grossMargin;
     }
 
+    public String getCarrierOrderId() {
+        return carrierOrderId;
+    }
+
     public void setShippingStatus(ShippingStatus shippingStatus) {
         this.shippingStatus = shippingStatus;
     }
 
+    public void setCarrierOrderId(String carrierOrderId) {
+        this.carrierOrderId = blankToNull(carrierOrderId);
+    }
+
     public List<ItemToken> getTokens() {
         return tokens;
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

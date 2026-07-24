@@ -1,10 +1,17 @@
 import { apiClient } from "@/src/lib/api/client";
 
+export type CustomerActionStatus =
+  | "UNDETERMINED"
+  | "NEGOTIATING"
+  | "CONSOLIDATING"
+  | "NEEDS_IMMEDIATE_ORDER";
+
 export type Customer = {
   id: string;
   name: string;
   phone: string | null;
   address: string | null;
+  actionStatus: CustomerActionStatus;
   createdAt: string;
 };
 
@@ -36,17 +43,45 @@ export type CustomerToken = {
   overdue: boolean;
 };
 
+export type CustomerOrderSummary = {
+  id: string;
+  createdAt: string;
+  recognizedRevenue: number;
+  totalCost: number;
+  grossMargin: number;
+  shippingStatus: string;
+  carrierOrderId: string | null;
+  tokenCount: number;
+};
+
 export type CustomerDetail = {
   id: string;
   name: string;
   phone: string | null;
   address: string | null;
+  actionStatus: CustomerActionStatus;
   createdAt: string;
   prepaidBalance: number;
   overdueHoldingCount: number;
+  latestOrder: CustomerOrderSummary | null;
+  orders: CustomerOrderSummary[];
   holdingTokens: CustomerToken[];
   history: CustomerToken[];
 };
+
+export const ACTION_STATUS_LABEL: Record<CustomerActionStatus, string> = {
+  UNDETERMINED: "Undetermined",
+  NEGOTIATING: "In Discussion",
+  CONSOLIDATING: "Holding for Later",
+  NEEDS_IMMEDIATE_ORDER: "Needs Order Now",
+};
+
+export const ACTION_STATUS_VALUES: CustomerActionStatus[] = [
+  "UNDETERMINED",
+  "NEGOTIATING",
+  "CONSOLIDATING",
+  "NEEDS_IMMEDIATE_ORDER",
+];
 
 export const customerKeys = {
   all: ["customers"] as const,
@@ -70,5 +105,10 @@ export const customerApi = {
       name: input.name,
       phone: input.phone ?? null,
       address: input.address ?? null,
+    }),
+
+  updateActionStatus: (id: string, actionStatus: CustomerActionStatus) =>
+    apiClient.patch<CustomerDetail>(`/api/customers/${id}/action-status`, {
+      actionStatus,
     }),
 };

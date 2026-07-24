@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 1.5 (Adds US-17 — simple Dashboard profit overview)
+**Version:** 1.6 (Adds US-18 — customer action status (4 pre-order values) shown alongside order shipping status (3 post-order values: order_created / shipped / completed) on the Customer Page)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -37,6 +37,7 @@ This is the single source of truth for schema design across the whole document.
 | `name` | string | Customer name |
 | `phone` | string | Phone number |
 | `address` | string | Address |
+| `action_status` | enum | Staff-managed pre-order interaction status — see US-18. One of: `undetermined` / `negotiating` / `consolidating` / `needs_immediate_order`. Defaults to `undetermined`. Fully manual — Staff sets it freely. This field only covers the pre-order negotiation stage; once an Order exists, its lifecycle is tracked separately via `order.shipping_status`. |
 
 ### `product`
 | Field | Type | Description |
@@ -133,7 +134,8 @@ This is the single source of truth for schema design across the whole document.
 | `recognized_revenue` | decimal | Recognized revenue = sum of token_value included |
 | `total_cost` | decimal | Sum of `cost_basis` for every token included in this order (computed and stored at order creation time) |
 | `gross_margin` | decimal | = `recognized_revenue` − `total_cost` (computed and stored at order creation time) |
-| `shipping_status` | enum | `pending` / `shipping` / `completed` |
+| `shipping_status` | enum | `order_created` (Order Created — set at order creation) / `shipped` (Staff has handed the order to the shipping carrier) / `completed` (order has been delivered) |
+| `carrier_order_id` | string, nullable | The shipping carrier's own order/tracking ID. Optional — may be entered at order creation or added/edited later, once known (e.g. once Staff actually hands the package to the carrier). |
 
 ### `order_token` (Which tokens belong to which order — many-to-many join table, enables order consolidation)
 | Field | Type | Description |
@@ -199,6 +201,7 @@ This is the single source of truth for schema design across the whole document.
 | 4 | The `customer` **already** has a `campaign_participant` in this campaign | Valid submission | **Accumulates**: `total_bags_purchased += new bags`, `prepaid_amount += new bags × bag_price` (no new row is created) |
 | 5 | Successfully recorded | — | The campaign's remaining bags decrease accordingly; the participant list updates |
 | 6 | The `customer` does not exist yet | Staff selects "Create new customer" within the form | Allows quick entry of `name` + `phone`, creates a new `customer` and uses it immediately |
+| 7 | Case 3 above (this is a **new** `campaign_participant` for this customer — their first time in this campaign) | The participant is created | The system also **resets `customer.action_status = undetermined`**, per US-18 — a new campaign engagement restarts the interaction workflow. This reset does NOT happen for case 4 (accumulating bags into an existing participant), since that's not a new engagement. |
 
 **Business Rules applied:** Rule #7 (accumulation). `prepaid_amount` is **not revenue** — it is an internal reconciliation figure only.
 
@@ -258,6 +261,42 @@ This is the single source of truth for schema design across the whole document.
 | 4 | The `holding` token list is shown | Staff selects one or more tokens | An action bar appears: "Item Exchange", "Cash Out", "Create Order", "Cancel Token" — only active when ≥ 1 token is selected |
 
 **This is the central screen** — every US from 06 to 09 originates from this screen.
+
+---
+
+### US-18: Track and update a Customer's Action Status
+
+**As** Staff, **I want to** see a customer's pre-order interaction status AND their order's shipping status (if any order exists) together on the Customer Page, **so that** I know at a glance exactly where things stand — both the conversation stage and the fulfillment stage.
+
+**`customer.action_status` values (pre-order stage only — Staff may set any value at any time, no fixed progression enforced):**
+
+| Value (stored) | Display label | Meaning |
+|---|---|---|
+| `undetermined` | Undetermined | Default state — customer just joined a campaign, no conversation yet about what happens next |
+| `negotiating` | In Discussion | Staff is actively discussing options with the customer (e.g. item exchange, whether to order now or hold items) |
+| `consolidating` | Holding for Later | Customer agreed to hold their items and consolidate into a future order |
+| `needs_immediate_order` | Needs Order Now | Customer wants their order created and shipped right away |
+
+**`order.shipping_status` values (post-order stage, per Order — see US-09):**
+
+| Value (stored) | Display label | Meaning |
+|---|---|---|
+| `order_created` | Order Created | Set automatically when Staff creates the order (US-09); `carrier_order_id` may be attached now or later |
+| `shipped` | Shipped | Staff has handed the order off to the shipping carrier |
+| `completed` | Completed | The order has been delivered |
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Staff is on a Customer Page | Views the top of the page | The current `action_status` is shown prominently as a badge/label near the customer's name |
+| 2 | Staff wants to change the status | Clicks/taps the status badge | A dropdown/selector shows all 4 `action_status` values (per the table above); Staff can pick ANY value freely — the system does not enforce a fixed progression order |
+| 3 | Staff selects a new status | Confirms | `customer.action_status` updates immediately; no side effects on tokens, orders, or stock — this is purely an informational/workflow field |
+| 4 | A new `campaign_participant` is created for this customer (per US-03 AC #7) | — | `action_status` auto-resets to `undetermined` |
+| 5 | The customer has at least one `order` | Staff views the Customer Page | Alongside `action_status`, the page also shows each order's `shipping_status` (with its `carrier_order_id` if set) — if the customer has multiple orders over time, show the most recent order's status prominently, with a link/expandable section to see all past orders and their individual statuses |
+| 6 | The customer has no `order` yet | Staff views the Customer Page | Only `action_status` is shown; no shipping status section is displayed (nothing to show yet) |
+
+**Design note:** `action_status` and `shipping_status` no longer overlap in meaning — `action_status` only describes the pre-order conversation stage (reset each time a new campaign engagement begins), while `shipping_status` is owned entirely by the Order entity and reflects fulfillment progress (see US-09). Staff may see both displayed together on the Customer Page, but they are updated through different actions: `action_status` via the badge/dropdown in AC #2, `shipping_status` via the order's own status control (US-09 AC #5).
 
 ---
 
@@ -333,11 +372,11 @@ This is the single source of truth for schema design across the whole document.
 
 | # | Given | When | Then |
 |---|---|---|---|
-| 1 | Staff is on the Customer Page, the customer has ≥ 1 `holding` token | Selects one or more tokens, clicks "Create Order" | A confirmation form is shown: the list of selected tokens (product, token_value, cost_basis, source campaign/date), **expected `recognized_revenue` = sum of the selected token_values**, **expected `total_cost` = sum of `cost_basis`** (treated as 0 for any token with a null `cost_basis`), **expected `gross_margin` = revenue − cost** |
+| 1 | Staff is on the Customer Page, the customer has ≥ 1 `holding` token | Selects one or more tokens, clicks "Create Order" | A confirmation form is shown: the list of selected tokens (product, token_value, cost_basis, source campaign/date), **expected `recognized_revenue` = sum of the selected token_values**, **expected `total_cost` = sum of `cost_basis`** (treated as 0 for any token with a null `cost_basis`), **expected `gross_margin` = revenue − cost**, and an **optional `carrier_order_id` field** (Staff may leave it blank and fill it in later once known) |
 | 2 | The customer has tokens from 3 different campaigns, Staff only selects tokens from 2 campaigns | Clicks "Create Order" | The system merges only the selected tokens into the order; the remaining tokens **stay `status = holding`**, and continue to appear on the Customer Page for a future consolidated order |
-| 3 | Staff confirms creation | — | Transaction: (a) create the `order` with `recognized_revenue` = sum of token values, **`total_cost` = sum of token cost_basis, `gross_margin` = recognized_revenue − total_cost**, `shipping_status = pending`, (b) create the linking `order_token` rows, (c) all selected tokens → `status = ordered`, (d) **deduct `product.stock_quantity`** accordingly (the only true stock-outflow point in the whole system) |
-| 4 | The order has been created | Staff views the customer's order list | The order is shown with all included tokens, `recognized_revenue`, `total_cost`, `gross_margin`, `shipping_status` |
-| 5 | The order has been created and the goods have actually been shipped | Staff updates the status | Allows transitioning `shipping_status`: `pending` → `shipping` → `completed` — **does not affect tokens/stock/revenue again** (already finalized at order creation) |
+| 3 | Staff confirms creation | — | Transaction: (a) create the `order` with `recognized_revenue` = sum of token values, **`total_cost` = sum of token cost_basis, `gross_margin` = recognized_revenue − total_cost**, `shipping_status = order_created`, `carrier_order_id` = whatever Staff entered (or null), (b) create the linking `order_token` rows, (c) all selected tokens → `status = ordered`, (d) **deduct `product.stock_quantity`** accordingly (the only true stock-outflow point in the whole system) |
+| 4 | The order has been created | Staff views the customer's order list | The order is shown with all included tokens, `recognized_revenue`, `total_cost`, `gross_margin`, `shipping_status` (starts as `order_created`), `carrier_order_id` (or "Not set yet") |
+| 5 | The order has been created and the goods have actually been shipped | Staff updates the status | Allows transitioning `shipping_status`: `order_created` → `shipped` → `completed`, and allows adding/editing `carrier_order_id` at this point if it wasn't set at creation — **does not affect tokens/stock/revenue again** (already finalized at order creation). This is fully separate from `customer.action_status` (US-18), which only covers the pre-order stage and is not touched by these transitions. |
 | 6 | A token is already `status = ordered` | Staff tries to select it for Exchange/Cash Out/Cancel | Not allowed, not shown in the selectable list (per Rule #9 — only applies to `holding` tokens) |
 | 7 | Shipping fees are collected directly from the customer by the shipping carrier | Creating an order | No shipping fee field in the form (out of scope for this system — Rule #8); an optional free-text `shipping_note` field may exist (not used in calculations) |
 
@@ -510,11 +549,12 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 ## Appendix B — Open Questions to Resolve Before Coding
 
 1. **US-06:** The exact UI for how Staff enters/allocates `token_value` for each new token when exchanging N-N (multiple new products) — needs a concrete UI mockup to finalize.
-2. The specific set of `shipping_status` values for an Order (`pending`/`shipping`/`completed`...), who updates it, and whether a shipping-carrier note field is needed.
+2. ~~The specific set of `shipping_status` values for an Order...~~ **Resolved in v1.6** — `order.shipping_status` uses `order_created` / `shipped` / `completed`, updated by Staff via the order's own status control (US-09 AC #5); `carrier_order_id` is optional, settable at creation or later.
 3. The "Low stock" warning threshold in US-10 — staff-configurable or hardcoded.
 4. **US-14 (Stock Adjustment):** Should every Staff member have permission to adjust stock, or is separate role-based access needed (e.g. only a Manager can approve decreases) — the current spec assumes all Staff have equal permissions (no RBAC yet).
 5. **US-13 (Stock In):** Is a printed/saved "goods receipt" document needed after each stock-in, or is a system record sufficient?
 6. **US-06 (Item Exchange) + cost_basis:** When one exchange creates multiple new tokens (1→N), how should `cost_basis` be assigned to each new token? Suggested default: each new token gets the full `average_cost_price` of its own product (not split/prorated) — since `cost_basis` represents unit cost, not a share of the old tokens' value. Please confirm this matches expectations.
+7. ~~US-18 (`customer.action_status`) drift risk...~~ **Resolved in v1.6** — `action_status` (4 values) and `shipping_status` (3 values) no longer overlap in meaning; the drift risk no longer applies since they track genuinely different, non-overlapping stages (pre-order vs. post-order).
 
 ---
 

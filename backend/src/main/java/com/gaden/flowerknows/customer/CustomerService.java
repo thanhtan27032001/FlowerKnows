@@ -3,6 +3,8 @@ package com.gaden.flowerknows.customer;
 import com.gaden.flowerknows.campaign.CampaignParticipant;
 import com.gaden.flowerknows.campaign.CampaignParticipantRepository;
 import com.gaden.flowerknows.common.ResourceNotFoundException;
+import com.gaden.flowerknows.order.Order;
+import com.gaden.flowerknows.order.OrderRepository;
 import com.gaden.flowerknows.token.ItemToken;
 import com.gaden.flowerknows.token.ItemTokenRepository;
 import com.gaden.flowerknows.token.SourceType;
@@ -27,15 +29,18 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final ItemTokenRepository itemTokenRepository;
     private final CampaignParticipantRepository participantRepository;
+    private final OrderRepository orderRepository;
 
     public CustomerService(
             CustomerRepository customerRepository,
             ItemTokenRepository itemTokenRepository,
-            CampaignParticipantRepository participantRepository
+            CampaignParticipantRepository participantRepository,
+            OrderRepository orderRepository
     ) {
         this.customerRepository = customerRepository;
         this.itemTokenRepository = itemTokenRepository;
         this.participantRepository = participantRepository;
+        this.orderRepository = orderRepository;
     }
 
     @Transactional(readOnly = true)
@@ -75,14 +80,26 @@ public class CustomerService {
 
         int overdueHoldingCount = (int) holdingCards.stream().filter(CustomerDtos.TokenCardResponse::overdue).count();
 
+        List<CustomerDtos.CustomerOrderSummaryResponse> orders = orderRepository
+                .findByCustomerIdOrderByCreatedAtDesc(id)
+                .stream()
+                .map(this::toOrderSummary)
+                .toList();
+
+        CustomerDtos.CustomerOrderSummaryResponse latestOrder =
+                orders.isEmpty() ? null : orders.getFirst();
+
         return new CustomerDtos.CustomerDetailResponse(
                 customer.getId(),
                 customer.getName(),
                 customer.getPhone(),
                 customer.getAddress(),
+                customer.getActionStatus(),
                 customer.getCreatedAt(),
                 prepaidBalance,
                 overdueHoldingCount,
+                latestOrder,
+                orders,
                 holdingCards,
                 historyCards
         );
@@ -94,9 +111,33 @@ public class CustomerService {
         return CustomerDtos.CustomerResponse.from(customerRepository.save(customer));
     }
 
+    @Transactional
+    public CustomerDtos.CustomerDetailResponse updateActionStatus(
+            UUID id,
+            CustomerDtos.UpdateActionStatusRequest request
+    ) {
+        Customer customer = requireCustomer(id);
+        customer.setActionStatus(request.actionStatus());
+        return getById(id);
+    }
+
     public Customer requireCustomer(UUID id) {
         return customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found: " + id));
+    }
+
+    private CustomerDtos.CustomerOrderSummaryResponse toOrderSummary(Order order) {
+        order.getTokens().size();
+        return new CustomerDtos.CustomerOrderSummaryResponse(
+                order.getId(),
+                order.getCreatedAt(),
+                order.getRecognizedRevenue(),
+                order.getTotalCost(),
+                order.getGrossMargin(),
+                order.getShippingStatus().name(),
+                order.getCarrierOrderId(),
+                order.getTokens().size()
+        );
     }
 
     private Map<UUID, String> resolveCampaignSourceLabels(

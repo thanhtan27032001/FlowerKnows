@@ -1,6 +1,7 @@
 package com.gaden.flowerknows.customer;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -19,11 +20,17 @@ public final class CustomerDtos {
     ) {
     }
 
+    public record UpdateActionStatusRequest(
+            @NotNull(message = "actionStatus is required") CustomerActionStatus actionStatus
+    ) {
+    }
+
     public record CustomerResponse(
             UUID id,
             String name,
             String phone,
             String address,
+            CustomerActionStatus actionStatus,
             Instant createdAt
     ) {
         public static CustomerResponse from(Customer customer) {
@@ -32,6 +39,7 @@ public final class CustomerDtos {
                     customer.getName(),
                     customer.getPhone(),
                     customer.getAddress(),
+                    customer.getActionStatus(),
                     customer.getCreatedAt()
             );
         }
@@ -53,14 +61,29 @@ public final class CustomerDtos {
     ) {
     }
 
+    public record CustomerOrderSummaryResponse(
+            UUID id,
+            Instant createdAt,
+            BigDecimal recognizedRevenue,
+            BigDecimal totalCost,
+            BigDecimal grossMargin,
+            String shippingStatus,
+            String carrierOrderId,
+            int tokenCount
+    ) {
+    }
+
     public record CustomerDetailResponse(
             UUID id,
             String name,
             String phone,
             String address,
+            CustomerActionStatus actionStatus,
             Instant createdAt,
             BigDecimal prepaidBalance,
             int overdueHoldingCount,
+            CustomerOrderSummaryResponse latestOrder,
+            List<CustomerOrderSummaryResponse> orders,
             List<TokenCardResponse> holdingTokens,
             List<TokenCardResponse> history
     ) {

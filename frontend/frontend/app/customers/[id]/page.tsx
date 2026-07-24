@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { CashOutForm } from "@/components/customers/cash-out-form";
+import { CustomerActionStatusSelect } from "@/components/customers/customer-action-status-select";
+import { CustomerOrderStatusSection } from "@/components/customers/customer-order-status-section";
 import { CustomerTokenActionBar } from "@/components/customers/customer-token-action-bar";
 import { HistoryTokenCard } from "@/components/customers/history-token-card";
 import { HoldingTokenCard } from "@/components/customers/holding-token-card";
@@ -97,12 +99,21 @@ export default function CustomerDetailPage({
         <div className="space-y-6 pb-36">
           <Card>
             <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-              <div>
+              <div className="min-w-0 space-y-2">
                 <CardTitle className="text-xl">{customer.name}</CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   {customer.phone || "No phone"}
                   {customer.address ? ` · ${customer.address}` : ""}
                 </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Action status
+                  </span>
+                  <CustomerActionStatusSelect
+                    customerId={customer.id}
+                    value={customer.actionStatus}
+                  />
+                </div>
               </div>
               {customer.overdueHoldingCount > 0 && (
                 <Badge variant="destructive">
@@ -120,6 +131,14 @@ export default function CustomerDetailPage({
               </p>
             </CardContent>
           </Card>
+
+          {customer.latestOrder && (
+            <CustomerOrderStatusSection
+              customerId={customer.id}
+              latestOrder={customer.latestOrder}
+              orders={customer.orders}
+            />
+          )}
 
           <section className="space-y-3">
             <div className="flex items-end justify-between gap-2">

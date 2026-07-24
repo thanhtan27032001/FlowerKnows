@@ -44,9 +44,19 @@ export type RevenueReport = {
   campaignBreakdown: CampaignBreakdown | null;
 };
 
+export type ProfitOverview = {
+  totalCapitalInvested: number;
+  totalRevenue: number;
+  totalProfit: number;
+  revenueFromOrders: number;
+  revenueFromCancelledTokens: number;
+  note: string;
+};
+
 export const reportKeys = {
   all: ["reports"] as const,
   inventory: () => [...reportKeys.all, "inventory"] as const,
+  profitOverview: () => [...reportKeys.all, "profit-overview"] as const,
   revenue: (from: string, to: string, campaignId?: string) =>
     [...reportKeys.all, "revenue", from, to, campaignId ?? ""] as const,
 };
@@ -54,6 +64,9 @@ export const reportKeys = {
 export const reportApi = {
   inventory: () =>
     apiClient.get<InventoryItem[]>("/api/reports/inventory"),
+
+  profitOverview: () =>
+    apiClient.get<ProfitOverview>("/api/reports/profit-overview"),
 
   revenue: (from: string, to: string, campaignId?: string) => {
     const params = new URLSearchParams({ from, to });

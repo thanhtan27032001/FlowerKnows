@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { reportApi, reportKeys } from "@/src/lib/api/report";
 import { tokenApi, tokenKeys } from "@/src/lib/api/token";
+import { vndCost } from "@/src/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -17,6 +18,11 @@ import {
 } from "@/components/ui/table";
 
 export default function DashboardPage() {
+  const profitQuery = useQuery({
+    queryKey: reportKeys.profitOverview(),
+    queryFn: reportApi.profitOverview,
+  });
+
   const inventoryQuery = useQuery({
     queryKey: reportKeys.inventory(),
     queryFn: reportApi.inventory,
@@ -27,6 +33,7 @@ export default function DashboardPage() {
     queryFn: tokenApi.listOverdue,
   });
 
+  const profit = profitQuery.data;
   const inventory = inventoryQuery.data ?? [];
   const lowStock = inventory.filter((i) => i.lowStock);
   const overdueCount = overdueQuery.data?.length ?? 0;
@@ -39,6 +46,94 @@ export default function DashboardPage() {
   return (
     <AppShell title="Dashboard">
       <div className="space-y-6">
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
+              Profit overview
+            </h2>
+            <Link
+              href="/reports"
+              className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+            >
+              Gross Margin Report
+            </Link>
+          </div>
+
+          {profitQuery.isLoading && (
+            <p className="text-sm text-muted-foreground">Loading profit overview…</p>
+          )}
+
+          {profitQuery.isError && (
+            <p className="text-sm text-destructive">
+              {profitQuery.error instanceof Error
+                ? profitQuery.error.message
+                : "Failed to load profit overview"}
+            </p>
+          )}
+
+          {profit && (
+            <>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Capital Invested
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl">
+                      {vndCost.format(profit.totalCapitalInvested)}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Revenue
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl">
+                      {vndCost.format(profit.totalRevenue)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Orders {vndCost.format(profit.revenueFromOrders)} · Cancelled{" "}
+                      {vndCost.format(profit.revenueFromCancelledTokens)}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Profit
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p
+                      className={`text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl ${
+                        profit.totalProfit < 0
+                          ? "text-amber-800 dark:text-amber-200"
+                          : ""
+                      }`}
+                    >
+                      {vndCost.format(profit.totalProfit)}
+                    </p>
+                    {profit.totalProfit < 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Negative is expected early on when stock-in exceeds sales
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <p className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                {profit.note}
+              </p>
+            </>
+          )}
+        </section>
+
         <div className="grid gap-3 sm:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">

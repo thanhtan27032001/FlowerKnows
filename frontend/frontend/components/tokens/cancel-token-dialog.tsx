@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import { customerKeys } from "@/src/lib/api/customer";
 import { productKeys } from "@/src/lib/api/product";
+import { reportKeys } from "@/src/lib/api/report";
 import { tokenApi, tokenKeys } from "@/src/lib/api/token";
 import { vnd } from "@/src/lib/format";
 import {
@@ -43,6 +44,7 @@ export function CancelTokenDialog({
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: tokenKeys.all });
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
+      await queryClient.invalidateQueries({ queryKey: reportKeys.all });
       if (customerId) {
         await queryClient.invalidateQueries({
           queryKey: customerKeys.detail(customerId),

@@ -10,6 +10,7 @@ import com.gaden.flowerknows.exchange.ExchangeTransactionRepository;
 import com.gaden.flowerknows.order.OrderRepository;
 import com.gaden.flowerknows.product.Product;
 import com.gaden.flowerknows.product.ProductRepository;
+import com.gaden.flowerknows.stock.StockTransactionRepository;
 import com.gaden.flowerknows.token.ItemTokenRepository;
 import com.gaden.flowerknows.token.TokenStatus;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +36,7 @@ public class ReportService {
     private final OrderRepository orderRepository;
     private final ItemTokenRepository itemTokenRepository;
     private final ExchangeTransactionRepository exchangeRepository;
+    private final StockTransactionRepository stockTransactionRepository;
     private final int lowStockThreshold;
 
     public ReportService(
@@ -45,6 +47,7 @@ public class ReportService {
             OrderRepository orderRepository,
             ItemTokenRepository itemTokenRepository,
             ExchangeTransactionRepository exchangeRepository,
+            StockTransactionRepository stockTransactionRepository,
             @Value("${app.low-stock-threshold:5}") int lowStockThreshold
     ) {
         this.productRepository = productRepository;
@@ -54,6 +57,7 @@ public class ReportService {
         this.orderRepository = orderRepository;
         this.itemTokenRepository = itemTokenRepository;
         this.exchangeRepository = exchangeRepository;
+        this.stockTransactionRepository = stockTransactionRepository;
         this.lowStockThreshold = lowStockThreshold;
     }
 
@@ -62,6 +66,24 @@ public class ReportService {
         return productRepository.findAll().stream()
                 .map(this::toInventoryItem)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ReportDtos.ProfitOverviewResponse profitOverview() {
+        BigDecimal totalCapitalInvested = stockTransactionRepository.sumCapitalInvestedFromStockIn();
+        BigDecimal revenueFromOrders = orderRepository.sumAllRecognizedRevenue();
+        BigDecimal revenueFromCancelled = itemTokenRepository.sumAllCancelledTokenValue();
+        BigDecimal totalRevenue = revenueFromOrders.add(revenueFromCancelled);
+        BigDecimal totalProfit = totalRevenue.subtract(totalCapitalInvested);
+
+        return new ReportDtos.ProfitOverviewResponse(
+                totalCapitalInvested,
+                totalRevenue,
+                totalProfit,
+                revenueFromOrders,
+                revenueFromCancelled,
+                "This is a simple cash-basis figure that includes the cost of all inventory purchased, whether sold or not. For per-order matched profit margin, see the Gross Margin Report."
+        );
     }
 
     @Transactional(readOnly = true)

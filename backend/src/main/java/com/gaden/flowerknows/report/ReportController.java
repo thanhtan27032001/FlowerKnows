@@ -25,6 +25,11 @@ public class ReportController {
         return reportService.inventoryReport();
     }
 
+    @GetMapping("/profit-overview")
+    public ReportDtos.ProfitOverviewResponse profitOverview() {
+        return reportService.profitOverview();
+    }
+
     @GetMapping("/revenue")
     public ReportDtos.RevenueReportResponse revenue(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,

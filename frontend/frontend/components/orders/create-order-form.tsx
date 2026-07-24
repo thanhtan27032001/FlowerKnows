@@ -7,6 +7,7 @@ import { ApiError } from "@/src/lib/api/client";
 import { customerKeys, type CustomerToken } from "@/src/lib/api/customer";
 import { orderApi, orderKeys } from "@/src/lib/api/order";
 import { productKeys } from "@/src/lib/api/product";
+import { reportKeys } from "@/src/lib/api/report";
 import { formatCostPrice, formatDateTime, vnd, vndCost } from "@/src/lib/format";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,6 +67,7 @@ export function CreateOrderForm({
       });
       await queryClient.invalidateQueries({ queryKey: orderKeys.all });
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
+      await queryClient.invalidateQueries({ queryKey: reportKeys.all });
       onOpenChange(false);
       onSuccess?.();
       router.push(`/orders?highlight=${order.id}`);

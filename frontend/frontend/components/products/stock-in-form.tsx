@@ -9,6 +9,7 @@ import {
   productKeys,
   type Product,
 } from "@/src/lib/api/product";
+import { reportKeys } from "@/src/lib/api/report";
 import { formatCostPrice } from "@/src/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,6 +95,7 @@ export function StockInForm({
     mutationFn: productApi.stockIn,
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
+      await queryClient.invalidateQueries({ queryKey: reportKeys.all });
       setSuccessSummary(result.products);
       onSuccess?.(result.products);
     },

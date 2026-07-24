@@ -20,6 +20,16 @@ public final class ReportDtos {
     ) {
     }
 
+    public record ProfitOverviewResponse(
+            BigDecimal totalCapitalInvested,
+            BigDecimal totalRevenue,
+            BigDecimal totalProfit,
+            BigDecimal revenueFromOrders,
+            BigDecimal revenueFromCancelledTokens,
+            String note
+    ) {
+    }
+
     public record RevenueReportResponse(
             Instant from,
             Instant to,

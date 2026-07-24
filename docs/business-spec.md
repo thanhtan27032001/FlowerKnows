@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 1.4 (Adds US-16 — manage participant items directly from Campaign page)
+**Version:** 1.5 (Adds US-17 — simple Dashboard profit overview)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -375,6 +375,25 @@ This is the single source of truth for schema design across the whole document.
 | 4 | Staff wants to verify data correctness | Viewing the report | The system shows the reconciliation formula: Total Prepaid = Holding Tokens + Recognized Revenue + Total Refunded — if it doesn't balance, a data-error warning is shown |
 | 5 | Staff selects a time range | Views the Gross Margin section | Shows: (a) **Order gross margin** = Σ `order.gross_margin` for orders in range, (b) **Cancelled Token margin** = Σ `token_value` for cancelled tokens in range (treated as 100% margin, no cost), (c) **Total Gross Margin** = (a) + (b), (d) **Gross Margin %** = Total Gross Margin / Total Revenue |
 | 6 | A token included in an order has a null `cost_basis` (e.g. the product was never stocked in with a cost price before the token was created) | Viewing the Gross Margin report | That token's cost is treated as 0 in the `total_cost`/`gross_margin` calculation, and the report shows a small warning noting N orders contain tokens with missing cost data (so Staff knows the margin figure may be overstated) |
+
+---
+
+### US-17: Dashboard — Simple Profit Overview
+
+**As** Staff, **I want to** see 3 high-level numbers on the Dashboard — total capital spent on stock, total revenue, and total profit — **so that** I can get a quick financial pulse without digging into detailed reports.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Staff opens the Dashboard | Views the top summary section | Shows 3 KPI cards: **Total Capital Invested**, **Total Revenue**, **Total Profit** |
+| 2 | Calculating Total Capital Invested | — | = Σ (`cost_price` × `quantity_change`) across **all** `stock_transaction` rows with `type = stock_in`, all time — this is a simple cash-basis figure and **includes the cost of stock still sitting unsold in inventory** (it does NOT matter whether the stock has been sold yet) |
+| 3 | Calculating Total Revenue | — | Same definition as US-11 AC #1: Revenue from Orders (`recognized_revenue`) + Revenue from Cancelled Tokens |
+| 4 | Calculating Total Profit | — | = Total Revenue − Total Capital Invested |
+| 5 | Staff views this section | — | A small info tooltip/note clarifies: *"This is a simple cash-basis figure that includes the cost of all inventory purchased, whether sold or not. For per-order matched profit margin, see the Gross Margin Report."* — to prevent confusion with the different (and more precise) number shown in US-11's Gross Margin Report |
+| 6 | Early in the shop's life, more has been spent on stock-in than has been sold yet | Viewing Total Profit | The figure may correctly show as negative — this is expected and not treated as an error |
+
+**Note:** This is intentionally a simpler, coarser figure than the Gross Margin Report (US-11) — it will NOT match `US-11`'s gross margin number, because it counts the full cost of all inventory ever purchased rather than only the cost of items actually sold. Both numbers are useful for different purposes and should be labeled clearly enough that Staff doesn't confuse one for the other.
 
 ---
 

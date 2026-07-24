@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 1.3 (Adds cost price tracking & gross margin)
+**Version:** 1.4 (Adds US-16 — manage participant items directly from Campaign page)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -221,6 +221,24 @@ This is the single source of truth for schema design across the whole document.
 | 5 | Successfully recorded | — | `campaign_pool.remaining_quantity` decreases accordingly; the new token appears on the "Customer Page" with `status = holding` |
 
 **Business Rules applied:** Recording items does NOT affect `product.stock_quantity` (the goods remain physically at the shop).
+
+---
+
+### US-16: View & manage a participant's received items directly from the Campaign page
+
+**As** Staff, **I want to** see which item(s) each `campaign_participant` received, and act on them (Item Exchange / Cash Out) without leaving the Campaign page, **so that** I can serve a customer at the counter without switching screens.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Staff is on a `campaign` detail page, viewing the participant list | Expands a participant row (or clicks "View items") | Shows every `item_token` where `source_type = campaign` and `source_id` = this `campaign_participant.id`, each with: `product`, `token_value`, `cost_basis`, and **current `status`** (`holding`/`exchanged`/`cashed_out`/`ordered`/`cancelled`) — including tokens that are no longer `holding`, so Staff can see "this item was already exchanged/ordered" rather than assuming it's still held |
+| 2 | A token in this list has `status = holding` | Staff selects it | The same "Item Exchange" / "Cash Out" actions from US-06/US-07 become available, reusing the exact same dialogs/components and API calls as the Customer Page — no separate logic, no separate endpoint |
+| 3 | A token in this list has `status` other than `holding` | Staff views it | The token is shown read-only (no action buttons), with a small label indicating what happened to it (e.g. "Exchanged on [date]", "Included in order #X") |
+| 4 | Staff performs an Item Exchange from this screen | Exchange is confirmed | The old token (still tagged `source_type = campaign`, this participant) updates to `status = exchanged`; the newly generated token is tagged `source_type = exchange` per the existing rule — it will now appear in the customer's full history on the Customer Page, but NOT in this campaign's participant view (since its `source_id` no longer points to this `campaign_participant`) |
+| 5 | Staff wants the customer's full cross-campaign picture (not just this campaign) | Clicks through to "View full customer profile" from the participant row | Navigates to the Customer Page (US-05), which shows all holding/history tokens regardless of source campaign |
+
+**Note:** This US does not introduce new backend endpoints — it reuses `GET /api/customers/{id}` (filtered client-side to this campaign's tokens) or a dedicated filtered query `GET /api/campaigns/{id}/participants/{participantId}/tokens`, plus the existing exchange endpoints from US-06/US-07. This is primarily a UI/UX consolidation, not a new business rule.
 
 ---
 

@@ -5,9 +5,26 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ExchangeTransactionRepository extends JpaRepository<ExchangeTransaction, UUID> {
+
+    @Query("""
+            SELECT e FROM ExchangeTransaction e
+            JOIN e.tokensIn t
+            WHERE t.id = :tokenId
+            """)
+    Optional<ExchangeTransaction> findByTokenInId(UUID tokenId);
+
+    @Query("""
+            SELECT e FROM ExchangeTransaction e
+            JOIN e.tokensIn t
+            WHERE t.id IN :tokenIds
+            """)
+    List<ExchangeTransaction> findAllByTokenInIds(Collection<UUID> tokenIds);
 
     @Query("""
             SELECT COALESCE(SUM(e.actualRefundAmount), 0) FROM ExchangeTransaction e

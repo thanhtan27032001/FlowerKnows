@@ -88,12 +88,28 @@ export type TokenRecord = {
   createdAt: string;
 };
 
+export type ParticipantToken = {
+  id: string;
+  productId: string;
+  productName: string;
+  tokenValue: number;
+  costBasis: number | null;
+  status: string;
+  statusLabel: string;
+  createdAt: string;
+  outcomeAt: string | null;
+  orderId: string | null;
+  actionable: boolean;
+};
+
 export const campaignKeys = {
   all: ["campaigns"] as const,
   lists: () => [...campaignKeys.all, "list"] as const,
   detail: (id: string) => [...campaignKeys.all, "detail", id] as const,
   closePreview: (id: string) =>
     [...campaignKeys.all, "close-preview", id] as const,
+  participantTokens: (campaignId: string, participantId: string) =>
+    [...campaignKeys.all, "participant-tokens", campaignId, participantId] as const,
 };
 
 export const campaignApi = {
@@ -120,5 +136,10 @@ export const campaignApi = {
     apiClient.post<TokenRecord[]>(
       `/api/campaigns/${campaignId}/tokens`,
       input
+    ),
+
+  listParticipantTokens: (campaignId: string, participantId: string) =>
+    apiClient.get<ParticipantToken[]>(
+      `/api/campaigns/${campaignId}/participants/${participantId}/tokens`
     ),
 };

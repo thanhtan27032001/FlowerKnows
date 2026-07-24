@@ -5,7 +5,9 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface OrderRepository extends JpaRepository<Order, UUID> {
@@ -13,6 +15,20 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     List<Order> findByCustomerIdOrderByCreatedAtDesc(UUID customerId);
 
     List<Order> findAllByOrderByCreatedAtDesc();
+
+    @Query("""
+            SELECT o FROM Order o
+            JOIN o.tokens t
+            WHERE t.id = :tokenId
+            """)
+    Optional<Order> findByTokenId(UUID tokenId);
+
+    @Query("""
+            SELECT o FROM Order o
+            JOIN o.tokens t
+            WHERE t.id IN :tokenIds
+            """)
+    List<Order> findAllByTokenIds(Collection<UUID> tokenIds);
 
     @Query("""
             SELECT COALESCE(SUM(o.recognizedRevenue), 0) FROM Order o

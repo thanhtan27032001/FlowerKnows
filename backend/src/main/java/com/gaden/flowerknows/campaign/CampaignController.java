@@ -68,4 +68,12 @@ public class CampaignController {
     ) {
         return participantService.recordItems(id, request);
     }
+
+    @GetMapping("/{id}/participants/{participantId}/tokens")
+    public List<CampaignDtos.ParticipantTokenResponse> listParticipantTokens(
+            @PathVariable UUID id,
+            @PathVariable UUID participantId
+    ) {
+        return participantService.listParticipantTokens(id, participantId);
+    }
 }

@@ -21,6 +21,11 @@ public interface ItemTokenRepository extends JpaRepository<ItemToken, UUID> {
 
     List<ItemToken> findByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(TokenStatus status, Instant cutoff);
 
+    List<ItemToken> findBySourceTypeAndSourceIdOrderByCreatedAtDesc(
+            SourceType sourceType,
+            UUID sourceId
+    );
+
     @Query("""
             SELECT COALESCE(SUM(t.tokenValue), 0) FROM ItemToken t
             WHERE t.status = com.gaden.flowerknows.token.TokenStatus.HOLDING

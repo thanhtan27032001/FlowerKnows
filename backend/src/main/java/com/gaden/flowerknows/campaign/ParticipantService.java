@@ -5,10 +5,15 @@ import com.gaden.flowerknows.common.ResourceNotFoundException;
 import com.gaden.flowerknows.customer.Customer;
 import com.gaden.flowerknows.customer.CustomerDtos;
 import com.gaden.flowerknows.customer.CustomerService;
+import com.gaden.flowerknows.exchange.ExchangeTransaction;
+import com.gaden.flowerknows.exchange.ExchangeTransactionRepository;
+import com.gaden.flowerknows.order.Order;
+import com.gaden.flowerknows.order.OrderRepository;
 import com.gaden.flowerknows.product.Product;
 import com.gaden.flowerknows.token.ItemToken;
 import com.gaden.flowerknows.token.ItemTokenRepository;
 import com.gaden.flowerknows.token.SourceType;
+import com.gaden.flowerknows.token.TokenStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -16,28 +21,43 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ParticipantService {
+
+    private static final DateTimeFormatter OUTCOME_DATE =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy").withZone(ZoneOffset.UTC);
 
     private final CampaignService campaignService;
     private final CampaignParticipantRepository participantRepository;
     private final CustomerService customerService;
     private final ItemTokenRepository itemTokenRepository;
+    private final ExchangeTransactionRepository exchangeRepository;
+    private final OrderRepository orderRepository;
 
     public ParticipantService(
             CampaignService campaignService,
             CampaignParticipantRepository participantRepository,
             CustomerService customerService,
-            ItemTokenRepository itemTokenRepository
+            ItemTokenRepository itemTokenRepository,
+            ExchangeTransactionRepository exchangeRepository,
+            OrderRepository orderRepository
     ) {
         this.campaignService = campaignService;
         this.participantRepository = participantRepository;
         this.customerService = customerService;
         this.itemTokenRepository = itemTokenRepository;
+        this.exchangeRepository = exchangeRepository;
+        this.orderRepository = orderRepository;
     }
 
     @Transactional
@@ -141,6 +161,116 @@ public class ParticipantService {
                         t.getCreatedAt()
                 ))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CampaignDtos.ParticipantTokenResponse> listParticipantTokens(
+            UUID campaignId,
+            UUID participantId
+    ) {
+        CampaignParticipant participant = participantRepository.findById(participantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Participant not found: " + participantId));
+
+        if (!participant.getCampaign().getId().equals(campaignId)) {
+            throw new ResourceNotFoundException("Participant not found in this campaign");
+        }
+
+        List<ItemToken> tokens = itemTokenRepository
+                .findBySourceTypeAndSourceIdOrderByCreatedAtDesc(SourceType.CAMPAIGN, participantId);
+
+        List<UUID> nonHoldingIds = tokens.stream()
+                .filter(t -> t.getStatus() != TokenStatus.HOLDING)
+                .map(ItemToken::getId)
+                .toList();
+
+        Map<UUID, ExchangeTransaction> exchangeByTokenId = new HashMap<>();
+        Map<UUID, Order> orderByTokenId = new HashMap<>();
+
+        if (!nonHoldingIds.isEmpty()) {
+            for (ExchangeTransaction tx : exchangeRepository.findAllByTokenInIds(nonHoldingIds)) {
+                for (ItemToken t : tx.getTokensIn()) {
+                    if (nonHoldingIds.contains(t.getId())) {
+                        exchangeByTokenId.put(t.getId(), tx);
+                    }
+                }
+            }
+            for (Order order : orderRepository.findAllByTokenIds(nonHoldingIds)) {
+                for (ItemToken t : order.getTokens()) {
+                    if (nonHoldingIds.contains(t.getId())) {
+                        orderByTokenId.put(t.getId(), order);
+                    }
+                }
+            }
+        }
+
+        return tokens.stream()
+                .map(token -> toParticipantTokenResponse(
+                        token,
+                        exchangeByTokenId.get(token.getId()),
+                        orderByTokenId.get(token.getId())
+                ))
+                .collect(Collectors.toList());
+    }
+
+    private CampaignDtos.ParticipantTokenResponse toParticipantTokenResponse(
+            ItemToken token,
+            ExchangeTransaction exchange,
+            Order order
+    ) {
+        boolean actionable = token.getStatus() == TokenStatus.HOLDING;
+        Instant outcomeAt = null;
+        UUID orderId = null;
+        String statusLabel = switch (token.getStatus()) {
+            case HOLDING -> "Holding";
+            case EXCHANGED -> {
+                if (exchange != null) {
+                    outcomeAt = exchange.getCreatedAt();
+                    yield "Exchanged on " + OUTCOME_DATE.format(outcomeAt);
+                }
+                yield "Exchanged";
+            }
+            case CASHED_OUT -> {
+                if (exchange != null) {
+                    outcomeAt = exchange.getCreatedAt();
+                    yield "Cashed out on " + OUTCOME_DATE.format(outcomeAt);
+                }
+                yield "Cashed out";
+            }
+            case ORDERED -> {
+                if (order != null) {
+                    orderId = order.getId();
+                    outcomeAt = order.getCreatedAt();
+                    yield "Included in order " + shortId(orderId);
+                }
+                yield "Ordered";
+            }
+            case CANCELLED -> {
+                outcomeAt = token.getCancelledAt();
+                if (outcomeAt != null) {
+                    yield "Cancelled on " + OUTCOME_DATE.format(outcomeAt);
+                }
+                yield "Cancelled";
+            }
+        };
+
+        return new CampaignDtos.ParticipantTokenResponse(
+                token.getId(),
+                token.getProduct().getId(),
+                token.getProduct().getName(),
+                token.getTokenValue(),
+                token.getCostBasis(),
+                token.getStatus().name(),
+                statusLabel,
+                token.getCreatedAt(),
+                outcomeAt,
+                orderId,
+                actionable
+        );
+    }
+
+    private static String shortId(UUID id) {
+        String s = id.toString().replace("-", "");
+        return "#" + s.substring(0, Math.min(8, s.length())).toUpperCase();
     }
 
     private Customer resolveCustomer(RecordParticipantRequest request) {

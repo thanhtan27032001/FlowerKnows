@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { CloseCampaignDialog } from "@/components/campaigns/close-campaign-dialog";
+import { ParticipantItemsPanel } from "@/components/campaigns/participant-items-panel";
 import { RecordItemForm } from "@/components/campaigns/record-item-form";
 import { RecordParticipantForm } from "@/components/campaigns/record-participant-form";
 import { campaignApi, campaignKeys } from "@/src/lib/api/campaign";
@@ -246,91 +247,17 @@ export default function CampaignDetailPage({
                 </CardContent>
               </Card>
             ) : (
-              <>
-                <div className="grid gap-3 md:hidden">
-                  {campaign.participants.map((p) => (
-                    <Card key={p.id}>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base leading-snug">
-                          {p.customerName}
-                        </CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          {p.customerPhone}
-                        </p>
-                      </CardHeader>
-                      <CardContent className="space-y-3 text-sm">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <p className="text-muted-foreground">Bags</p>
-                            <p className="font-medium tabular-nums">
-                              {p.totalBagsPurchased}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Prepaid</p>
-                            <p className="font-medium tabular-nums">
-                              {vnd.format(p.prepaidAmount)}
-                            </p>
-                          </div>
-                        </div>
-                        {campaign.status === "OPEN" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => openRecordItem(p.customerId)}
-                          >
-                            Record Item
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-
-                <div className="hidden overflow-hidden rounded-xl border border-border/80 md:block">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Bags</TableHead>
-                        <TableHead>Prepaid</TableHead>
-                        {campaign.status === "OPEN" && (
-                          <TableHead className="w-[140px]" />
-                        )}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {campaign.participants.map((p) => (
-                        <TableRow key={p.id}>
-                          <TableCell className="font-medium">
-                            {p.customerName}
-                          </TableCell>
-                          <TableCell>{p.customerPhone}</TableCell>
-                          <TableCell className="tabular-nums">
-                            {p.totalBagsPurchased}
-                          </TableCell>
-                          <TableCell className="tabular-nums">
-                            {vnd.format(p.prepaidAmount)}
-                          </TableCell>
-                          {campaign.status === "OPEN" && (
-                            <TableCell>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openRecordItem(p.customerId)}
-                              >
-                                Record Item
-                              </Button>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </>
+              <div className="grid gap-3">
+                {campaign.participants.map((p) => (
+                  <ParticipantItemsPanel
+                    key={p.id}
+                    campaignId={campaign.id}
+                    participant={p}
+                    canRecordItem={campaign.status === "OPEN"}
+                    onRecordItem={() => openRecordItem(p.customerId)}
+                  />
+                ))}
+              </div>
             )}
           </section>
 

@@ -88,10 +88,7 @@ export function RecordItemForm({
     mutationFn: (input: Parameters<typeof campaignApi.recordItems>[1]) =>
       campaignApi.recordItems(campaign.id, input),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: campaignKeys.detail(campaign.id),
-      });
-      await queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
+      await queryClient.invalidateQueries({ queryKey: campaignKeys.all });
       onOpenChange(false);
       reset();
     },

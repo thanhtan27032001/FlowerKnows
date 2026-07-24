@@ -55,6 +55,21 @@ public final class CampaignDtos {
     ) {
     }
 
+    public record ParticipantTokenResponse(
+            UUID id,
+            UUID productId,
+            String productName,
+            BigDecimal tokenValue,
+            BigDecimal costBasis,
+            String status,
+            String statusLabel,
+            Instant createdAt,
+            Instant outcomeAt,
+            UUID orderId,
+            boolean actionable
+    ) {
+    }
+
     public record ClosePreviewResponse(
             UUID campaignId,
             String message,

@@ -74,7 +74,7 @@ export function ProductList({ onCreate, onStockIn }: Props) {
           <div className="grid gap-3 md:hidden">
             {products.map((product) => (
               <Link key={product.id} href={`/products/${product.id}`}>
-                <Card className="transition-colors duration-200 hover:bg-muted/30 motion-reduce:transition-none">
+                <Card className="fk-card-shadow fk-card-shadow-hover transition-colors duration-200 hover:bg-muted/30 motion-reduce:transition-none">
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-base leading-snug">
@@ -111,7 +111,7 @@ export function ProductList({ onCreate, onStockIn }: Props) {
             ))}
           </div>
 
-          <div className="hidden overflow-hidden rounded-xl border border-border/80 md:block">
+          <div className="fk-table-surface hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>

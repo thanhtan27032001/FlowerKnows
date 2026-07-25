@@ -153,7 +153,7 @@ export default function DashboardPage() {
           {profit && (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Card>
+                <Card className="fk-card-shadow">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       {t("profit.totalCapital")}
@@ -165,7 +165,7 @@ export default function DashboardPage() {
                     </p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="fk-card-shadow">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       {t("profit.totalRevenue")}
@@ -185,7 +185,7 @@ export default function DashboardPage() {
                     </p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="fk-card-shadow">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       {t("profit.totalProfit")}
@@ -219,7 +219,7 @@ export default function DashboardPage() {
         </section>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <Card>
+          <Card className="fk-card-shadow">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {t("stats.availableStock")}
@@ -235,7 +235,7 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="fk-card-shadow">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {t("stats.lockedInCampaigns")}
@@ -251,7 +251,7 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="fk-card-shadow">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {t("stats.overdueTokens")}

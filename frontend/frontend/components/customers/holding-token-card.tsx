@@ -30,7 +30,7 @@ export function HoldingTokenCard({ token, selected, onToggle }: Props) {
     >
       <Card
         className={cn(
-          "transition-[box-shadow,background-color,opacity] duration-200 motion-reduce:transition-none",
+          "fk-card-shadow fk-card-shadow-hover",
           selected && "ring-2 ring-primary/60 bg-primary/5",
           token.overdue && !selected && "border-amber-500/40 bg-amber-500/5"
         )}

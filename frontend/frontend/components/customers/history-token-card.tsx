@@ -21,7 +21,7 @@ export function HistoryTokenCard({ token, highlighted = false }: Props) {
       : token.sourceLabel;
 
   return (
-    <Card className={cn(highlighted && "fk-token-flash")}>
+    <Card className={cn("fk-card-shadow", highlighted && "fk-token-flash")}>
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
         <CardTitle className="text-base leading-snug">
           {token.productName}

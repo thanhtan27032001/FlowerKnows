@@ -217,7 +217,7 @@ export function CustomerSearchList({
           <div className="grid gap-3 md:hidden">
             {customers.map((customer) => (
               <Link key={customer.id} href={`/customers/${customer.id}`}>
-                <Card className="transition-colors duration-200 hover:bg-muted/30 motion-reduce:transition-none">
+                <Card className="fk-card-shadow fk-card-shadow-hover transition-colors duration-200 hover:bg-muted/30 motion-reduce:transition-none">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base leading-snug">
                       {customer.name}
@@ -238,7 +238,7 @@ export function CustomerSearchList({
             ))}
           </div>
 
-          <div className="hidden overflow-hidden rounded-xl border border-border/80 md:block">
+          <div className="fk-table-surface hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>

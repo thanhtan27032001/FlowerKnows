@@ -58,97 +58,97 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Flower Knows theme — warm ivory + rose-plum + sage (oklch from theme.css) */
+/* Flower Knows theme v3 — vivid orange primary (#FB8500) + emerald + pink accent */
 :root {
-  --background: oklch(0.978 0.004 56.4); /* #FAF7F5 */
-  --foreground: oklch(0.264 0.013 41.6); /* #2B2320 */
+  --background: oklch(0.996 0.002 345.2); /* #FFFDFE */
+  --foreground: oklch(0.233 0.029 321.2); /* #241926 */
   --card: oklch(1 0 0); /* #FFFFFF */
-  --card-foreground: oklch(0.264 0.013 41.6);
+  --card-foreground: oklch(0.233 0.029 321.2);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.264 0.013 41.6);
-  --primary: oklch(0.465 0.113 2.4); /* #8B3A54 rose-plum */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.639 0.055 137.2); /* #7C9473 sage */
+  --popover-foreground: oklch(0.233 0.029 321.2);
+  --primary: oklch(0.734 0.179 56.1); /* #FB8500 vivid orange */
+  --primary-foreground: oklch(0.233 0.029 321.2); /* dark text — white fails contrast on this orange (2.48:1), dark passes (6.81:1) */
+  --secondary: oklch(0.643 0.134 164.7); /* #0CA678 vivid emerald */
   --secondary-foreground: oklch(1 0 0);
-  --muted: oklch(0.94 0.005 48.7);
-  --muted-foreground: oklch(0.592 0.023 48.3); /* #8A7A72 */
-  --accent: oklch(0.94 0.005 48.7);
-  --accent-foreground: oklch(0.264 0.013 41.6);
-  --destructive: oklch(0.515 0.163 24.9);
-  --border: oklch(0.91 0.011 45.7); /* #E8DFDB */
-  --input: oklch(0.91 0.011 45.7);
-  --ring: oklch(0.465 0.113 2.4);
-  --chart-1: oklch(0.465 0.113 2.4);
-  --chart-2: oklch(0.639 0.055 137.2);
-  --chart-3: oklch(0.509 0.096 67.6);
-  --chart-4: oklch(0.45 0.04 225.7);
-  --chart-5: oklch(0.49 0.021 48.3);
+  --muted: oklch(0.955 0.008 349.2); /* #F5EEF1 */
+  --muted-foreground: oklch(0.544 0.022 344.4); /* #7A6B73 */
+  --accent: oklch(0.597 0.221 4.8); /* #E0256E pink-magenta — tertiary accent, ties to logo's rose motif */
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.546 0.195 26.6); /* #C92A2A */
+  --border: oklch(0.87 0.04 350.4); /* strengthened from #F1D9E4 to #E8B4CB-ish for visibility */
+  --input: oklch(0.87 0.04 350.4);
+  --ring: oklch(0.734 0.179 56.1);
+  --chart-1: oklch(0.734 0.179 56.1); /* orange */
+  --chart-2: oklch(0.643 0.134 164.7); /* emerald */
+  --chart-3: oklch(0.597 0.221 4.8);   /* pink-magenta */
+  --chart-4: oklch(0.669 0.157 248.3); /* blue */
+  --chart-5: oklch(0.603 0.218 289.7); /* violet */
   --radius: 0.5rem;
-  --sidebar: oklch(0.978 0.004 56.4);
-  --sidebar-foreground: oklch(0.264 0.013 41.6);
-  --sidebar-primary: oklch(0.465 0.113 2.4);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.94 0.005 48.7);
-  --sidebar-accent-foreground: oklch(0.264 0.013 41.6);
-  --sidebar-border: oklch(0.91 0.011 45.7);
-  --sidebar-ring: oklch(0.465 0.113 2.4);
+  --sidebar: oklch(0.996 0.002 345.2);
+  --sidebar-foreground: oklch(0.233 0.029 321.2);
+  --sidebar-primary: oklch(0.734 0.179 56.1);
+  --sidebar-primary-foreground: oklch(0.233 0.029 321.2);
+  --sidebar-accent: oklch(0.955 0.008 349.2);
+  --sidebar-accent-foreground: oklch(0.233 0.029 321.2);
+  --sidebar-border: oklch(0.87 0.04 350.4);
+  --sidebar-ring: oklch(0.734 0.179 56.1);
 
   /* Semantic status — badges (token / action / shipping / low-stock) */
-  --status-success-bg: oklch(0.946 0.017 137); /* #E8F0E5 */
-  --status-success-fg: oklch(0.445 0.05 151.5); /* #3F5C46 */
-  --status-warning-bg: oklch(0.955 0.027 74.8); /* #FBEEDD */
-  --status-warning-fg: oklch(0.509 0.096 67.6); /* #8A5A1F */
-  --status-danger-bg: oklch(0.944 0.022 17.5); /* #FBE7E7 */
-  --status-danger-fg: oklch(0.438 0.126 23.9); /* #8A2E2E */
-  --status-info-bg: oklch(0.944 0.009 222.1); /* #E6EEF1 */
-  --status-info-fg: oklch(0.45 0.04 225.7); /* #3D5A66 */
-  --status-neutral-bg: oklch(0.944 0.008 48.7); /* #F1EBE8 */
-  --status-neutral-fg: oklch(0.49 0.021 48.3); /* #6B5D56 */
+  --status-success-bg: oklch(0.962 0.043 156.7); /* #DCFCE7 */
+  --status-success-fg: oklch(0.529 0.11 164.7);  /* #087F5B */
+  --status-warning-bg: oklch(0.961 0.068 96.6);  /* #FFF3BF */
+  --status-warning-fg: oklch(0.562 0.126 65.5);  /* #A66300 */
+  --status-danger-bg: oklch(0.939 0.031 17.7);   /* #FFE3E3 */
+  --status-danger-fg: oklch(0.546 0.195 26.6);   /* #C92A2A */
+  --status-info-bg: oklch(0.963 0.02 238.7);     /* #E7F5FF */
+  --status-info-fg: oklch(0.543 0.149 251.7);    /* #1971C2 */
+  --status-neutral-bg: oklch(0.963 0.003 247.9); /* #F1F3F5 */
+  --status-neutral-fg: oklch(0.428 0.015 248.2); /* #495057 */
 }
 
 .dark {
-  --background: oklch(0.214 0.009 43.1);
-  --foreground: oklch(0.94 0.005 48.7);
-  --card: oklch(0.249 0.011 48.3);
-  --card-foreground: oklch(0.94 0.005 48.7);
-  --popover: oklch(0.249 0.011 48.3);
-  --popover-foreground: oklch(0.94 0.005 48.7);
-  --primary: oklch(0.627 0.129 356.4);
-  --primary-foreground: oklch(0.214 0.009 43.1);
-  --secondary: oklch(0.586 0.057 135.7);
-  --secondary-foreground: oklch(0.94 0.005 48.7);
-  --muted: oklch(0.299 0.013 51.7);
-  --muted-foreground: oklch(0.724 0.016 48.5);
-  --accent: oklch(0.299 0.013 51.7);
-  --accent-foreground: oklch(0.94 0.005 48.7);
+  --background: oklch(0.197 0.032 311.1); /* #1A1120 */
+  --foreground: oklch(0.955 0.008 349.2); /* #F5EEF1 */
+  --card: oklch(0.238 0.035 310.7);       /* #241A2B */
+  --card-foreground: oklch(0.955 0.008 349.2);
+  --popover: oklch(0.238 0.035 310.7);
+  --popover-foreground: oklch(0.955 0.008 349.2);
+  --primary: oklch(0.803 0.146 64.6);     /* #FFA94D lighter orange for dark bg, 9.64:1 vs dark text */
+  --primary-foreground: oklch(0.197 0.032 311.1);
+  --secondary: oklch(0.766 0.141 165.8);  /* #3FCF9E */
+  --secondary-foreground: oklch(0.197 0.032 311.1);
+  --muted: oklch(0.275 0.038 312.7);      /* #2E2235 */
+  --muted-foreground: oklch(0.749 0.024 337); /* #B8A8B3 */
+  --accent: oklch(0.673 0.195 1);         /* #F0568F lighter pink for dark bg */
+  --accent-foreground: oklch(0.197 0.032 311.1);
   --destructive: oklch(0.589 0.161 23.4);
-  --border: oklch(0.341 0.015 50.9);
-  --input: oklch(0.341 0.015 50.9);
-  --ring: oklch(0.627 0.129 356.4);
-  --chart-1: oklch(0.627 0.129 356.4);
-  --chart-2: oklch(0.586 0.057 135.7);
-  --chart-3: oklch(0.856 0.06 71.8);
-  --chart-4: oklch(0.839 0.03 221.5);
-  --chart-5: oklch(0.805 0.013 48.6);
-  --sidebar: oklch(0.249 0.011 48.3);
-  --sidebar-foreground: oklch(0.94 0.005 48.7);
-  --sidebar-primary: oklch(0.627 0.129 356.4);
-  --sidebar-primary-foreground: oklch(0.214 0.009 43.1);
-  --sidebar-accent: oklch(0.299 0.013 51.7);
-  --sidebar-accent-foreground: oklch(0.94 0.005 48.7);
-  --sidebar-border: oklch(0.341 0.015 50.9);
-  --sidebar-ring: oklch(0.627 0.129 356.4);
+  --border: oklch(0.318 0.043 312.9);     /* #3A2C42 */
+  --input: oklch(0.318 0.043 312.9);
+  --ring: oklch(0.803 0.146 64.6);
+  --chart-1: oklch(0.803 0.146 64.6);
+  --chart-2: oklch(0.766 0.141 165.8);
+  --chart-3: oklch(0.673 0.195 1);
+  --chart-4: oklch(0.782 0.115 243.8);
+  --chart-5: oklch(0.7 0.19 300);
+  --sidebar: oklch(0.238 0.035 310.7);
+  --sidebar-foreground: oklch(0.955 0.008 349.2);
+  --sidebar-primary: oklch(0.803 0.146 64.6);
+  --sidebar-primary-foreground: oklch(0.197 0.032 311.1);
+  --sidebar-accent: oklch(0.275 0.038 312.7);
+  --sidebar-accent-foreground: oklch(0.955 0.008 349.2);
+  --sidebar-border: oklch(0.318 0.043 312.9);
+  --sidebar-ring: oklch(0.803 0.146 64.6);
 
-  --status-success-bg: oklch(0.334 0.031 150.1);
-  --status-success-fg: oklch(0.853 0.055 139.3);
-  --status-warning-bg: oklch(0.362 0.043 71.4);
-  --status-warning-fg: oklch(0.856 0.06 71.8);
-  --status-danger-bg: oklch(0.317 0.051 20.3);
-  --status-danger-fg: oklch(0.809 0.066 18.6);
-  --status-info-bg: oklch(0.329 0.022 220.3);
-  --status-info-fg: oklch(0.839 0.03 221.5);
-  --status-neutral-bg: oklch(0.34 0.013 48.3);
-  --status-neutral-fg: oklch(0.805 0.013 48.6);
+  --status-success-bg: oklch(0.317 0.055 166.7); /* #0F3B2C */
+  --status-success-fg: oklch(0.829 0.138 164.7); /* #5FE3B0 */
+  --status-warning-bg: oklch(0.313 0.055 87.4);  /* #3D2F0A */
+  --status-warning-fg: oklch(0.844 0.151 87.9);  /* #F5C542 */
+  --status-danger-bg: oklch(0.257 0.065 22.8);   /* #3D1414 */
+  --status-danger-fg: oklch(0.756 0.146 21.1);   /* #FF8787 */
+  --status-info-bg: oklch(0.274 0.048 242.1);    /* #0F2A3D */
+  --status-info-fg: oklch(0.782 0.115 243.8);    /* #74C0FC */
+  --status-neutral-bg: oklch(0.275 0.021 305.6); /* #2A2530 */
+  --status-neutral-fg: oklch(0.797 0.026 317.7); /* #C4B8C8 */
 }
 
 @layer base {
@@ -160,6 +160,67 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Card / surface shadow system                                          */
+/* ---------------------------------------------------------------------- */
+
+.fk-card-shadow {
+  box-shadow:
+    0 1px 2px 0 color-mix(in oklch, var(--foreground) 6%, transparent),
+    0 10px 28px -10px color-mix(in oklch, var(--primary) 28%, transparent),
+    0 4px 10px -6px color-mix(in oklch, var(--foreground) 10%, transparent);
+}
+
+.fk-card-shadow-hover {
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+.fk-card-shadow-hover:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 2px 4px 0 color-mix(in oklch, var(--foreground) 8%, transparent),
+    0 18px 36px -12px color-mix(in oklch, var(--primary) 38%, transparent),
+    0 8px 16px -8px color-mix(in oklch, var(--foreground) 12%, transparent);
+}
+
+.fk-card-shadow-accent {
+  box-shadow:
+    0 1px 2px 0 color-mix(in oklch, var(--foreground) 6%, transparent),
+    0 10px 28px -10px color-mix(in oklch, var(--secondary) 32%, transparent);
+}
+
+/* Solid, readable surface for form controls (input/select/textarea) — these
+   were previously effectively transparent (bg-background matched the page
+   background almost exactly), making the outline-only style hard to read. */
+.fk-field-surface {
+  background-color: var(--card);
+  box-shadow:
+    0 1px 2px 0 color-mix(in oklch, var(--foreground) 5%, transparent),
+    0 0 0 1px var(--border);
+}
+
+.fk-field-surface:focus-within {
+  box-shadow:
+    0 1px 2px 0 color-mix(in oklch, var(--foreground) 5%, transparent),
+    0 0 0 2px var(--ring);
+}
+
+/* Table container surface — same reasoning as fk-field-surface */
+.fk-table-surface {
+  background-color: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 1px 3px 0 color-mix(in oklch, var(--foreground) 7%, transparent),
+    0 12px 28px -12px color-mix(in oklch, var(--foreground) 14%, transparent);
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fk-card-shadow-hover:hover {
+    transform: none;
   }
 }
 

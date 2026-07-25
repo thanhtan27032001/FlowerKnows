@@ -140,8 +140,8 @@ export function OrderList({ highlightId }: Props) {
                 key={order.id}
                 className={
                   highlightId === order.id
-                    ? "ring-2 ring-primary/50 transition-shadow duration-200"
-                    : undefined
+                    ? "fk-card-shadow fk-card-shadow-hover ring-2 ring-primary/50"
+                    : "fk-card-shadow fk-card-shadow-hover"
                 }
               >
                 <CardHeader className="pb-2">
@@ -224,7 +224,7 @@ export function OrderList({ highlightId }: Props) {
             ))}
           </div>
 
-          <div className="hidden overflow-x-auto rounded-xl border border-border/80 md:block">
+          <div className="fk-table-surface hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>

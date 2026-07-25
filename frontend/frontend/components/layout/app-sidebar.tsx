@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { ThemePicker } from "@/components/layout/theme-picker";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -74,6 +76,15 @@ export function AppSidebar() {
           );
         })}
       </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border px-2 py-2">
+        <div className="flex items-center justify-between gap-2 px-1">
+          <span className="truncate px-1 text-xs text-muted-foreground">
+            {tCommon("brand")}
+          </span>
+          <ThemePicker />
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }

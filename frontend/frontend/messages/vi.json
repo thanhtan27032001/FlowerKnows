@@ -1,4 +1,14 @@
 {
+  "theme": {
+    "pickerLabel": "Chọn bảng màu",
+    "pickerTitle": "Bảng màu",
+    "presets": {
+      "sage": "Sage & Cream",
+      "rose": "Rose & Plum",
+      "vivid": "Rực rỡ",
+      "sunset": "Hoàng hôn"
+    }
+  },
   "common": {
     "meta": {
       "title": "Flower Knows — Kho hàng",

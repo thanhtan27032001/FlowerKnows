@@ -77,8 +77,6 @@ class CostTrackingServiceTests {
         );
 
         UUID productId = UUID.randomUUID();
-        Product product = new Product("Tulip", BigDecimal.valueOf(100), 0);
-        when(productRepository.findById(productId)).thenReturn(java.util.Optional.of(product));
 
         ProductDtos.StockInRequest missingCost = new ProductDtos.StockInRequest(
                 List.of(new ProductDtos.StockInItemRequest(productId, 3, null, "x"))
@@ -120,10 +118,13 @@ class CostTrackingServiceTests {
 
         UUID customerId = UUID.randomUUID();
         Customer customer = new Customer("A", "1", null);
+        setId(customer, customerId);
         when(customerService.requireCustomer(customerId)).thenReturn(customer);
 
         Product p1 = new Product("A", BigDecimal.valueOf(100), 10);
         Product p2 = new Product("B", BigDecimal.valueOf(200), 10);
+        setId(p1, UUID.randomUUID());
+        setId(p2, UUID.randomUUID());
 
         ItemToken t1 = new ItemToken(p1, customer, BigDecimal.valueOf(100), BigDecimal.valueOf(30), SourceType.CAMPAIGN, UUID.randomUUID());
         ItemToken t2 = new ItemToken(p2, customer, BigDecimal.valueOf(200), null, SourceType.CAMPAIGN, UUID.randomUUID());
@@ -134,7 +135,7 @@ class CostTrackingServiceTests {
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         OrderDtos.OrderResponse response = orderService.createOrder(
-                new OrderDtos.CreateOrderRequest(customerId, List.of(UUID.randomUUID(), UUID.randomUUID()))
+                new OrderDtos.CreateOrderRequest(customerId, List.of(UUID.randomUUID(), UUID.randomUUID()), null)
         );
 
         assertEquals(BigDecimal.valueOf(300), response.recognizedRevenue());
@@ -144,5 +145,15 @@ class CostTrackingServiceTests {
 
         ArgumentCaptor<StockTransaction> captor = ArgumentCaptor.forClass(StockTransaction.class);
         verify(stockTransactionRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+    }
+
+    private static void setId(Object entity, UUID id) {
+        try {
+            var idField = entity.getClass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(entity, id);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

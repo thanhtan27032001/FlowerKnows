@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
@@ -10,14 +11,14 @@ import { Spinner } from "@/components/feedback/spinner";
 import {
   orderApi,
   orderKeys,
-  SHIPPING_LABEL,
   SHIPPING_NEXT,
   type Order,
   type ShippingStatus,
 } from "@/src/lib/api/order";
 import { customerKeys } from "@/src/lib/api/customer";
 import { formatCostPrice, formatDateTime, vnd, vndCost } from "@/src/lib/format";
-import { Badge } from "@/components/ui/badge";
+import { shippingStatusLabel } from "@/src/lib/i18n-labels";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -39,13 +40,9 @@ type Props = {
   highlightId?: string | null;
 };
 
-function statusVariant(status: ShippingStatus) {
-  if (status === "COMPLETED") return "secondary" as const;
-  if (status === "SHIPPED") return "default" as const;
-  return "outline" as const;
-}
-
 function OrderStatusSelect({ order }: { order: Order }) {
+  const t = useTranslations("orders.list");
+  const tStatus = useTranslations("common.status");
   const queryClient = useQueryClient();
   const [localError, setLocalError] = useState<string | null>(null);
   const mutation = useMutation({
@@ -63,7 +60,7 @@ function OrderStatusSelect({ order }: { order: Order }) {
     },
     onError: (err: unknown) => {
       setLocalError(
-        err instanceof Error ? err.message : "Failed to update shipping status"
+        err instanceof Error ? err.message : t("updateShippingFailed")
       );
     },
   });
@@ -88,7 +85,7 @@ function OrderStatusSelect({ order }: { order: Order }) {
           <SelectContent>
             {options.map((status) => (
               <SelectItem key={status} value={status}>
-                {SHIPPING_LABEL[status]}
+                {shippingStatusLabel(tStatus, status)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -103,6 +100,8 @@ function OrderStatusSelect({ order }: { order: Order }) {
 }
 
 export function OrderList({ highlightId }: Props) {
+  const t = useTranslations("orders.list");
+  const tCommon = useTranslations("common");
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: orderKeys.lists(),
     queryFn: () => orderApi.list(),
@@ -119,7 +118,7 @@ export function OrderList({ highlightId }: Props) {
       {isError && (
         <QueryErrorState
           message={
-            error instanceof Error ? error.message : "Failed to load orders"
+            error instanceof Error ? error.message : t("loadError")
           }
           onRetry={() => refetch()}
         />
@@ -128,7 +127,7 @@ export function OrderList({ highlightId }: Props) {
       {!isLoading && !isError && orders.length === 0 && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No orders yet. Create one from a customer&apos;s holding tokens.
+            {t("empty")}
           </CardContent>
         </Card>
       )}
@@ -157,59 +156,67 @@ export function OrderList({ highlightId }: Props) {
                         </Link>
                       </CardTitle>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDateTime(order.createdAt)} · {order.tokens.length}{" "}
-                        item{order.tokens.length === 1 ? "" : "s"}
+                        {formatDateTime(order.createdAt)} ·{" "}
+                        {t("itemsCount", { count: order.tokens.length })}
                       </p>
                     </div>
-                    <Badge variant={statusVariant(order.shippingStatus)}>
-                      {SHIPPING_LABEL[order.shippingStatus]}
-                    </Badge>
+                    <StatusBadge
+                      type="shipping"
+                      status={order.shippingStatus}
+                    />
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <div>
-                      <p className="text-muted-foreground">Revenue</p>
+                      <p className="text-muted-foreground">{t("revenue")}</p>
                       <p className="font-medium tabular-nums">
                         {vnd.format(order.recognizedRevenue)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Total cost</p>
+                      <p className="text-muted-foreground">{t("totalCost")}</p>
                       <p className="font-medium tabular-nums">
                         {vndCost.format(order.totalCost)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Gross margin</p>
+                      <p className="text-muted-foreground">{t("grossMargin")}</p>
                       <p className="font-medium tabular-nums">
                         {vndCost.format(order.grossMargin)}
                       </p>
                     </div>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Carrier order ID</p>
+                    <p className="text-muted-foreground">{t("carrierOrderId")}</p>
                     <p className="font-medium">
-                      {order.carrierOrderId || "Not set yet"}
+                      {order.carrierOrderId || t("notSetYet")}
                     </p>
                   </div>
                   <ul className="space-y-1.5 text-muted-foreground">
-                    {order.tokens.map((t) => (
-                      <li key={t.id} className="flex justify-between gap-2">
+                    {order.tokens.map((token) => (
+                      <li key={token.id} className="flex justify-between gap-2">
                         <span className="min-w-0 truncate">
-                          {t.productName}
+                          {token.productName}
                           <span className="mt-0.5 block text-xs">
-                            Cost {formatCostPrice(t.costBasis)}
+                            {t("costLabel", {
+                              cost: formatCostPrice(
+                                token.costBasis,
+                                tCommon("format.notSet")
+                              ),
+                            })}
                           </span>
                         </span>
                         <span className="shrink-0 tabular-nums text-foreground">
-                          {vnd.format(t.tokenValue)}
+                          {vnd.format(token.tokenValue)}
                         </span>
                       </li>
                     ))}
                   </ul>
                   <div>
-                    <p className="mb-1.5 text-muted-foreground">Shipping status</p>
+                    <p className="mb-1.5 text-muted-foreground">
+                      {t("shippingStatus")}
+                    </p>
                     <OrderStatusSelect order={order} />
                   </div>
                 </CardContent>
@@ -221,14 +228,14 @@ export function OrderList({ highlightId }: Props) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Revenue</TableHead>
-                  <TableHead>Total cost</TableHead>
-                  <TableHead>Gross margin</TableHead>
-                  <TableHead>Carrier ID</TableHead>
-                  <TableHead>Shipping</TableHead>
+                  <TableHead>{t("customer")}</TableHead>
+                  <TableHead>{t("created")}</TableHead>
+                  <TableHead>{t("items")}</TableHead>
+                  <TableHead>{t("revenue")}</TableHead>
+                  <TableHead>{t("totalCost")}</TableHead>
+                  <TableHead>{t("grossMargin")}</TableHead>
+                  <TableHead>{t("carrierId")}</TableHead>
+                  <TableHead>{t("shipping")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -261,7 +268,7 @@ export function OrderList({ highlightId }: Props) {
                       {vndCost.format(order.grossMargin)}
                     </TableCell>
                     <TableCell className="max-w-[140px] truncate text-muted-foreground">
-                      {order.carrierOrderId || "Not set yet"}
+                      {order.carrierOrderId || t("notSetYet")}
                     </TableCell>
                     <TableCell>
                       <OrderStatusSelect order={order} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +12,8 @@ type Props = {
 
 /** Distinct from empty states — bordered destructive panel with Retry. */
 export function QueryErrorState({ message, onRetry, className }: Props) {
+  const t = useTranslations("common.actions");
+
   return (
     <div
       role="alert"
@@ -26,7 +29,7 @@ export function QueryErrorState({ message, onRetry, className }: Props) {
         size="sm"
         onClick={() => onRetry()}
       >
-        Retry
+        {t("retry")}
       </Button>
     </div>
   );

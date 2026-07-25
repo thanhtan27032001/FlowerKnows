@@ -60,11 +60,12 @@ export const orderApi = {
     apiClient.patch<Order>(`/api/orders/${id}/shipping-status`, input),
 };
 
-export const SHIPPING_LABEL: Record<ShippingStatus, string> = {
-  ORDER_CREATED: "Order Created",
-  SHIPPED: "Shipped",
-  COMPLETED: "Completed",
-};
+/** Backend enum values — display labels live in messages via `common.status.shipping`. */
+export const SHIPPING_STATUS_VALUES: ShippingStatus[] = [
+  "ORDER_CREATED",
+  "SHIPPED",
+  "COMPLETED",
+];
 
 export const SHIPPING_NEXT: Record<ShippingStatus, ShippingStatus[]> = {
   ORDER_CREATED: ["ORDER_CREATED", "SHIPPED"],

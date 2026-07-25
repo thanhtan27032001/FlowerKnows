@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
@@ -8,6 +9,11 @@ import { AppShell } from "@/components/layout/app-shell";
 import { campaignApi, campaignKeys } from "@/src/lib/api/campaign";
 import { reportApi, reportKeys } from "@/src/lib/api/report";
 import { vnd, vndCost } from "@/src/lib/format";
+import { tokenStatusLabel } from "@/src/lib/i18n-labels";
+import {
+  StatusBadge,
+  tokenStatusVariant,
+} from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,9 +35,9 @@ function defaultRange() {
   return { from: iso(from), to: iso(to), campaignId: "" };
 }
 
-function ReportSkeleton() {
+function ReportSkeleton({ loadingLabel }: { loadingLabel: string }) {
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Loading">
+    <div className="space-y-4" aria-busy="true" aria-label={loadingLabel}>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
           <Card key={i}>
@@ -62,6 +68,10 @@ function ReportSkeleton() {
 }
 
 export default function ReportsPage() {
+  const t = useTranslations("reports");
+  const tCommon = useTranslations("common");
+  const tStatus = useTranslations("common.status");
+
   const initial = useMemo(() => defaultRange(), []);
   const [from, setFrom] = useState(initial.from);
   const [to, setTo] = useState(initial.to);
@@ -89,9 +99,10 @@ export default function ReportsPage() {
 
   const report = revenueQuery.data;
   const reconciliation = report?.reconciliation;
+  const loadingLabel = tCommon("a11y.loading");
 
   return (
-    <AppShell title="Revenue Report">
+    <AppShell title={t("title")}>
       <div className="relative space-y-6">
         <QueryProgressBar
           active={revenueQuery.isFetching && !revenueQuery.isLoading}
@@ -100,7 +111,7 @@ export default function ReportsPage() {
         <Card>
           <CardContent className="grid gap-4 pt-5 sm:grid-cols-4">
             <div className="grid gap-2">
-              <Label htmlFor="from">From</Label>
+              <Label htmlFor="from">{t("filters.from")}</Label>
               <Input
                 id="from"
                 type="date"
@@ -109,7 +120,7 @@ export default function ReportsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="to">To</Label>
+              <Label htmlFor="to">{t("filters.to")}</Label>
               <Input
                 id="to"
                 type="date"
@@ -118,7 +129,7 @@ export default function ReportsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Campaign (optional)</Label>
+              <Label>{t("filters.campaignOptional")}</Label>
               <Select
                 value={campaignId || "__all__"}
                 onValueChange={(value) => {
@@ -127,10 +138,12 @@ export default function ReportsPage() {
                 }}
               >
                 <SelectTrigger className="w-full min-w-0">
-                  <SelectValue placeholder="All campaigns" />
+                  <SelectValue placeholder={t("filters.allCampaigns")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">All campaigns</SelectItem>
+                  <SelectItem value="__all__">
+                    {t("filters.allCampaigns")}
+                  </SelectItem>
                   {(campaignsQuery.data ?? []).map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
@@ -150,20 +163,22 @@ export default function ReportsPage() {
                   })
                 }
               >
-                Apply filter
+                {t("filters.apply")}
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {revenueQuery.isLoading && <ReportSkeleton />}
+        {revenueQuery.isLoading && (
+          <ReportSkeleton loadingLabel={loadingLabel} />
+        )}
 
         {revenueQuery.isError && (
           <QueryErrorState
             message={
               revenueQuery.error instanceof Error
                 ? revenueQuery.error.message
-                : "Failed to load revenue report"
+                : t("loadError")
             }
             onRetry={() => revenueQuery.refetch()}
           />
@@ -173,30 +188,20 @@ export default function ReportsPage() {
           <>
             {!reconciliation.balanced && (
               <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                <p className="font-medium">Reconciliation warning</p>
-                <p className="mt-1">
-                  The invariant does not balance. Expected{" "}
-                  <span className="tabular-nums">
-                    {vnd.format(reconciliation.totalPrepaid)}
-                  </span>{" "}
-                  prepaid = holding + recognized revenue + refunded (
-                  <span className="tabular-nums">
-                    {vnd.format(reconciliation.computedRightHandSide)}
-                  </span>
-                  ).
-                </p>
+                <p className="font-medium">{t("reconciliationWarning.title")}</p>
+                <p className="mt-1">{t("reconciliationWarning.body")}</p>
+                {/* API-sourced; may remain EN until backend i18n */}
                 <p className="mt-1 text-xs opacity-90">{reconciliation.formula}</p>
               </div>
             )}
 
             {report.marginMayBeUnderstated && (
               <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950">
-                <p className="font-medium">Missing cost data</p>
+                <p className="font-medium">{t("missingCost.title")}</p>
                 <p className="mt-1">
-                  {report.ordersWithMissingCostBasis} order
-                  {report.ordersWithMissingCostBasis === 1 ? "" : "s"} in this
-                  period include token(s) with null cost basis. Gross margin may
-                  be understated for this range.
+                  {t("missingCost.body", {
+                    count: report.ordersWithMissingCostBasis,
+                  })}
                 </p>
               </div>
             )}
@@ -205,7 +210,7 @@ export default function ReportsPage() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Revenue from Orders
+                    {t("kpis.revenueFromOrders")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -217,7 +222,7 @@ export default function ReportsPage() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Cancelled token revenue
+                    {t("kpis.cancelledTokenRevenue")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -229,7 +234,7 @@ export default function ReportsPage() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Total revenue
+                    {t("kpis.totalRevenue")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -241,7 +246,7 @@ export default function ReportsPage() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Total refunded (cash out)
+                    {t("kpis.totalRefunded")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -254,13 +259,13 @@ export default function ReportsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Gross Margin</CardTitle>
+                <CardTitle>{t("margin.title")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      Order gross margin
+                      {t("margin.orderGrossMargin")}
                     </p>
                     <p className="text-xl font-semibold tabular-nums">
                       {vndCost.format(report.orderGrossMargin)}
@@ -268,18 +273,18 @@ export default function ReportsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      Cancelled token margin
+                      {t("margin.cancelledTokenMargin")}
                     </p>
                     <p className="text-xl font-semibold tabular-nums">
                       {vndCost.format(report.cancelledTokenMargin)}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      100% margin (no cost)
+                      {t("margin.fullMargin")}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      Total gross margin
+                      {t("margin.totalGrossMargin")}
                     </p>
                     <p className="text-xl font-semibold tabular-nums">
                       {vndCost.format(report.totalGrossMargin)}
@@ -287,7 +292,7 @@ export default function ReportsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      Gross margin %
+                      {t("margin.grossMarginPct")}
                     </p>
                     <p className="text-xl font-semibold tabular-nums">
                       {report.grossMarginPercent.toLocaleString("vi-VN", {
@@ -303,43 +308,52 @@ export default function ReportsPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle>Reconciliation</CardTitle>
+                  <CardTitle>{t("reconciliation.title")}</CardTitle>
                   <Badge
                     variant={
                       reconciliation.balanced ? "secondary" : "destructive"
                     }
                   >
-                    {reconciliation.balanced ? "Balanced" : "Out of balance"}
+                    {reconciliation.balanced
+                      ? t("reconciliation.balanced")
+                      : t("reconciliation.outOfBalance")}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Total prepaid</span>
+                  <span className="text-muted-foreground">
+                    {t("reconciliation.totalPrepaid")}
+                  </span>
                   <span className="tabular-nums">
                     {vnd.format(reconciliation.totalPrepaid)}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Holding tokens</span>
+                  <span className="text-muted-foreground">
+                    {t("reconciliation.holdingTokens")}
+                  </span>
                   <span className="tabular-nums">
                     {vnd.format(reconciliation.holdingTokensValue)}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">
-                    Recognized revenue
+                    {t("reconciliation.recognizedRevenue")}
                   </span>
                   <span className="tabular-nums">
                     {vnd.format(reconciliation.recognizedRevenue)}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Total refunded</span>
+                  <span className="text-muted-foreground">
+                    {t("reconciliation.totalRefunded")}
+                  </span>
                   <span className="tabular-nums">
                     {vnd.format(reconciliation.totalRefunded)}
                   </span>
                 </div>
+                {/* API-sourced; may remain EN until backend i18n */}
                 <p className="pt-2 text-xs text-muted-foreground">
                   {reconciliation.formula}
                 </p>
@@ -350,19 +364,25 @@ export default function ReportsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>
-                    Campaign: {report.campaignBreakdown.campaignName}
+                    {t("campaignBreakdown.campaign", {
+                      name: report.campaignBreakdown.campaignName,
+                    })}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     <div>
-                      <p className="text-muted-foreground">Prepaid</p>
+                      <p className="text-muted-foreground">
+                        {t("campaignBreakdown.prepaid")}
+                      </p>
                       <p className="font-medium tabular-nums">
                         {vnd.format(report.campaignBreakdown.prepaidAmount)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Bags sold</p>
+                      <p className="text-muted-foreground">
+                        {t("campaignBreakdown.bagsSold")}
+                      </p>
                       <p className="font-medium tabular-nums">
                         {report.campaignBreakdown.bagsSold} /{" "}
                         {report.campaignBreakdown.totalBags}
@@ -371,15 +391,18 @@ export default function ReportsPage() {
                   </div>
                   <div>
                     <p className="mb-2 text-muted-foreground">
-                      Tokens by status
+                      {t("campaignBreakdown.tokensByStatus")}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(
                         report.campaignBreakdown.tokensByStatus
                       ).map(([status, count]) => (
-                        <Badge key={status} variant="outline">
-                          {status}: {count}
-                        </Badge>
+                        <StatusBadge
+                          key={status}
+                          variant={tokenStatusVariant(status)}
+                        >
+                          {tokenStatusLabel(tStatus, status)}: {count}
+                        </StatusBadge>
                       ))}
                     </div>
                   </div>

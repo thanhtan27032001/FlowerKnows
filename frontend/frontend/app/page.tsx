@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
@@ -8,7 +9,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { reportApi, reportKeys } from "@/src/lib/api/report";
 import { tokenApi, tokenKeys } from "@/src/lib/api/token";
 import { vndCost } from "@/src/lib/format";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -20,9 +21,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-function ProfitSkeleton() {
+function ProfitSkeleton({ loadingLabel }: { loadingLabel: string }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-3" aria-busy="true" aria-label="Loading">
+    <div className="grid gap-3 sm:grid-cols-3" aria-busy="true" aria-label={loadingLabel}>
       {Array.from({ length: 3 }, (_, i) => (
         <Card key={i}>
           <CardHeader className="pb-2">
@@ -38,9 +39,9 @@ function ProfitSkeleton() {
   );
 }
 
-function InventorySkeleton() {
+function InventorySkeleton({ loadingLabel }: { loadingLabel: string }) {
   return (
-    <div className="space-y-3" aria-busy="true" aria-label="Loading">
+    <div className="space-y-3" aria-busy="true" aria-label={loadingLabel}>
       <div className="grid gap-3 md:hidden">
         {Array.from({ length: 3 }, (_, i) => (
           <Card key={i}>
@@ -83,6 +84,9 @@ function InventorySkeleton() {
 }
 
 export default function DashboardPage() {
+  const t = useTranslations("dashboard");
+  const tCommon = useTranslations("common");
+
   const profitQuery = useQuery({
     queryKey: reportKeys.profitOverview(),
     queryFn: reportApi.profitOverview,
@@ -113,32 +117,34 @@ export default function DashboardPage() {
     (inventoryQuery.isFetching && !inventoryQuery.isLoading) ||
     (overdueQuery.isFetching && !overdueQuery.isLoading);
 
+  const loadingLabel = tCommon("a11y.loading");
+
   return (
-    <AppShell title="Dashboard">
+    <AppShell title={t("title")}>
       <div className="relative space-y-6">
         <QueryProgressBar active={isBackgroundFetching} />
 
         <section className="space-y-3">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
-              Profit overview
+              {t("profit.title")}
             </h2>
             <Link
               href="/reports"
               className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
             >
-              Gross Margin Report
+              {t("profit.linkGrossMargin")}
             </Link>
           </div>
 
-          {profitQuery.isLoading && <ProfitSkeleton />}
+          {profitQuery.isLoading && <ProfitSkeleton loadingLabel={loadingLabel} />}
 
           {profitQuery.isError && (
             <QueryErrorState
               message={
                 profitQuery.error instanceof Error
                   ? profitQuery.error.message
-                  : "Failed to load profit overview"
+                  : t("profit.loadError")
               }
               onRetry={() => profitQuery.refetch()}
             />
@@ -150,7 +156,7 @@ export default function DashboardPage() {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Total Capital Invested
+                      {t("profit.totalCapital")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -162,7 +168,7 @@ export default function DashboardPage() {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Total Revenue
+                      {t("profit.totalRevenue")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -170,15 +176,19 @@ export default function DashboardPage() {
                       {vndCost.format(profit.totalRevenue)}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Orders {vndCost.format(profit.revenueFromOrders)} · Cancelled{" "}
-                      {vndCost.format(profit.revenueFromCancelledTokens)}
+                      {t("profit.revenueBreakdown", {
+                        orders: vndCost.format(profit.revenueFromOrders),
+                        cancelled: vndCost.format(
+                          profit.revenueFromCancelledTokens
+                        ),
+                      })}
                     </p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Total Profit
+                      {t("profit.totalProfit")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -193,13 +203,14 @@ export default function DashboardPage() {
                     </p>
                     {profit.totalProfit < 0 && (
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Negative is expected early on when stock-in exceeds sales
+                        {t("profit.negativeHint")}
                       </p>
                     )}
                   </CardContent>
                 </Card>
               </div>
 
+              {/* API-sourced; may remain EN until backend i18n */}
               <p className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
                 {profit.note}
               </p>
@@ -211,7 +222,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Available stock units
+                {t("stats.availableStock")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -227,7 +238,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Locked in open campaigns
+                {t("stats.lockedInCampaigns")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -243,7 +254,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Overdue tokens
+                {t("stats.overdueTokens")}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex items-end justify-between gap-2">
@@ -259,7 +270,7 @@ export default function DashboardPage() {
                   href="/alerts"
                   className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
                 >
-                  View alerts
+                  {t("stats.viewAlerts")}
                 </Link>
               )}
             </CardContent>
@@ -271,7 +282,7 @@ export default function DashboardPage() {
             message={
               overdueQuery.error instanceof Error
                 ? overdueQuery.error.message
-                : "Failed to load overdue tokens"
+                : t("overdue.loadError")
             }
             onRetry={() => overdueQuery.refetch()}
           />
@@ -280,24 +291,26 @@ export default function DashboardPage() {
         <section className="space-y-3">
           <div className="flex items-end justify-between gap-2">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
-              Inventory overview
+              {t("inventory.title")}
             </h2>
             <Link
               href="/reports"
               className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
             >
-              Revenue report
+              {t("inventory.linkRevenue")}
             </Link>
           </div>
 
-          {inventoryQuery.isLoading && <InventorySkeleton />}
+          {inventoryQuery.isLoading && (
+            <InventorySkeleton loadingLabel={loadingLabel} />
+          )}
 
           {inventoryQuery.isError && (
             <QueryErrorState
               message={
                 inventoryQuery.error instanceof Error
                   ? inventoryQuery.error.message
-                  : "Failed to load inventory"
+                  : t("inventory.loadError")
               }
               onRetry={() => inventoryQuery.refetch()}
             />
@@ -308,7 +321,7 @@ export default function DashboardPage() {
             inventory.length === 0 && (
               <Card className="border-border/70 bg-muted/20">
                 <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                  No products yet.
+                  {t("inventory.empty")}
                 </CardContent>
               </Card>
             )}
@@ -317,8 +330,7 @@ export default function DashboardPage() {
             <>
               {lowStock.length > 0 && (
                 <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
-                  {lowStock.length} product
-                  {lowStock.length === 1 ? "" : "s"} flagged as low stock.
+                  {t("inventory.lowStockBanner", { count: lowStock.length })}
                 </div>
               )}
 
@@ -334,19 +346,21 @@ export default function DashboardPage() {
                           {item.productName}
                         </Link>
                       </CardTitle>
-                      {item.lowStock && (
-                        <Badge variant="destructive">Low stock</Badge>
-                      )}
+                      {item.lowStock && <StatusBadge type="lowStock" />}
                     </CardHeader>
                     <CardContent className="grid grid-cols-2 gap-2 text-sm">
                       <div>
-                        <p className="text-muted-foreground">Stock</p>
+                        <p className="text-muted-foreground">
+                          {t("inventory.stock")}
+                        </p>
                         <p className="font-medium tabular-nums">
                           {item.stockQuantity}
                         </p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Locked</p>
+                        <p className="text-muted-foreground">
+                          {t("inventory.locked")}
+                        </p>
                         <p className="font-medium tabular-nums">
                           {item.lockedInOpenCampaigns}
                         </p>
@@ -360,10 +374,10 @@ export default function DashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Stock</TableHead>
-                      <TableHead>Locked in campaigns</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>{t("inventory.columns.product")}</TableHead>
+                      <TableHead>{t("inventory.columns.stock")}</TableHead>
+                      <TableHead>{t("inventory.columns.locked")}</TableHead>
+                      <TableHead>{t("inventory.columns.status")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -385,9 +399,11 @@ export default function DashboardPage() {
                         </TableCell>
                         <TableCell>
                           {item.lowStock ? (
-                            <Badge variant="destructive">Low stock</Badge>
+                            <StatusBadge type="lowStock" />
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="text-muted-foreground">
+                              {tCommon("fallback.emDash")}
+                            </span>
                           )}
                         </TableCell>
                       </TableRow>

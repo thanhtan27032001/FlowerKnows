@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import { customerKeys } from "@/src/lib/api/customer";
@@ -38,6 +39,8 @@ export function CancelTokenDialog({
   customerId,
   onSuccess,
 }: Props) {
+  const t = useTranslations("alerts.cancelDialog");
+  const tCommon = useTranslations("common");
   const queryClient = useQueryClient();
   const { succeeded, runSuccess, reset } = useSuccessClose(250);
 
@@ -67,7 +70,7 @@ export function CancelTokenDialog({
     mutation.error instanceof ApiError
       ? mutation.error.message
       : mutation.isError
-        ? "Failed to cancel token"
+        ? t("failed")
         : null;
 
   const handleOpenChange = (next: boolean) => {
@@ -79,15 +82,14 @@ export function CancelTokenDialog({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Cancel Token</AlertDialogTitle>
+          <AlertDialogTitle>{t("title")}</AlertDialogTitle>
           <AlertDialogDescription className="space-y-2 text-left">
             <span className="block">
-              Cancelling this token will: return the product to general stock and
-              immediately recognize {vnd.format(tokenValue)} as revenue. Confirm?
+              {t("description", { value: vnd.format(tokenValue) })}
             </span>
             {productName && (
               <span className="block text-sm text-foreground">
-                Product: {productName}
+                {t("product", { name: productName })}
               </span>
             )}
             {errorMessage && (
@@ -96,17 +98,19 @@ export function CancelTokenDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={locked}>Keep token</AlertDialogCancel>
+          <AlertDialogCancel disabled={locked}>
+            {tCommon("actions.keepToken")}
+          </AlertDialogCancel>
           <PendingButton
             type="button"
             pending={mutation.isPending}
             success={succeeded}
-            pendingLabel="Cancelling…"
+            pendingLabel={tCommon("pending.cancelling")}
             onClick={() => {
               mutation.mutate();
             }}
           >
-            Confirm cancel
+            {t("confirm")}
           </PendingButton>
         </AlertDialogFooter>
       </AlertDialogContent>

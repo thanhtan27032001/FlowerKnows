@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { use, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
@@ -12,15 +13,17 @@ import { StockAdjustmentForm } from "@/components/products/stock-adjustment-form
 import { StockInForm } from "@/components/products/stock-in-form";
 import { productApi, productKeys } from "@/src/lib/api/product";
 import { formatCostPrice, vnd } from "@/src/lib/format";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function ProductDetailSkeleton() {
+  const tCommon = useTranslations("common.a11y");
+
   return (
-    <div className="space-y-5" aria-busy="true" aria-label="Loading">
+    <div className="space-y-5" aria-busy="true" aria-label={tCommon("loading")}>
       <Card>
         <CardHeader className="space-y-2">
           <Skeleton className="h-7 w-48" />
@@ -55,6 +58,9 @@ export default function ProductDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const t = useTranslations("products");
+  const tDetail = useTranslations("products.detail");
+  const tCommon = useTranslations("common");
   const [stockInOpen, setStockInOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [stockInNotice, setStockInNotice] = useState<string | null>(null);
@@ -73,14 +79,14 @@ export default function ProductDetailPage({
 
   return (
     <AppShell
-      title={product?.name ?? "Product"}
+      title={product?.name ?? t("detailFallbackTitle")}
       actions={
         <Link
           href="/products"
           className="inline-flex h-7 items-center gap-1 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ArrowLeftIcon className="size-4" />
-          Back
+          {tCommon("actions.back")}
         </Link>
       }
     >
@@ -92,7 +98,7 @@ export default function ProductDetailPage({
         {isError && (
           <QueryErrorState
             message={
-              error instanceof Error ? error.message : "Failed to load product"
+              error instanceof Error ? error.message : tDetail("loadError")
             }
             onRetry={() => refetch()}
           />
@@ -111,18 +117,16 @@ export default function ProductDetailPage({
                 <div>
                   <CardTitle className="text-xl">{product.name}</CardTitle>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    List price {vnd.format(product.listPrice)}
+                    {tDetail("listPrice")} {vnd.format(product.listPrice)}
                   </p>
                 </div>
-                {product.lowStock && (
-                  <Badge variant="destructive">Low stock</Badge>
-                )}
+                {product.lowStock && <StatusBadge type="lowStock" />}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div className="min-w-0">
                     <p className="text-sm text-muted-foreground">
-                      Current stock
+                      {tDetail("currentStock")}
                     </p>
                     <p className="text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl">
                       {product.stockQuantity}
@@ -130,17 +134,22 @@ export default function ProductDetailPage({
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm text-muted-foreground">
-                      Average cost price
+                      {tDetail("avgCost")}
                     </p>
                     <p className="text-lg font-semibold tabular-nums tracking-tight break-words sm:text-2xl lg:text-3xl">
-                      {formatCostPrice(product.averageCostPrice)}
+                      {formatCostPrice(
+                        product.averageCostPrice,
+                        tCommon("format.notSet")
+                      )}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={() => setStockInOpen(true)}>Stock In</Button>
+                  <Button onClick={() => setStockInOpen(true)}>
+                    {tDetail("stockIn")}
+                  </Button>
                   <Button variant="outline" onClick={() => setAdjustOpen(true)}>
-                    Adjust Stock
+                    {tDetail("adjustStock")}
                   </Button>
                 </div>
               </CardContent>
@@ -148,7 +157,9 @@ export default function ProductDetailPage({
 
             <Tabs defaultValue="history">
               <TabsList>
-                <TabsTrigger value="history">Movement History</TabsTrigger>
+                <TabsTrigger value="history">
+                  {tDetail("movementHistory")}
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="history" className="mt-4">
                 <MovementHistory productId={product.id} />
@@ -163,7 +174,12 @@ export default function ProductDetailPage({
                 const updated = products.find((p) => p.id === product.id);
                 if (updated) {
                   setStockInNotice(
-                    `Stock in saved. Average cost price is now ${formatCostPrice(updated.averageCostPrice)}.`
+                    tDetail("stockInNotice", {
+                      avgCost: formatCostPrice(
+                        updated.averageCostPrice,
+                        tCommon("format.notSet")
+                      ),
+                    })
                   );
                 }
               }}

@@ -1,4 +1,4 @@
-import { apiClient } from "@/src/lib/api/client";
+import { apiClient, ApiError } from "@/src/lib/api/client";
 
 export type ReceiveProductInput = {
   productId: string;
@@ -51,7 +51,20 @@ export const exchangeApi = {
     apiClient.post<ExchangeResponse>("/api/exchanges/cash-out", input),
 };
 
-export function exchangeErrorMessage(err: unknown, fallback: string): string {
+type Translate = (
+  key: "notHolding" | "conflict",
+  values?: Record<string, string>
+) => string;
+
+/**
+ * Maps exchange API errors to display strings.
+ * Pass `t` from `useTranslations('exchange.errors')`.
+ */
+export function exchangeErrorMessage(
+  err: unknown,
+  fallback: string,
+  t?: Translate
+): string {
   if (
     err &&
     typeof err === "object" &&
@@ -59,9 +72,15 @@ export function exchangeErrorMessage(err: unknown, fallback: string): string {
     (err as { status: number }).status === 409
   ) {
     const message =
-      err instanceof Error ? err.message : "Token is not in HOLDING status";
-    return `Conflict: ${message}. Refresh the customer page and try again with HOLDING tokens only.`;
+      err instanceof Error
+        ? err.message
+        : t
+          ? t("notHolding")
+          : "Token không ở trạng thái Đang giữ";
+    if (t) return t("conflict", { message });
+    return `Xung đột: ${message}. Tải lại trang khách và chỉ thử với token Đang giữ.`;
   }
+  if (err instanceof ApiError && err.message) return err.message;
   if (err instanceof Error && err.message) return err.message;
   return fallback;
 }

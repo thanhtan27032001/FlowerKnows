@@ -1,11 +1,19 @@
+import { getTranslations } from "next-intl/server";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function ReportsLoading() {
+export default async function ReportsLoading() {
+  const t = await getTranslations("reports");
+  const tCommon = await getTranslations("common");
+
   return (
-    <AppShell title="Revenue Report">
-      <div className="space-y-6" aria-busy="true" aria-label="Loading">
+    <AppShell title={t("title")}>
+      <div
+        className="space-y-6"
+        aria-busy="true"
+        aria-label={tCommon("a11y.loading")}
+      >
         <Card>
           <CardContent className="grid gap-4 pt-5 sm:grid-cols-4">
             {Array.from({ length: 4 }, (_, i) => (

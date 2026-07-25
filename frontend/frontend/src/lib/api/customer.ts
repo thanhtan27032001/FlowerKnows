@@ -71,13 +71,7 @@ export type CustomerDetail = {
   history: CustomerToken[];
 };
 
-export const ACTION_STATUS_LABEL: Record<CustomerActionStatus, string> = {
-  UNDETERMINED: "Undetermined",
-  NEGOTIATING: "In Discussion",
-  CONSOLIDATING: "Holding for Later",
-  NEEDS_IMMEDIATE_ORDER: "Needs Order Now",
-};
-
+/** Backend enum values — display labels live in messages via `common.status.action`. */
 export const ACTION_STATUS_VALUES: CustomerActionStatus[] = [
   "UNDETERMINED",
   "NEGOTIATING",

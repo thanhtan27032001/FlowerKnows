@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { customerKeys, type CustomerToken } from "@/src/lib/api/customer";
@@ -58,6 +59,10 @@ function newRow(): ReceiveRow {
   return { key: createClientId(), productId: "", quantity: "1" };
 }
 
+function isConflictMessage(message: string) {
+  return /^(Conflict:|Xung đột:)/.test(message);
+}
+
 export function ItemExchangeForm({
   open,
   onOpenChange,
@@ -65,6 +70,9 @@ export function ItemExchangeForm({
   tokens,
   onSuccess,
 }: Props) {
+  const t = useTranslations("exchange.item");
+  const tErrors = useTranslations("exchange.errors");
+  const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { succeeded, runSuccess, reset } = useSuccessClose(250);
@@ -119,7 +127,7 @@ export function ItemExchangeForm({
       });
     },
     onError: (err: unknown) => {
-      setFormError(exchangeErrorMessage(err, "Item exchange failed"));
+      setFormError(exchangeErrorMessage(err, t("failed"), tErrors));
     },
   });
 
@@ -138,7 +146,7 @@ export function ItemExchangeForm({
     const errors: Record<string, string> = {};
 
     if (!additionalValid) {
-      errors.additionalPayment = "Additional payment must be a number";
+      errors.additionalPayment = t("additionalInvalid");
     }
 
     let rowsValid = true;
@@ -146,25 +154,24 @@ export function ItemExchangeForm({
       const qty = Number(row.quantity);
       if (!row.productId) {
         rowsValid = false;
-        return { ...row, error: "Select a product" };
+        return { ...row, error: t("selectProduct") };
       }
       if (!row.quantity || Number.isNaN(qty) || qty < 1 || !Number.isInteger(qty)) {
         rowsValid = false;
-        return { ...row, error: "Quantity must be a whole number ≥ 1" };
+        return { ...row, error: t("quantityInvalid") };
       }
       const product = products.find((p) => p.id === row.productId);
       if (product && qty > product.stockQuantity) {
         rowsValid = false;
         return {
           ...row,
-          error: `Only ${product.stockQuantity} available in stock`,
+          error: t("quantityInvalid"),
         };
       }
       return { ...row, error: undefined };
     });
     setRows(nextRows);
 
-    // Aggregate qty per product for stock check across rows
     const qtyByProduct = new Map<string, number>();
     for (const row of nextRows) {
       if (!row.productId || row.error) continue;
@@ -176,13 +183,13 @@ export function ItemExchangeForm({
     for (const [productId, qty] of qtyByProduct) {
       const product = products.find((p) => p.id === productId);
       if (product && qty > product.stockQuantity) {
-        errors.pool = `Product ${product.name} does not have enough stock (${product.stockQuantity} available, ${qty} requested)`;
+        errors.pool = t("fixRows");
         rowsValid = false;
       }
     }
 
     if (!rowsValid && !errors.pool) {
-      errors.pool = "Fix receive product rows before submitting";
+      errors.pool = t("fixRows");
     }
 
     setFieldErrors(errors);
@@ -190,7 +197,7 @@ export function ItemExchangeForm({
 
     mutation.mutate({
       customerId,
-      tokenIds: tokens.map((t) => t.id),
+      tokenIds: tokens.map((tok) => tok.id),
       receiveProducts: nextRows.map((row) => ({
         productId: row.productId,
         quantity: Number(row.quantity),
@@ -203,26 +210,26 @@ export function ItemExchangeForm({
     <fieldset disabled={locked} className="min-w-0 space-y-4">
       <div className="rounded-xl border border-border/80 bg-muted/20 p-3">
         <p className="text-xs font-medium text-muted-foreground">
-          Giving up ({tokens.length} token{tokens.length === 1 ? "" : "s"})
+          {t("oldTokens")} ({tokens.length})
         </p>
         <ul className="mt-2 space-y-1.5 text-sm">
-          {tokens.map((t) => (
-            <li key={t.id} className="flex justify-between gap-3">
-              <span className="truncate">{t.productName}</span>
+          {tokens.map((tok) => (
+            <li key={tok.id} className="flex justify-between gap-3">
+              <span className="truncate">{tok.productName}</span>
               <span className="shrink-0 tabular-nums">
-                {vnd.format(t.tokenValue)}
+                {vnd.format(tok.tokenValue)}
               </span>
             </li>
           ))}
         </ul>
         <p className="mt-3 flex justify-between border-t border-border/60 pt-2 text-sm font-medium">
-          <span>Total token value</span>
+          <span>{t("totalTokenValue")}</span>
           <span className="tabular-nums">{vnd.format(tokensTotal)}</span>
         </p>
       </div>
 
       <div className="space-y-3">
-        <Label>Receive products (from stock)</Label>
+        <Label>{t("receiveProducts")}</Label>
         {rows.map((row, index) => {
           const selected = products.find((p) => p.id === row.productId);
           return (
@@ -232,7 +239,7 @@ export function ItemExchangeForm({
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-medium text-muted-foreground">
-                  Product {index + 1}
+                  {t("product")} {index + 1}
                 </p>
                 {rows.length > 1 && (
                   <Button
@@ -242,7 +249,7 @@ export function ItemExchangeForm({
                     onClick={() =>
                       setRows((prev) => prev.filter((r) => r.key !== row.key))
                     }
-                    aria-label="Remove row"
+                    aria-label={tCommon("actions.removeRow")}
                   >
                     <Trash2Icon />
                   </Button>
@@ -250,7 +257,7 @@ export function ItemExchangeForm({
               </div>
 
               <div className="grid gap-2">
-                <Label>Product</Label>
+                <Label>{t("product")}</Label>
                 <Select
                   value={row.productId || undefined}
                   onValueChange={(value) =>
@@ -258,12 +265,12 @@ export function ItemExchangeForm({
                   }
                 >
                   <SelectTrigger className="w-full min-w-0">
-                    <SelectValue placeholder="Select product" />
+                    <SelectValue placeholder={t("selectProduct")} />
                   </SelectTrigger>
                   <SelectContent>
                     {inStockProducts.map((product) => (
                       <SelectItem key={product.id} value={product.id}>
-                        {product.name} ({product.stockQuantity} in stock)
+                        {product.name} ({product.stockQuantity})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -271,7 +278,7 @@ export function ItemExchangeForm({
               </div>
 
               <div className="grid gap-2">
-                <Label>Quantity</Label>
+                <Label>{t("quantity")}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -299,22 +306,18 @@ export function ItemExchangeForm({
           disabled={inStockProducts.length === 0}
         >
           <PlusIcon />
-          Add product
+          {t("addProduct")}
         </Button>
         {fieldErrors.pool && (
           <p className="text-sm text-destructive">{fieldErrors.pool}</p>
         )}
         {inStockProducts.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No products with stock available for exchange.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("noStock")}</p>
         )}
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="additional-payment">
-          Additional payment (VND, optional)
-        </Label>
+        <Label htmlFor="additional-payment">{t("additionalPayment")}</Label>
         <Input
           id="additional-payment"
           type="number"
@@ -323,10 +326,6 @@ export function ItemExchangeForm({
           onChange={(e) => setAdditionalPayment(e.target.value)}
           aria-invalid={!!fieldErrors.additionalPayment}
         />
-        <p className="text-xs text-muted-foreground">
-          Can be negative, positive, or 0. New token values will total old value
-          + this amount.
-        </p>
         {fieldErrors.additionalPayment && (
           <p className="text-xs text-destructive">
             {fieldErrors.additionalPayment}
@@ -336,17 +335,21 @@ export function ItemExchangeForm({
 
       <div className="rounded-xl border border-border/80 bg-background p-3 text-sm">
         <div className="flex justify-between gap-3">
-          <span className="text-muted-foreground">Old tokens</span>
+          <span className="text-muted-foreground">{t("oldTokens")}</span>
           <span className="tabular-nums">{vnd.format(tokensTotal)}</span>
         </div>
         <div className="mt-1 flex justify-between gap-3">
-          <span className="text-muted-foreground">Additional payment</span>
+          <span className="text-muted-foreground">
+            {t("additionalPaymentLabel")}
+          </span>
           <span className="tabular-nums">
-            {additionalValid ? vnd.format(additionalNum) : "—"}
+            {additionalValid
+              ? vnd.format(additionalNum)
+              : tCommon("fallback.emDash")}
           </span>
         </div>
         <div className="mt-2 flex justify-between gap-3 border-t border-border/60 pt-2 font-medium">
-          <span>New tokens total value</span>
+          <span>{t("newTokensTotal")}</span>
           <span className="tabular-nums">{vnd.format(liveNewTotal)}</span>
         </div>
       </div>
@@ -354,7 +357,7 @@ export function ItemExchangeForm({
       {formError && (
         <p
           className={
-            formError.startsWith("Conflict:")
+            isConflictMessage(formError)
               ? "rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
               : "text-sm text-destructive"
           }
@@ -377,17 +380,17 @@ export function ItemExchangeForm({
           resetForm();
         }}
       >
-        Cancel
+        {tCommon("actions.cancel")}
       </Button>
       <PendingButton
         type="button"
         pending={mutation.isPending}
         success={succeeded}
-        pendingLabel="Confirming…"
+        pendingLabel={tCommon("pending.confirming")}
         disabled={tokens.length === 0}
         onClick={validateAndSubmit}
       >
-        Confirm Exchange
+        {t("confirm")}
       </PendingButton>
     </div>
   );
@@ -408,11 +411,8 @@ export function ItemExchangeForm({
           className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
         >
           <SheetHeader>
-            <SheetTitle>Item Exchange</SheetTitle>
-            <SheetDescription>
-              Exchange selected tokens for products from general stock (N→N
-              supported).
-            </SheetDescription>
+            <SheetTitle>{t("title")}</SheetTitle>
+            <SheetDescription>{t("description")}</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
@@ -425,11 +425,8 @@ export function ItemExchangeForm({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Item Exchange</DialogTitle>
-          <DialogDescription>
-            Exchange selected tokens for products from general stock (N→N
-            supported).
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         {formBody}
         <DialogFooter>{footer}</DialogFooter>

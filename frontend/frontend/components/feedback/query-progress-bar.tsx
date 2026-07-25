@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -9,6 +10,8 @@ type Props = {
 
 /** Thin indeterminate bar for background refetches (isFetching && !isLoading). */
 export function QueryProgressBar({ active, className }: Props) {
+  const t = useTranslations("common.a11y");
+
   return (
     <div
       className={cn(
@@ -17,7 +20,7 @@ export function QueryProgressBar({ active, className }: Props) {
       )}
       role="progressbar"
       aria-hidden={!active}
-      aria-valuetext={active ? "Updating" : undefined}
+      aria-valuetext={active ? t("updating") : undefined}
     >
       <div
         className={cn(

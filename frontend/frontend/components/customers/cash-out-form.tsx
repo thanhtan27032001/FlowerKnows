@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { customerKeys, type CustomerToken } from "@/src/lib/api/customer";
 import { campaignKeys } from "@/src/lib/api/campaign";
@@ -38,6 +39,10 @@ type Props = {
   onSuccess?: () => void;
 };
 
+function isConflictMessage(message: string) {
+  return /^(Conflict:|Xung đột:)/.test(message);
+}
+
 export function CashOutForm({
   open,
   onOpenChange,
@@ -45,11 +50,13 @@ export function CashOutForm({
   tokens,
   onSuccess,
 }: Props) {
+  const t = useTranslations("exchange.cashOut");
+  const tErrors = useTranslations("exchange.errors");
+  const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { succeeded, runSuccess, reset } = useSuccessClose(250);
 
-  // null = still following suggested; string = staff override
   const [actualRefund, setActualRefund] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
@@ -62,7 +69,7 @@ export function CashOutForm({
 
   const suggestedRefund = useMemo(() => {
     const priceById = new Map(products.map((p) => [p.id, p.listPrice]));
-    return tokens.reduce((sum, t) => sum + (priceById.get(t.productId) ?? 0), 0);
+    return tokens.reduce((sum, tok) => sum + (priceById.get(tok.productId) ?? 0), 0);
   }, [products, tokens]);
 
   const refundDisplay =
@@ -89,7 +96,7 @@ export function CashOutForm({
       });
     },
     onError: (err: unknown) => {
-      setFormError(exchangeErrorMessage(err, "Cash out failed"));
+      setFormError(exchangeErrorMessage(err, t("failed"), tErrors));
     },
   });
 
@@ -99,14 +106,14 @@ export function CashOutForm({
     setFormError(null);
     const amount = Number(refundDisplay);
     if (refundDisplay === "" || Number.isNaN(amount) || amount < 0) {
-      setFieldError("Actual refund amount must be a number ≥ 0");
+      setFieldError(t("amountInvalid"));
       return;
     }
     setFieldError(null);
 
     mutation.mutate({
       customerId,
-      tokenIds: tokens.map((t) => t.id),
+      tokenIds: tokens.map((tok) => tok.id),
       actualRefundAmount: amount,
     });
   };
@@ -123,17 +130,17 @@ export function CashOutForm({
     <fieldset disabled={locked} className="min-w-0 space-y-4">
       <div className="rounded-xl border border-border/80 bg-muted/20 p-3">
         <p className="text-xs font-medium text-muted-foreground">
-          Cashing out ({tokens.length} token{tokens.length === 1 ? "" : "s"})
+          {t("title")} ({tokens.length})
         </p>
         <ul className="mt-2 space-y-1.5 text-sm">
-          {tokens.map((t) => {
+          {tokens.map((tok) => {
             const listPrice =
-              products.find((p) => p.id === t.productId)?.listPrice ?? null;
+              products.find((p) => p.id === tok.productId)?.listPrice ?? null;
             return (
-              <li key={t.id} className="flex justify-between gap-3">
-                <span className="truncate">{t.productName}</span>
+              <li key={tok.id} className="flex justify-between gap-3">
+                <span className="truncate">{tok.productName}</span>
                 <span className="shrink-0 tabular-nums text-muted-foreground">
-                  list {listPrice != null ? vnd.format(listPrice) : "…"}
+                  {listPrice != null ? vnd.format(listPrice) : "…"}
                 </span>
               </li>
             );
@@ -143,18 +150,15 @@ export function CashOutForm({
 
       <div className="rounded-xl border border-border/80 bg-background p-3 text-sm">
         <div className="flex justify-between gap-3">
-          <span className="text-muted-foreground">Suggested refund</span>
+          <span className="text-muted-foreground">{t("suggestedRefund")}</span>
           <span className="font-medium tabular-nums">
             {products.length > 0 ? vnd.format(suggestedRefund) : "…"}
           </span>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Sum of product list prices (editable below)
-        </p>
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="actual-refund">Actual refund amount (VND)</Label>
+        <Label htmlFor="actual-refund">{t("actualRefund")}</Label>
         <Input
           id="actual-refund"
           type="number"
@@ -172,7 +176,7 @@ export function CashOutForm({
       {formError && (
         <p
           className={
-            formError.startsWith("Conflict:")
+            isConflictMessage(formError)
               ? "rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
               : "text-sm text-destructive"
           }
@@ -191,17 +195,17 @@ export function CashOutForm({
         disabled={locked}
         onClick={() => handleOpenChange(false)}
       >
-        Cancel
+        {tCommon("actions.cancel")}
       </Button>
       <PendingButton
         type="button"
         pending={mutation.isPending}
         success={succeeded}
-        pendingLabel="Confirming…"
+        pendingLabel={tCommon("pending.confirming")}
         disabled={tokens.length === 0}
         onClick={validateAndSubmit}
       >
-        Confirm Cash Out
+        {t("confirm")}
       </PendingButton>
     </div>
   );
@@ -214,10 +218,8 @@ export function CashOutForm({
           className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
         >
           <SheetHeader>
-            <SheetTitle>Cash Out</SheetTitle>
-            <SheetDescription>
-              Refund selected tokens. Suggested amount uses product list prices.
-            </SheetDescription>
+            <SheetTitle>{t("title")}</SheetTitle>
+            <SheetDescription>{t("description")}</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
@@ -230,10 +232,8 @@ export function CashOutForm({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Cash Out</DialogTitle>
-          <DialogDescription>
-            Refund selected tokens. Suggested amount uses product list prices.
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         {formBody}
         <DialogFooter>{footer}</DialogFooter>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import { productApi, productKeys, type Product } from "@/src/lib/api/product";
@@ -35,6 +36,9 @@ type Props = {
 };
 
 export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
+  const t = useTranslations("products.adjust");
+  const tDetail = useTranslations("products.detail");
+  const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { succeeded, runSuccess, reset } = useSuccessClose(250);
@@ -67,7 +71,7 @@ export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
       });
     },
     onError: (err: unknown) => {
-      setFormError(err instanceof ApiError ? err.message : "Adjustment failed");
+      setFormError(err instanceof ApiError ? err.message : t("failed"));
     },
   });
 
@@ -79,17 +83,17 @@ export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
     const qty = Number(quantity);
 
     if (!quantity || Number.isNaN(qty) || qty <= 0 || !Number.isInteger(qty)) {
-      nextErrors.quantity = "Quantity must be a whole number greater than 0";
+      nextErrors.quantity = t("quantityInvalid");
     }
     if (!note.trim()) {
-      nextErrors.note = "Please enter a reason for the adjustment";
+      nextErrors.note = t("reasonRequired");
     }
     if (
       direction === "DECREASE" &&
       !Number.isNaN(qty) &&
       qty > product.stockQuantity
     ) {
-      nextErrors.quantity = `Cannot decrease below current stock (${product.stockQuantity} available)`;
+      nextErrors.quantity = t("belowZero");
     }
 
     setErrors(nextErrors);
@@ -110,32 +114,32 @@ export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
   const formBody = (
     <fieldset disabled={locked} className="min-w-0 space-y-4">
       <div className="rounded-xl border border-border/80 bg-muted/30 px-3 py-2 text-sm">
-        Current stock:{" "}
+        {tDetail("currentStock")}:{" "}
         <span className="font-semibold tabular-nums">{product.stockQuantity}</span>
       </div>
 
       <div className="grid gap-2">
-        <Label>Adjustment type</Label>
+        <Label>{t("adjustmentType")}</Label>
         <div className="grid grid-cols-2 gap-2">
           <Button
             type="button"
             variant={direction === "INCREASE" ? "default" : "outline"}
             onClick={() => setDirection("INCREASE")}
           >
-            Increase
+            {t("increase")}
           </Button>
           <Button
             type="button"
             variant={direction === "DECREASE" ? "default" : "outline"}
             onClick={() => setDirection("DECREASE")}
           >
-            Decrease
+            {t("decrease")}
           </Button>
         </div>
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="adjust-qty">Quantity</Label>
+        <Label htmlFor="adjust-qty">{t("quantity")}</Label>
         <Input
           id="adjust-qty"
           type="number"
@@ -151,12 +155,12 @@ export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="adjust-note">Reason</Label>
+        <Label htmlFor="adjust-note">{t("reason")}</Label>
         <Textarea
           id="adjust-note"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="e.g. Damaged during count, Lost item, Count surplus"
+          placeholder={t("reasonPlaceholder")}
           aria-invalid={!!errors.note}
         />
         {errors.note && <p className="text-xs text-destructive">{errors.note}</p>}
@@ -174,16 +178,16 @@ export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
         disabled={locked}
         onClick={() => handleOpenChange(false)}
       >
-        Cancel
+        {tCommon("actions.cancel")}
       </Button>
       <PendingButton
         type="button"
         pending={mutation.isPending}
         success={succeeded}
-        pendingLabel="Saving…"
+        pendingLabel={tCommon("pending.saving")}
         onClick={submit}
       >
-        Confirm Adjustment
+        {t("confirm")}
       </PendingButton>
     </div>
   );
@@ -193,9 +197,9 @@ export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
       <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-2xl">
           <SheetHeader>
-            <SheetTitle>Adjust Stock</SheetTitle>
+            <SheetTitle>{t("title")}</SheetTitle>
             <SheetDescription>
-              Manually correct stock for {product.name}.
+              {t("description", { name: product.name })}
             </SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-2">{formBody}</div>
@@ -209,9 +213,9 @@ export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Adjust Stock</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>
-            Manually correct stock for {product.name}.
+            {t("description", { name: product.name })}
           </DialogDescription>
         </DialogHeader>
         {formBody}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import {
@@ -51,6 +52,8 @@ export function RecordItemForm({
   campaign,
   defaultCustomerId = "",
 }: Props) {
+  const t = useTranslations("campaigns.recordItem");
+  const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { succeeded, runSuccess, reset } = useSuccessClose(250);
@@ -99,7 +102,7 @@ export function RecordItemForm({
     },
     onError: (err: unknown) => {
       const message =
-        err instanceof ApiError ? err.message : "Failed to record item";
+        err instanceof ApiError ? err.message : t("failed");
       setFormError(message);
       if (message.toLowerCase().includes("already recorded all purchased bags")) {
         setBlockedAllRecorded(true);
@@ -115,12 +118,12 @@ export function RecordItemForm({
     const errors: Record<string, string> = {};
     const qty = Number(quantity);
 
-    if (!customerId) errors.customerId = "Select a participant";
-    if (!productId) errors.productId = "Select a product";
+    if (!customerId) errors.customerId = t("participantRequired");
+    if (!productId) errors.productId = t("productRequired");
     if (!quantity || Number.isNaN(qty) || qty < 1 || !Number.isInteger(qty)) {
-      errors.quantity = "Quantity must be a whole number ≥ 1";
+      errors.quantity = t("quantityInvalid");
     } else if (selectedProduct && qty > selectedProduct.remainingQuantity) {
-      errors.quantity = `Only ${selectedProduct.remainingQuantity} remaining in the pool`;
+      errors.quantity = t("quantityInvalid");
     }
 
     setFieldErrors(errors);
@@ -142,16 +145,16 @@ export function RecordItemForm({
     <fieldset disabled={locked} className="min-w-0 space-y-4">
       {noParticipants ? (
         <p className="rounded-lg border border-border/80 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-          Record a participant first before recording opened bags.
+          {t("participantRequired")}
         </p>
       ) : noPoolLeft ? (
         <p className="rounded-lg border border-border/80 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-          No products remain in the campaign pool.
+          {t("poolEmpty")}
         </p>
       ) : (
         <>
           <div className="grid gap-2">
-            <Label>Participant</Label>
+            <Label>{t("participant")}</Label>
             <Select
               value={customerId || undefined}
               onValueChange={(value) => {
@@ -161,22 +164,21 @@ export function RecordItemForm({
               }}
             >
               <SelectTrigger className="w-full min-w-0">
-                <SelectValue placeholder="Select participant" />
+                <SelectValue placeholder={t("selectParticipant")} />
               </SelectTrigger>
               <SelectContent>
                 {campaign.participants.map((p) => (
                   <SelectItem key={p.customerId} value={p.customerId}>
                     {p.customerName}
                     {p.customerPhone ? ` — ${p.customerPhone}` : ""} (
-                    {p.totalBagsPurchased} bags)
+                    {p.totalBagsPurchased})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {selectedParticipant && (
               <p className="text-xs text-muted-foreground">
-                Purchased {selectedParticipant.totalBagsPurchased} bags — each
-                recording creates one token per bag opened.
+                {selectedParticipant.totalBagsPurchased}
               </p>
             )}
             {fieldErrors.customerId && (
@@ -185,7 +187,7 @@ export function RecordItemForm({
           </div>
 
           <div className="grid gap-2">
-            <Label>Product</Label>
+            <Label>{t("product")}</Label>
             <Select
               value={productId || undefined}
               onValueChange={(value) => {
@@ -194,12 +196,12 @@ export function RecordItemForm({
               }}
             >
               <SelectTrigger className="w-full min-w-0">
-                <SelectValue placeholder="Select product from pool" />
+                <SelectValue placeholder={t("selectProduct")} />
               </SelectTrigger>
               <SelectContent>
                 {availableProducts.map((p) => (
                   <SelectItem key={p.productId} value={p.productId}>
-                    {p.productName} ({p.remainingQuantity} remaining)
+                    {p.productName} ({p.remainingQuantity})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -210,7 +212,7 @@ export function RecordItemForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="record-qty">Quantity</Label>
+            <Label htmlFor="record-qty">{t("quantity")}</Label>
             <Input
               id="record-qty"
               type="number"
@@ -235,8 +237,7 @@ export function RecordItemForm({
       {formError && <p className="text-sm text-destructive">{formError}</p>}
       {blockedAllRecorded && (
         <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          This customer has already recorded all purchased bags. Recording is
-          blocked.
+          {formError}
         </p>
       )}
     </fieldset>
@@ -254,17 +255,17 @@ export function RecordItemForm({
           resetForm();
         }}
       >
-        Cancel
+        {tCommon("actions.cancel")}
       </Button>
       <PendingButton
         type="button"
         pending={mutation.isPending}
         success={succeeded}
-        pendingLabel="Saving…"
+        pendingLabel={tCommon("pending.saving")}
         disabled={submitDisabled}
         onClick={validateAndSubmit}
       >
-        Record Item
+        {t("submit")}
       </PendingButton>
     </div>
   );
@@ -285,10 +286,8 @@ export function RecordItemForm({
           className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
         >
           <SheetHeader>
-            <SheetTitle>Record Item</SheetTitle>
-            <SheetDescription>
-              Record which product a customer received when opening bags.
-            </SheetDescription>
+            <SheetTitle>{t("title")}</SheetTitle>
+            <SheetDescription>{t("description")}</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
@@ -301,10 +300,8 @@ export function RecordItemForm({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Record Item</DialogTitle>
-          <DialogDescription>
-            Record which product a customer received when opening bags.
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         {formBody}
         <DialogFooter>{footer}</DialogFooter>

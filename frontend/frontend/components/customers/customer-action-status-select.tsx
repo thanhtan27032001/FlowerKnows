@@ -1,14 +1,15 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import {
-  ACTION_STATUS_LABEL,
   ACTION_STATUS_VALUES,
   customerApi,
   customerKeys,
   type CustomerActionStatus,
 } from "@/src/lib/api/customer";
+import { actionStatusLabel } from "@/src/lib/i18n-labels";
 import { Spinner } from "@/components/feedback/spinner";
 import {
   Select,
@@ -24,6 +25,8 @@ type Props = {
 };
 
 export function CustomerActionStatusSelect({ customerId, value }: Props) {
+  const t = useTranslations("customers.actionStatus");
+  const tStatus = useTranslations("common.status");
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -41,7 +44,7 @@ export function CustomerActionStatusSelect({ customerId, value }: Props) {
     mutation.error instanceof ApiError
       ? mutation.error.message
       : mutation.isError
-        ? "Update failed"
+        ? t("updateFailed")
         : null;
 
   return (
@@ -57,14 +60,14 @@ export function CustomerActionStatusSelect({ customerId, value }: Props) {
         >
           <SelectTrigger
             className="h-8 w-auto min-w-[10.5rem] border-primary/30 bg-primary/5 font-medium"
-            aria-label="Customer action status"
+            aria-label={t("aria")}
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {ACTION_STATUS_VALUES.map((status) => (
               <SelectItem key={status} value={status}>
-                {ACTION_STATUS_LABEL[status]}
+                {actionStatusLabel(tStatus, status)}
               </SelectItem>
             ))}
           </SelectContent>

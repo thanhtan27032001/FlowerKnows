@@ -11,15 +11,21 @@ export const vndCost = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 2,
 });
 
-export function formatCostPrice(value: number | null | undefined): string {
-  if (value == null) return "Not set";
+export function formatCostPrice(
+  value: number | null | undefined,
+  notSetLabel = "—"
+): string {
+  if (value == null) return notSetLabel;
   return vndCost.format(value);
 }
 
 export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(iso));
 }
 
@@ -28,6 +34,8 @@ export function formatDate(isoDate: string): string {
   const [y, m, d] = isoDate.split("-").map(Number);
   const date = new Date(y, (m ?? 1) - 1, d ?? 1);
   return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   }).format(date);
 }

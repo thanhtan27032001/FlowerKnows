@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import { customerApi, customerKeys } from "@/src/lib/api/customer";
@@ -34,6 +35,8 @@ type Props = {
 };
 
 export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
+  const t = useTranslations("customers.create");
+  const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { succeeded, runSuccess, reset } = useSuccessClose(250);
@@ -63,7 +66,7 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
     },
     onError: (err: unknown) => {
       setFormError(
-        err instanceof ApiError ? err.message : "Failed to create customer"
+        err instanceof ApiError ? err.message : t("failed")
       );
     },
   });
@@ -73,8 +76,8 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
   const submit = () => {
     setFormError(null);
     const errors: Record<string, string> = {};
-    if (!name.trim()) errors.name = "Name is required";
-    if (!phone.trim()) errors.phone = "Phone is required";
+    if (!name.trim()) errors.name = t("nameRequired");
+    if (!phone.trim()) errors.phone = t("phoneRequired");
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -95,12 +98,12 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
     >
       <fieldset disabled={locked} className="min-w-0 space-y-4">
         <div className="grid gap-2">
-          <Label htmlFor="customer-name">Name</Label>
+          <Label htmlFor="customer-name">{t("name")}</Label>
           <Input
             id="customer-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Customer name"
+            placeholder={t("namePlaceholder")}
             aria-invalid={!!fieldErrors.name}
           />
           {fieldErrors.name && (
@@ -109,12 +112,12 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="customer-phone">Phone</Label>
+          <Label htmlFor="customer-phone">{t("phone")}</Label>
           <Input
             id="customer-phone"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="Phone number"
+            placeholder={t("phonePlaceholder")}
             aria-invalid={!!fieldErrors.phone}
           />
           {fieldErrors.phone && (
@@ -123,12 +126,11 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="customer-address">Address (optional)</Label>
+          <Label htmlFor="customer-address">{t("address")}</Label>
           <Input
             id="customer-address"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="Shipping address"
           />
         </div>
 
@@ -149,16 +151,16 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
           resetForm();
         }}
       >
-        Cancel
+        {tCommon("actions.cancel")}
       </Button>
       <PendingButton
         type="button"
         pending={mutation.isPending}
         success={succeeded}
-        pendingLabel="Creating…"
+        pendingLabel={tCommon("pending.creating")}
         onClick={submit}
       >
-        Create Customer
+        {t("submit")}
       </PendingButton>
     </div>
   );
@@ -179,10 +181,8 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
           className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
         >
           <SheetHeader>
-            <SheetTitle>Create Customer</SheetTitle>
-            <SheetDescription>
-              Add a customer to record purchases and hold tokens.
-            </SheetDescription>
+            <SheetTitle>{t("title")}</SheetTitle>
+            <SheetDescription>{t("description")}</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
@@ -195,10 +195,8 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create Customer</DialogTitle>
-          <DialogDescription>
-            Add a customer to record purchases and hold tokens.
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         {formBody}
         <DialogFooter>{footer}</DialogFooter>

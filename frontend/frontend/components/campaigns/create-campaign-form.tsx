@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon, Trash2Icon } from "lucide-react";
@@ -63,6 +64,8 @@ function newPoolRow(): PoolRow {
 }
 
 export function CreateCampaignForm({ open, onOpenChange }: Props) {
+  const t = useTranslations("campaigns.create");
+  const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -121,7 +124,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
     },
     onError: (err: unknown) => {
       setFormError(
-        err instanceof ApiError ? err.message : "Failed to create campaign"
+        err instanceof ApiError ? err.message : t("failed")
       );
     },
   });
@@ -139,17 +142,17 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
   const validate = (): CreateCampaignInput | null => {
     const errors: Record<string, string> = {};
     const trimmed = name.trim();
-    if (!trimmed) errors.name = "Name is required";
-    if (!eventDate) errors.eventDate = "Event date is required";
+    if (!trimmed) errors.name = t("nameRequired");
+    if (!eventDate) errors.eventDate = t("eventDateRequired");
 
     const price = Number(bagPrice);
     if (!bagPrice || Number.isNaN(price) || price <= 0) {
-      errors.bagPrice = "Bag price must be a positive number";
+      errors.bagPrice = t("bagPriceInvalid");
     }
 
     const bags = Number(totalBags);
     if (!totalBags || Number.isNaN(bags) || bags < 1 || !Number.isInteger(bags)) {
-      errors.totalBags = "Total bags must be a whole number ≥ 1";
+      errors.totalBags = t("totalBagsInvalid");
     }
 
     let poolValid = true;
@@ -157,7 +160,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
       const qty = Number(row.loadedQuantity);
       if (!row.productId) {
         poolValid = false;
-        return { ...row, error: "Select a product" };
+        return { ...row, error: t("selectProduct") };
       }
       if (
         !row.loadedQuantity ||
@@ -166,14 +169,14 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
         !Number.isInteger(qty)
       ) {
         poolValid = false;
-        return { ...row, error: "Loaded quantity must be a whole number ≥ 1" };
+        return { ...row, error: t("loadedQtyInvalid") };
       }
       const product = products.find((p) => p.id === row.productId);
       if (product && qty > product.stockQuantity) {
         poolValid = false;
         return {
           ...row,
-          error: `Only ${product.stockQuantity} available in stock`,
+          error: t("loadedQtyInvalid"),
         };
       }
       return { ...row, error: undefined };
@@ -181,14 +184,14 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
     setPoolRows(nextRows);
 
     if (!poolValid) {
-      errors.pool = "Fix product pool rows before submitting";
+      errors.pool = t("fixPool");
     } else if (bags > 0 && poolSum !== bags) {
-      errors.pool = `Sum of loaded quantities (${poolSum}) must equal total bags (${bags})`;
+      errors.pool = t("quantitiesMismatch");
     }
 
     const productIds = nextRows.map((r) => r.productId).filter(Boolean);
     if (new Set(productIds).size !== productIds.length) {
-      errors.pool = "Each product can only appear once in the pool";
+      errors.pool = t("duplicateProduct");
     }
 
     setFieldErrors(errors);
@@ -223,12 +226,12 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
     >
       <fieldset disabled={locked} className="min-w-0 space-y-4">
         <div className="grid gap-2">
-          <Label htmlFor="campaign-name">Name</Label>
+          <Label htmlFor="campaign-name">{t("name")}</Label>
           <Input
             id="campaign-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Little Angel Blind Bag — Aug"
+            placeholder={t("namePlaceholder")}
             aria-invalid={!!fieldErrors.name}
           />
           {fieldErrors.name && (
@@ -237,7 +240,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="campaign-event-date">Event date</Label>
+          <Label htmlFor="campaign-event-date">{t("eventDate")}</Label>
           <Input
             id="campaign-event-date"
             type="date"
@@ -252,7 +255,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-2">
-            <Label htmlFor="campaign-bag-price">Bag price (VND)</Label>
+            <Label htmlFor="campaign-bag-price">{t("bagPrice")}</Label>
             <Input
               id="campaign-bag-price"
               type="number"
@@ -269,7 +272,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="campaign-total-bags">Total bags (N)</Label>
+            <Label htmlFor="campaign-total-bags">{t("totalBags")}</Label>
             <Input
               id="campaign-total-bags"
               type="number"
@@ -289,9 +292,8 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
         <div className="space-y-3">
           <div className="flex items-end justify-between gap-2">
             <div>
-              <Label>Product pool</Label>
+              <Label>{t("productPool")}</Label>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Loaded sum:{" "}
                 <span
                   className={
                     quantitiesMatch
@@ -302,9 +304,6 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
                   {poolSum}
                 </span>
                 {totalBags ? ` / ${totalBags}` : ""}
-                {!quantitiesMatch && totalBags
-                  ? " — must equal total bags"
-                  : ""}
               </p>
             </div>
           </div>
@@ -318,7 +317,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-medium text-muted-foreground">
-                    Product {index + 1}
+                    {tCommon("fields.product")} {index + 1}
                   </p>
                   {poolRows.length > 1 && (
                     <Button
@@ -330,7 +329,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
                           prev.filter((r) => r.key !== row.key)
                         )
                       }
-                      aria-label="Remove row"
+                      aria-label={tCommon("actions.removeRow")}
                     >
                       <Trash2Icon />
                     </Button>
@@ -338,7 +337,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label>Product</Label>
+                  <Label>{tCommon("fields.product")}</Label>
                   <Select
                     value={row.productId || undefined}
                     onValueChange={(value) =>
@@ -346,12 +345,12 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
                     }
                   >
                     <SelectTrigger className="w-full min-w-0">
-                      <SelectValue placeholder="Select product" />
+                      <SelectValue placeholder={t("selectProduct")} />
                     </SelectTrigger>
                     <SelectContent>
                       {products.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
-                          {product.name} ({product.stockQuantity} in stock)
+                          {product.name} ({product.stockQuantity})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -359,7 +358,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label>Loaded quantity</Label>
+                  <Label>{t("loadedQuantity")}</Label>
                   <Input
                     type="number"
                     min={1}
@@ -372,7 +371,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
                   />
                   {selected && (
                     <p className="text-xs text-muted-foreground">
-                      Available stock: {selected.stockQuantity}
+                      {selected.stockQuantity}
                     </p>
                   )}
                 </div>
@@ -390,7 +389,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
             onClick={() => setPoolRows((prev) => [...prev, newPoolRow()])}
           >
             <PlusIcon />
-            Add product
+            {tCommon("actions.addProduct")}
           </Button>
 
           {fieldErrors.pool && (
@@ -415,17 +414,17 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
           resetForm();
         }}
       >
-        Cancel
+        {tCommon("actions.cancel")}
       </Button>
       <PendingButton
         type="button"
         pending={createMutation.isPending}
         success={succeeded}
-        pendingLabel="Creating…"
+        pendingLabel={tCommon("pending.creating")}
         disabled={!quantitiesMatch}
         onClick={submit}
       >
-        Create Campaign
+        {t("createButton")}
       </PendingButton>
     </div>
   );
@@ -446,11 +445,8 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
           className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
         >
           <SheetHeader>
-            <SheetTitle>Create Campaign</SheetTitle>
-            <SheetDescription>
-              Load a product pool. Total bags must equal the sum of loaded
-              quantities.
-            </SheetDescription>
+            <SheetTitle>{t("title")}</SheetTitle>
+            <SheetDescription>{t("description")}</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
@@ -463,11 +459,8 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Create Campaign</DialogTitle>
-          <DialogDescription>
-            Load a product pool. Total bags must equal the sum of loaded
-            quantities.
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         {formBody}
         <DialogFooter>{footer}</DialogFooter>

@@ -13,69 +13,79 @@ import {
 export type NavSectionId = "dashboard" | "operations" | "management";
 export type MobilePlacement = "primary" | "more";
 
+export type NavLabelKey =
+  | "dashboard"
+  | "dashboardShort"
+  | "campaigns"
+  | "customers"
+  | "orders"
+  | "products"
+  | "alerts"
+  | "reports";
+
 export type NavItem = {
   href: string;
-  label: string;
-  shortLabel: string;
+  labelKey: NavLabelKey;
+  shortLabelKey: NavLabelKey;
   icon: LucideIcon;
   section: NavSectionId;
   mobile: MobilePlacement;
 };
 
-/** Single source of truth for app routes, labels, icons, and grouping. */
+/** Single source of truth for app routes, icons, and grouping. Labels via next-intl `nav.*`. */
 export const NAV_ITEMS: readonly NavItem[] = [
   {
     href: "/",
-    label: "Dashboard",
-    shortLabel: "Home",
+    labelKey: "dashboard",
+    shortLabelKey: "dashboardShort",
     icon: LayoutDashboardIcon,
     section: "dashboard",
     mobile: "more",
   },
   {
     href: "/campaigns",
-    label: "Campaigns",
-    shortLabel: "Campaigns",
+    labelKey: "campaigns",
+    shortLabelKey: "campaigns",
     icon: MegaphoneIcon,
     section: "operations",
     mobile: "primary",
   },
   {
     href: "/customers",
-    label: "Customers",
-    shortLabel: "Customers",
+    labelKey: "customers",
+    shortLabelKey: "customers",
     icon: UsersIcon,
     section: "operations",
     mobile: "primary",
   },
   {
     href: "/orders",
-    label: "Orders",
-    shortLabel: "Orders",
+    labelKey: "orders",
+    shortLabelKey: "orders",
     icon: ShoppingBagIcon,
     section: "operations",
     mobile: "primary",
   },
   {
     href: "/products",
-    label: "Products",
-    shortLabel: "Products",
+    labelKey: "products",
+    shortLabelKey: "products",
     icon: PackageIcon,
     section: "management",
     mobile: "more",
   },
   {
     href: "/alerts",
-    label: "Alerts",
-    shortLabel: "Alerts",
+    labelKey: "alerts",
+    shortLabelKey: "alerts",
     icon: BellIcon,
     section: "management",
     mobile: "more",
   },
   {
     href: "/reports",
-    label: "Reports",
-    shortLabel: "Reports",
+    labelKey: "reports",
+    shortLabelKey: "reports",
     icon: BarChart3Icon,
     section: "management",
     mobile: "more",
@@ -84,11 +94,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
 
 const SECTION_META: ReadonlyArray<{
   id: NavSectionId;
-  label: string | null;
+  labelKey: "operations" | "management" | null;
 }> = [
-  { id: "dashboard", label: null },
-  { id: "operations", label: "Operations" },
-  { id: "management", label: "Management" },
+  { id: "dashboard", labelKey: null },
+  { id: "operations", labelKey: "operations" },
+  { id: "management", labelKey: "management" },
 ];
 
 export function getNavSections() {

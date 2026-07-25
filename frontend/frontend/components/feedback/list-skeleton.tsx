@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -21,8 +24,10 @@ export function ListSkeleton({
   rows = 5,
   cards = 3,
 }: Props) {
+  const t = useTranslations("common.a11y");
+
   return (
-    <div className="space-y-3" aria-busy="true" aria-label="Loading">
+    <div className="space-y-3" aria-busy="true" aria-label={t("loading")}>
       <div className="grid gap-3 md:hidden">
         {Array.from({ length: cards }, (_, i) => (
           <Card key={i}>

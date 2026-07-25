@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { use, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
@@ -19,14 +20,15 @@ import { CancelTokenDialog } from "@/components/tokens/cancel-token-dialog";
 import { useFlashIds } from "@/hooks/use-flash-ids";
 import { customerApi, customerKeys } from "@/src/lib/api/customer";
 import { vnd } from "@/src/lib/format";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function CustomerDetailSkeleton() {
+  const tA11y = useTranslations("common.a11y");
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Loading">
+    <div className="space-y-6" aria-busy="true" aria-label={tA11y("loading")}>
       <Card>
         <CardHeader className="space-y-3">
           <Skeleton className="h-7 w-48" />
@@ -62,6 +64,9 @@ export default function CustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const t = useTranslations("customers");
+  const tDetail = useTranslations("customers.detail");
+  const tCommon = useTranslations("common");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [exchangeOpen, setExchangeOpen] = useState(false);
   const [cashOutOpen, setCashOutOpen] = useState(false);
@@ -83,7 +88,7 @@ export default function CustomerDetailPage({
 
   const selectedTokens = useMemo(() => {
     if (!customer) return [];
-    return customer.holdingTokens.filter((t) => selectedIds.has(t.id));
+    return customer.holdingTokens.filter((tok) => selectedIds.has(tok.id));
   }, [customer, selectedIds]);
 
   const cancelToken =
@@ -107,14 +112,14 @@ export default function CustomerDetailPage({
 
   return (
     <AppShell
-      title={customer?.name ?? "Customer"}
+      title={customer?.name ?? t("detailFallbackTitle")}
       actions={
         <Link
           href="/customers"
           className="inline-flex h-7 items-center gap-1 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ArrowLeftIcon className="size-4" />
-          Back
+          {tCommon("actions.back")}
         </Link>
       }
     >
@@ -126,7 +131,7 @@ export default function CustomerDetailPage({
         {isError && (
           <QueryErrorState
             message={
-              error instanceof Error ? error.message : "Failed to load customer"
+              error instanceof Error ? error.message : tDetail("loadError")
             }
             onRetry={() => refetch()}
           />
@@ -139,12 +144,12 @@ export default function CustomerDetailPage({
                 <div className="min-w-0 space-y-2">
                   <CardTitle className="text-xl">{customer.name}</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    {customer.phone || "No phone"}
+                    {customer.phone || tCommon("fallback.noPhone")}
                     {customer.address ? ` · ${customer.address}` : ""}
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-medium text-muted-foreground">
-                      Action status
+                      {tDetail("actionStatus")}
                     </span>
                     <CustomerActionStatusSelect
                       customerId={customer.id}
@@ -153,18 +158,22 @@ export default function CustomerDetailPage({
                   </div>
                 </div>
                 {customer.overdueHoldingCount > 0 && (
-                  <Badge variant="destructive">
-                    {customer.overdueHoldingCount} overdue
-                  </Badge>
+                  <StatusBadge variant="danger">
+                    {tDetail("overdueCount", {
+                      count: customer.overdueHoldingCount,
+                    })}
+                  </StatusBadge>
                 )}
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">Prepaid balance</p>
+                <p className="text-sm text-muted-foreground">
+                  {tDetail("prepaidBalance")}
+                </p>
                 <p className="text-3xl font-semibold tabular-nums tracking-tight">
                   {vnd.format(customer.prepaidBalance)}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Sum of holding token values
+                  {tDetail("prepaidHint")}
                 </p>
               </CardContent>
             </Card>
@@ -180,7 +189,7 @@ export default function CustomerDetailPage({
             <section className="space-y-3">
               <div className="flex items-end justify-between gap-2">
                 <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
-                  Holding tokens
+                  {tDetail("holdingTokens")}
                 </h2>
                 {customer.holdingTokens.length > 0 && (
                   <Button
@@ -191,14 +200,14 @@ export default function CustomerDetailPage({
                         setSelectedIds(new Set());
                       } else {
                         setSelectedIds(
-                          new Set(customer.holdingTokens.map((t) => t.id))
+                          new Set(customer.holdingTokens.map((tok) => tok.id))
                         );
                       }
                     }}
                   >
                     {selectedIds.size === customer.holdingTokens.length
-                      ? "Clear"
-                      : "Select all"}
+                      ? tCommon("actions.clear")
+                      : tCommon("actions.selectAll")}
                   </Button>
                 )}
               </div>
@@ -206,7 +215,7 @@ export default function CustomerDetailPage({
               {customer.holdingTokens.length === 0 ? (
                 <Card className="border-border/70 bg-muted/20">
                   <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                    This customer has no items currently held
+                    {tDetail("holdingEmpty")}
                   </CardContent>
                 </Card>
               ) : (
@@ -225,12 +234,12 @@ export default function CustomerDetailPage({
 
             <section className="space-y-3">
               <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
-                History
+                {tDetail("history")}
               </h2>
               {customer.history.length === 0 ? (
                 <Card className="border-border/70 bg-muted/20">
                   <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                    No processed tokens yet.
+                    {tDetail("historyEmpty")}
                   </CardContent>
                 </Card>
               ) : (

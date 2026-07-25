@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import type { CustomerOrderSummary } from "@/src/lib/api/customer";
 import {
   orderApi,
   orderKeys,
-  SHIPPING_LABEL,
   SHIPPING_NEXT,
   type ShippingStatus,
 } from "@/src/lib/api/order";
 import { customerKeys } from "@/src/lib/api/customer";
+import { shippingStatusLabel } from "@/src/lib/i18n-labels";
 import { formatDateTime, vnd } from "@/src/lib/format";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,16 +35,6 @@ type Props = {
   orders: CustomerOrderSummary[];
 };
 
-function statusVariant(status: string) {
-  if (status === "COMPLETED") return "secondary" as const;
-  if (status === "SHIPPED") return "default" as const;
-  return "outline" as const;
-}
-
-function shippingLabel(status: string) {
-  return SHIPPING_LABEL[status as ShippingStatus] ?? status;
-}
-
 function OrderShippingControls({
   customerId,
   order,
@@ -51,6 +42,9 @@ function OrderShippingControls({
   customerId: string;
   order: CustomerOrderSummary;
 }) {
+  const t = useTranslations("customers.orderStatus");
+  const tStatus = useTranslations("common.status");
+  const tCommon = useTranslations("common");
   const queryClient = useQueryClient();
   const [carrierOrderId, setCarrierOrderId] = useState(
     order.carrierOrderId ?? ""
@@ -81,14 +75,14 @@ function OrderShippingControls({
     mutation.error instanceof ApiError
       ? mutation.error.message
       : mutation.isError
-        ? "Failed to update shipping"
+        ? t("saveFailed")
         : null;
 
   return (
     <div className="space-y-3">
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="grid gap-1.5">
-          <Label className="text-xs">Shipping status</Label>
+          <Label className="text-xs">{t("shippingStatus")}</Label>
           <Select
             value={status}
             onValueChange={(value) => {
@@ -106,20 +100,20 @@ function OrderShippingControls({
             <SelectContent>
               {options.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {SHIPPING_LABEL[s]}
+                  {shippingStatusLabel(tStatus, s)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="grid gap-1.5">
-          <Label className="text-xs">Carrier order ID</Label>
+          <Label className="text-xs">{t("carrierOrderId")}</Label>
           <div className="flex gap-2">
             <Input
               className="h-8"
               value={carrierOrderId}
               onChange={(e) => setCarrierOrderId(e.target.value)}
-              placeholder="Not set yet"
+              placeholder={t("notSetYet")}
               disabled={locked}
             />
             <PendingButton
@@ -127,7 +121,7 @@ function OrderShippingControls({
               size="sm"
               variant="outline"
               pending={mutation.isPending}
-              pendingLabel="Saving…"
+              pendingLabel={tCommon("pending.saving")}
               disabled={
                 carrierOrderId.trim() === (order.carrierOrderId ?? "")
               }
@@ -138,7 +132,7 @@ function OrderShippingControls({
                 })
               }
             >
-              Save
+              {t("save")}
             </PendingButton>
           </div>
         </div>
@@ -155,6 +149,7 @@ export function CustomerOrderStatusSection({
   latestOrder,
   orders,
 }: Props) {
+  const t = useTranslations("customers.orderStatus");
   const [showAll, setShowAll] = useState(false);
   const pastOrders = orders.slice(1);
 
@@ -163,26 +158,27 @@ export function CustomerOrderStatusSection({
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <CardTitle className="text-base">Order shipping status</CardTitle>
+            <CardTitle className="text-base">{t("title")}</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              Most recent order · {formatDateTime(latestOrder.createdAt)}
+              {formatDateTime(latestOrder.createdAt)}
             </p>
           </div>
-          <Badge variant={statusVariant(latestOrder.shippingStatus)}>
-            {shippingLabel(latestOrder.shippingStatus)}
-          </Badge>
+          <StatusBadge
+            type="shipping"
+            status={latestOrder.shippingStatus as ShippingStatus}
+          />
         </div>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <p className="text-muted-foreground">Revenue</p>
+            <p className="text-muted-foreground">{t("revenue")}</p>
             <p className="font-medium tabular-nums">
               {vnd.format(latestOrder.recognizedRevenue)}
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground">Items</p>
+            <p className="text-muted-foreground">{t("items")}</p>
             <p className="font-medium tabular-nums">{latestOrder.tokenCount}</p>
           </div>
         </div>
@@ -194,7 +190,7 @@ export function CustomerOrderStatusSection({
             href={`/orders?highlight=${latestOrder.id}`}
             className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
           >
-            Open in Orders
+            {t("openInOrders")}
           </Link>
           {pastOrders.length > 0 && (
             <Button
@@ -204,8 +200,8 @@ export function CustomerOrderStatusSection({
               onClick={() => setShowAll((v) => !v)}
             >
               {showAll
-                ? "Hide past orders"
-                : `Show ${pastOrders.length} past order${pastOrders.length === 1 ? "" : "s"}`}
+                ? t("hidePast")
+                : t("showPast", { count: pastOrders.length })}
             </Button>
           )}
         </div>
@@ -223,17 +219,19 @@ export function CustomerOrderStatusSection({
                       {formatDateTime(order.createdAt)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {order.tokenCount} item
-                      {order.tokenCount === 1 ? "" : "s"} ·{" "}
+                      {order.tokenCount} {t("items").toLowerCase()} ·{" "}
                       {vnd.format(order.recognizedRevenue)}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Carrier ID: {order.carrierOrderId || "Not set yet"}
+                      {t("carrierIdLabel", {
+                        id: order.carrierOrderId || t("notSetYet"),
+                      })}
                     </p>
                   </div>
-                  <Badge variant={statusVariant(order.shippingStatus)}>
-                    {shippingLabel(order.shippingStatus)}
-                  </Badge>
+                  <StatusBadge
+                    type="shipping"
+                    status={order.shippingStatus as ShippingStatus}
+                  />
                 </div>
                 <div className="mt-3">
                   <OrderShippingControls

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -20,6 +21,7 @@ export function CustomerTokenActionBar({
   onCreateOrder,
   onCancel,
 }: Props) {
+  const t = useTranslations("customers.actionBar");
   const visible = selectedCount >= 1;
 
   return (
@@ -38,12 +40,12 @@ export function CustomerTokenActionBar({
         <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
           <p className="text-sm font-medium">
             {visible
-              ? `${selectedCount} token${selectedCount === 1 ? "" : "s"} selected`
-              : "Select tokens to take action"}
+              ? t("selected", { count: selectedCount })
+              : t("selectPrompt")}
           </p>
           {visible && selectedCount > 1 && (
             <p className="text-xs text-muted-foreground">
-              Cancel requires 1 token
+              {t("cancelRequiresOne")}
             </p>
           )}
         </div>
@@ -55,7 +57,7 @@ export function CustomerTokenActionBar({
             className="w-full"
             tabIndex={visible ? undefined : -1}
           >
-            Item Exchange
+            {t("itemExchange")}
           </Button>
           <Button
             size="sm"
@@ -65,7 +67,7 @@ export function CustomerTokenActionBar({
             className="w-full"
             tabIndex={visible ? undefined : -1}
           >
-            Cash Out
+            {t("cashOut")}
           </Button>
           <Button
             size="sm"
@@ -75,7 +77,7 @@ export function CustomerTokenActionBar({
             className="w-full"
             tabIndex={visible ? undefined : -1}
           >
-            Create Order
+            {t("createOrder")}
           </Button>
           <Button
             size="sm"
@@ -85,7 +87,7 @@ export function CustomerTokenActionBar({
             className="w-full"
             tabIndex={visible ? undefined : -1}
           >
-            Cancel
+            {t("cancel")}
           </Button>
         </div>
       </div>

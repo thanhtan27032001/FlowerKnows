@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import { productApi, productKeys } from "@/src/lib/api/product";
@@ -43,6 +44,8 @@ type Props = {
 };
 
 export function CreateProductForm({ open, onOpenChange }: Props) {
+  const t = useTranslations("products.create");
+  const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { succeeded, runSuccess, reset } = useSuccessClose(250);
@@ -77,7 +80,7 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
       });
     },
     onError: (err: unknown) => {
-      setFormError(err instanceof ApiError ? err.message : "Failed to create product");
+      setFormError(err instanceof ApiError ? err.message : t("failed"));
     },
   });
 
@@ -86,14 +89,14 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
   const validate = () => {
     const errors: Record<string, string> = {};
     const trimmed = name.trim();
-    if (!trimmed) errors.name = "Name is required";
+    if (!trimmed) errors.name = t("nameRequired");
     const price = Number(listPrice);
     if (!listPrice || Number.isNaN(price) || price <= 0) {
-      errors.listPrice = "List price must be a positive number";
+      errors.listPrice = t("listPriceInvalid");
     }
     const stock = Number(stockQuantity);
     if (stockQuantity === "" || Number.isNaN(stock) || stock < 0 || !Number.isInteger(stock)) {
-      errors.stockQuantity = "Initial stock must be a whole number ≥ 0";
+      errors.stockQuantity = t("stockInvalid");
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0
@@ -115,7 +118,7 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
           return;
         }
       } catch (err) {
-        setFormError(err instanceof ApiError ? err.message : "Could not check product name");
+        setFormError(err instanceof ApiError ? err.message : t("nameCheckFailed"));
         return;
       }
     }
@@ -136,12 +139,12 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
     >
       <fieldset disabled={locked} className="min-w-0 space-y-4">
         <div className="grid gap-2">
-          <Label htmlFor="product-name">Name</Label>
+          <Label htmlFor="product-name">{t("name")}</Label>
           <Input
             id="product-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Little Angel Blush"
+            placeholder={t("namePlaceholder")}
             aria-invalid={!!fieldErrors.name}
           />
           {fieldErrors.name && (
@@ -150,7 +153,7 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="product-price">List price (VND)</Label>
+          <Label htmlFor="product-price">{t("listPrice")}</Label>
           <Input
             id="product-price"
             type="number"
@@ -167,7 +170,7 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="product-stock">Initial stock (optional)</Label>
+          <Label htmlFor="product-stock">{t("initialStock")}</Label>
           <Input
             id="product-stock"
             type="number"
@@ -199,16 +202,16 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
           resetForm();
         }}
       >
-        Cancel
+        {tCommon("actions.cancel")}
       </Button>
       <PendingButton
         type="button"
         pending={createMutation.isPending}
         success={succeeded}
-        pendingLabel="Creating…"
+        pendingLabel={tCommon("pending.creating")}
         onClick={() => void submit(false)}
       >
-        Create Product
+        {t("submit")}
       </PendingButton>
     </div>
   );
@@ -227,10 +230,8 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
         <Sheet open={open} onOpenChange={handleOpenChange}>
           <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-2xl">
             <SheetHeader>
-              <SheetTitle>Create Product</SheetTitle>
-              <SheetDescription>
-                Add a product for campaigns, exchanges, and stock-in.
-              </SheetDescription>
+              <SheetTitle>{t("title")}</SheetTitle>
+              <SheetDescription>{t("description")}</SheetDescription>
             </SheetHeader>
             <div className="px-4 pb-2">{formBody}</div>
             <SheetFooter>{footer}</SheetFooter>
@@ -240,10 +241,8 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
         <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Create Product</DialogTitle>
-              <DialogDescription>
-                Add a product for campaigns, exchanges, and stock-in.
-              </DialogDescription>
+              <DialogTitle>{t("title")}</DialogTitle>
+              <DialogDescription>{t("description")}</DialogDescription>
             </DialogHeader>
             {formBody}
             <DialogFooter>{footer}</DialogFooter>
@@ -254,11 +253,9 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
       <AlertDialog open={duplicateOpen} onOpenChange={setDuplicateOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Duplicate product name</AlertDialogTitle>
+            <AlertDialogTitle>{t("duplicateTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              A product named &ldquo;{pendingPayload?.name}&rdquo; already exists.
-              Creating another with the same name can skew reports. Create anyway,
-              or cancel and select the existing product instead.
+              {t("duplicateDescription", { name: pendingPayload?.name ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -268,7 +265,7 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
                 setPendingPayload(null);
               }}
             >
-              Cancel
+              {tCommon("actions.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
@@ -276,7 +273,7 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
                 void submit(true);
               }}
             >
-              Create anyway
+              {t("createAnyway")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

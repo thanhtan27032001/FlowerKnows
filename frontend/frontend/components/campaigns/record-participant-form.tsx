@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import {
@@ -52,6 +53,8 @@ export function RecordParticipantForm({
   onOpenChange,
   campaign,
 }: Props) {
+  const t = useTranslations("campaigns.recordParticipant");
+  const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { succeeded, runSuccess, reset } = useSuccessClose(250);
@@ -107,7 +110,7 @@ export function RecordParticipantForm({
     },
     onError: (err: unknown) => {
       setFormError(
-        err instanceof ApiError ? err.message : "Failed to record participant"
+        err instanceof ApiError ? err.message : t("failed")
       );
     },
   });
@@ -123,18 +126,18 @@ export function RecordParticipantForm({
       !bagsPurchased ||
       Number.isNaN(bags) ||
       bags < 1 ||
-      !Number.isInteger(bags)
+      !Number.isInteger(bags) ||
+      bags > bagsRemaining
     ) {
-      errors.bagsPurchased = "Bags purchased must be a whole number ≥ 1";
-    } else if (bags > bagsRemaining) {
-      errors.bagsPurchased = `Only ${bagsRemaining} bags remaining`;
+      errors.bagsPurchased =
+        bagsRemaining <= 0 ? t("noBagsRemaining") : t("bagsInvalid");
     }
 
     if (mode === "existing") {
-      if (!customerId) errors.customerId = "Select a customer";
+      if (!customerId) errors.customerId = t("customerRequired");
     } else {
-      if (!newName.trim()) errors.newName = "Name is required";
-      if (!newPhone.trim()) errors.newPhone = "Phone is required";
+      if (!newName.trim()) errors.newName = t("nameRequired");
+      if (!newPhone.trim()) errors.newPhone = t("phoneRequired");
     }
 
     setFieldErrors(errors);
@@ -166,7 +169,7 @@ export function RecordParticipantForm({
             setFormError(null);
           }}
         >
-          Existing customer
+          {t("existingCustomer")}
         </Button>
         <Button
           type="button"
@@ -179,24 +182,24 @@ export function RecordParticipantForm({
             setFormError(null);
           }}
         >
-          Create new customer
+          {t("createNewCustomer")}
         </Button>
       </div>
 
       {mode === "existing" ? (
         <div className="grid gap-3">
           <div className="grid gap-2">
-            <Label htmlFor="participant-search">Search customer</Label>
+            <Label htmlFor="participant-search">{t("searchCustomer")}</Label>
             <Input
               id="participant-search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Name or phone"
+              placeholder={t("nameOrPhone")}
             />
           </div>
 
           <div className="grid gap-2">
-            <Label>Customer</Label>
+            <Label>{t("customer")}</Label>
             <Select
               value={customerId || undefined}
               onValueChange={(value) => {
@@ -207,7 +210,7 @@ export function RecordParticipantForm({
               <SelectTrigger className="w-full min-w-0">
                 <SelectValue
                   placeholder={
-                    customersLoading ? "Loading…" : "Select customer"
+                    customersLoading ? t("loading") : t("selectCustomer")
                   }
                 />
               </SelectTrigger>
@@ -227,21 +230,18 @@ export function RecordParticipantForm({
 
           {existingParticipant && (
             <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
-              This customer already participated ({existingParticipant.totalBagsPurchased}{" "}
-              bags). New bags will accumulate on the same row — a new participant
-              will not be created.
+              {existingParticipant.totalBagsPurchased} · {t("bagsPurchased")}
             </p>
           )}
         </div>
       ) : (
         <div className="grid gap-3">
           <div className="grid gap-2">
-            <Label htmlFor="new-customer-name">Name</Label>
+            <Label htmlFor="new-customer-name">{t("name")}</Label>
             <Input
               id="new-customer-name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Customer name"
               aria-invalid={!!fieldErrors.newName}
             />
             {fieldErrors.newName && (
@@ -249,12 +249,11 @@ export function RecordParticipantForm({
             )}
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="new-customer-phone">Phone</Label>
+            <Label htmlFor="new-customer-phone">{t("phone")}</Label>
             <Input
               id="new-customer-phone"
               value={newPhone}
               onChange={(e) => setNewPhone(e.target.value)}
-              placeholder="Phone number"
               aria-invalid={!!fieldErrors.newPhone}
             />
             {fieldErrors.newPhone && (
@@ -265,7 +264,7 @@ export function RecordParticipantForm({
       )}
 
       <div className="grid gap-2">
-        <Label htmlFor="bags-purchased">Bags purchased</Label>
+        <Label htmlFor="bags-purchased">{t("bagsPurchased")}</Label>
         <Input
           id="bags-purchased"
           type="number"
@@ -277,7 +276,7 @@ export function RecordParticipantForm({
           aria-invalid={!!fieldErrors.bagsPurchased}
         />
         <p className="text-xs text-muted-foreground">
-          {bagsRemaining} bags remaining in this campaign
+          {bagsRemaining}
         </p>
         {fieldErrors.bagsPurchased && (
           <p className="text-xs text-destructive">{fieldErrors.bagsPurchased}</p>
@@ -300,17 +299,17 @@ export function RecordParticipantForm({
           resetForm();
         }}
       >
-        Cancel
+        {tCommon("actions.cancel")}
       </Button>
       <PendingButton
         type="button"
         pending={mutation.isPending}
         success={succeeded}
-        pendingLabel="Saving…"
+        pendingLabel={tCommon("pending.saving")}
         disabled={bagsRemaining <= 0}
         onClick={validateAndSubmit}
       >
-        Record Participant
+        {t("submit")}
       </PendingButton>
     </div>
   );
@@ -331,10 +330,8 @@ export function RecordParticipantForm({
           className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
         >
           <SheetHeader>
-            <SheetTitle>Record Participant</SheetTitle>
-            <SheetDescription>
-              Record bags purchased for a customer in this campaign.
-            </SheetDescription>
+            <SheetTitle>{t("title")}</SheetTitle>
+            <SheetDescription>{t("description")}</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
@@ -347,10 +344,8 @@ export function RecordParticipantForm({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Record Participant</DialogTitle>
-          <DialogDescription>
-            Record bags purchased for a customer in this campaign.
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         {formBody}
         <DialogFooter>{footer}</DialogFooter>

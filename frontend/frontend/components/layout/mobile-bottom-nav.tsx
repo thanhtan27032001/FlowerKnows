@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import {
   getMobileMoreItems,
@@ -19,6 +20,8 @@ import {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const t = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const [moreOpen, setMoreOpen] = useState(false);
 
   const primaryItems = getMobilePrimaryItems();
@@ -31,7 +34,7 @@ export function MobileBottomNav() {
       <nav
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/95 backdrop-blur-sm lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-        aria-label="Primary"
+        aria-label={tCommon("a11y.primaryNav")}
       >
         <ul className="grid h-16 grid-cols-4">
           {primaryItems.map((item) => {
@@ -54,7 +57,7 @@ export function MobileBottomNav() {
                     className={cn("size-5", active && "stroke-[2.25px]")}
                     aria-hidden
                   />
-                  <span className="truncate">{item.shortLabel}</span>
+                  <span className="truncate">{t(item.shortLabelKey)}</span>
                 </Link>
               </li>
             );
@@ -80,7 +83,7 @@ export function MobileBottomNav() {
                 )}
                 aria-hidden
               />
-              <span className="truncate">More</span>
+              <span className="truncate">{t("more")}</span>
             </button>
           </li>
         </ul>
@@ -92,7 +95,7 @@ export function MobileBottomNav() {
           className="gap-0 rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden"
         >
           <SheetHeader className="pb-2">
-            <SheetTitle>More</SheetTitle>
+            <SheetTitle>{t("more")}</SheetTitle>
           </SheetHeader>
           <ul className="grid gap-1 px-2 pb-2">
             {moreItems.map((item) => {
@@ -113,7 +116,7 @@ export function MobileBottomNav() {
                     aria-current={active ? "page" : undefined}
                   >
                     <Icon className="size-5 shrink-0" aria-hidden />
-                    <span>{item.label}</span>
+                    <span>{t(item.labelKey)}</span>
                   </Link>
                 </li>
               );

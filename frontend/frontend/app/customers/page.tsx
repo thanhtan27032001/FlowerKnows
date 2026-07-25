@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { CreateCustomerForm } from "@/components/customers/create-customer-form";
@@ -9,6 +10,7 @@ import type { CustomerActionStatus } from "@/src/lib/api/customer";
 import type { ShippingStatus } from "@/src/lib/api/order";
 
 export default function CustomersPage() {
+  const t = useTranslations("customers");
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [actionStatus, setActionStatus] = useState<CustomerActionStatus | "">(
@@ -18,7 +20,7 @@ export default function CustomersPage() {
   const [createOpen, setCreateOpen] = useState(false);
 
   return (
-    <AppShell title="Customers">
+    <AppShell title={t("title")}>
       <CustomerSearchList
         query={query}
         onQueryChange={setQuery}

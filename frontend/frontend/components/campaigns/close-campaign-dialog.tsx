@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import { campaignApi, campaignKeys } from "@/src/lib/api/campaign";
@@ -29,6 +30,8 @@ export function CloseCampaignDialog({
   onOpenChange,
   onClosed,
 }: Props) {
+  const t = useTranslations("campaigns.close");
+  const tCommon = useTranslations("common");
   const queryClient = useQueryClient();
   const { succeeded, runSuccess, reset } = useSuccessClose(250);
 
@@ -61,7 +64,7 @@ export function CloseCampaignDialog({
     closeMutation.error instanceof ApiError
       ? closeMutation.error.message
       : closeMutation.isError
-        ? "Failed to close campaign"
+        ? t("failed")
         : null;
 
   const handleOpenChange = (next: boolean) => {
@@ -73,15 +76,15 @@ export function CloseCampaignDialog({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Close Campaign</AlertDialogTitle>
+          <AlertDialogTitle>{t("title")}</AlertDialogTitle>
           <AlertDialogDescription className="space-y-3 text-left">
-            {isLoading && <span>Loading return preview…</span>}
+            {isLoading && <span>{t("loadingPreview")}</span>}
 
             {isError && (
               <span className="text-destructive">
                 {error instanceof Error
                   ? error.message
-                  : "Failed to load close preview"}
+                  : t("previewError")}
               </span>
             )}
 
@@ -104,7 +107,7 @@ export function CloseCampaignDialog({
                   </ul>
                 ) : (
                   <span className="mt-1 block text-sm text-muted-foreground">
-                    Nothing will be returned to stock.
+                    {t("nothingReturned")}
                   </span>
                 )}
               </>
@@ -116,18 +119,20 @@ export function CloseCampaignDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={locked}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={locked}>
+            {tCommon("actions.cancel")}
+          </AlertDialogCancel>
           <PendingButton
             type="button"
             pending={closeMutation.isPending}
             success={succeeded}
-            pendingLabel="Closing…"
+            pendingLabel={tCommon("pending.closing")}
             disabled={isLoading || isError || !preview}
             onClick={() => {
               closeMutation.mutate();
             }}
           >
-            Confirm close
+            {t("confirm")}
           </PendingButton>
         </AlertDialogFooter>
       </AlertDialogContent>

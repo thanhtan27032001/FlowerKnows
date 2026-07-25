@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { ApiError } from "@/src/lib/api/client";
@@ -73,6 +74,8 @@ export function StockInForm({
   defaultProductId,
   onSuccess,
 }: Props) {
+  const t = useTranslations("products.stockIn");
+  const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<Row[]>([newRow(defaultProductId ?? "")]);
@@ -102,7 +105,7 @@ export function StockInForm({
       onSuccess?.(result.products);
     },
     onError: (err: unknown) => {
-      setFormError(err instanceof ApiError ? err.message : "Stock in failed");
+      setFormError(err instanceof ApiError ? err.message : t("failed"));
     },
   });
 
@@ -123,7 +126,7 @@ export function StockInForm({
       const cost = Number(row.costPrice);
       if (!row.productId) {
         valid = false;
-        return { ...row, error: "Select a product" };
+        return { ...row, error: t("selectProduct") };
       }
       if (
         !row.quantity ||
@@ -132,7 +135,7 @@ export function StockInForm({
         !Number.isInteger(qty)
       ) {
         valid = false;
-        return { ...row, error: "Quantity must be greater than 0" };
+        return { ...row, error: t("quantityInvalid") };
       }
       if (
         row.costPrice.trim() === "" ||
@@ -140,7 +143,7 @@ export function StockInForm({
         cost <= 0
       ) {
         valid = false;
-        return { ...row, error: "Cost price must be greater than 0" };
+        return { ...row, error: t("costInvalid") };
       }
       return { ...row, error: undefined };
     });
@@ -165,10 +168,8 @@ export function StockInForm({
   const formBody = successSummary ? (
     <div className="fk-page-fade grid gap-4">
       <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-3 text-sm text-emerald-950">
-        <p className="font-medium">Stock in recorded</p>
-        <p className="mt-1 text-muted-foreground">
-          Updated average cost prices:
-        </p>
+        <p className="font-medium">{t("successTitle")}</p>
+        <p className="mt-1 text-muted-foreground">{t("updatedAvg")}</p>
         <ul className="mt-2 space-y-1.5">
           {successSummary.map((product) => (
             <li
@@ -178,10 +179,14 @@ export function StockInForm({
               <span className="min-w-0 truncate font-medium">{product.name}</span>
               <span className="shrink-0 text-right tabular-nums">
                 <span className="block text-xs text-muted-foreground">
-                  Stock {product.stockQuantity}
+                  {t("stock")} {product.stockQuantity}
                 </span>
                 <span className="block">
-                  Avg cost {formatCostPrice(product.averageCostPrice)}
+                  {t("avgCost")}{" "}
+                  {formatCostPrice(
+                    product.averageCostPrice,
+                    tCommon("format.notSet")
+                  )}
                 </span>
               </span>
             </li>
@@ -198,7 +203,7 @@ export function StockInForm({
         >
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-medium text-muted-foreground">
-              Row {index + 1}
+              {index + 1}
             </p>
             {rows.length > 1 && (
               <Button
@@ -208,7 +213,7 @@ export function StockInForm({
                 onClick={() =>
                   setRows((prev) => prev.filter((r) => r.key !== row.key))
                 }
-                aria-label="Remove row"
+                aria-label={tCommon("actions.removeRow")}
               >
                 <Trash2Icon />
               </Button>
@@ -216,7 +221,7 @@ export function StockInForm({
           </div>
 
           <div className="grid gap-2">
-            <Label>Product</Label>
+            <Label>{t("product")}</Label>
             <Select
               value={row.productId || undefined}
               onValueChange={(value) =>
@@ -224,7 +229,7 @@ export function StockInForm({
               }
             >
               <SelectTrigger className="w-full min-w-0">
-                <SelectValue placeholder="Select product" />
+                <SelectValue placeholder={tCommon("actions.selectProduct")} />
               </SelectTrigger>
               <SelectContent>
                 {products.map((product) => (
@@ -238,7 +243,7 @@ export function StockInForm({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label>Quantity received</Label>
+              <Label>{t("quantityReceived")}</Label>
               <Input
                 type="number"
                 min={1}
@@ -251,7 +256,7 @@ export function StockInForm({
               />
             </div>
             <div className="grid gap-2">
-              <Label>Cost price (VND)</Label>
+              <Label>{t("costPrice")}</Label>
               <Input
                 type="number"
                 min={1}
@@ -261,18 +266,18 @@ export function StockInForm({
                 onChange={(e) =>
                   updateRow(row.key, { costPrice: e.target.value })
                 }
-                placeholder="Required"
+                placeholder={t("noteRequired")}
                 aria-invalid={!!row.error}
               />
             </div>
           </div>
 
           <div className="grid gap-2">
-            <Label>Note (optional)</Label>
+            <Label>{t("note")}</Label>
             <Input
               value={row.note}
               onChange={(e) => updateRow(row.key, { note: e.target.value })}
-              placeholder="e.g. August batch received"
+              placeholder={t("notePlaceholder")}
             />
           </div>
 
@@ -286,7 +291,7 @@ export function StockInForm({
         onClick={() => setRows((prev) => [...prev, newRow()])}
       >
         <PlusIcon />
-        Add row
+        {tCommon("actions.addRow")}
       </Button>
 
       {formError && <p className="text-sm text-destructive">{formError}</p>}
@@ -296,7 +301,7 @@ export function StockInForm({
   const footer = successSummary ? (
     <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <Button type="button" onClick={close}>
-        Done
+        {tCommon("actions.done")}
       </Button>
     </div>
   ) : (
@@ -307,15 +312,15 @@ export function StockInForm({
         disabled={mutation.isPending}
         onClick={close}
       >
-        Cancel
+        {tCommon("actions.cancel")}
       </Button>
       <PendingButton
         type="button"
         pending={mutation.isPending}
-        pendingLabel="Saving…"
+        pendingLabel={tCommon("pending.saving")}
         onClick={validateAndSubmit}
       >
-        Confirm Stock In
+        {t("confirm")}
       </PendingButton>
     </div>
   );
@@ -328,11 +333,8 @@ export function StockInForm({
           className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
         >
           <SheetHeader>
-            <SheetTitle>Stock In</SheetTitle>
-            <SheetDescription>
-              Record newly received quantities and cost price for one or more
-              products.
-            </SheetDescription>
+            <SheetTitle>{t("title")}</SheetTitle>
+            <SheetDescription>{t("description")}</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
@@ -345,11 +347,8 @@ export function StockInForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Stock In</DialogTitle>
-          <DialogDescription>
-            Record newly received quantities and cost price for one or more
-            products.
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         {formBody}
         <DialogFooter>{footer}</DialogFooter>

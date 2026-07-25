@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { use, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
@@ -12,8 +13,9 @@ import { ParticipantItemsPanel } from "@/components/campaigns/participant-items-
 import { RecordItemForm } from "@/components/campaigns/record-item-form";
 import { RecordParticipantForm } from "@/components/campaigns/record-participant-form";
 import { campaignApi, campaignKeys } from "@/src/lib/api/campaign";
+import { campaignStatusLabel } from "@/src/lib/i18n-labels";
 import { formatDate, formatDateTime, vnd } from "@/src/lib/format";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,8 +29,9 @@ import {
 } from "@/components/ui/table";
 
 function CampaignDetailSkeleton() {
+  const tA11y = useTranslations("common.a11y");
   return (
-    <div className="space-y-5" aria-busy="true" aria-label="Loading">
+    <div className="space-y-5" aria-busy="true" aria-label={tA11y("loading")}>
       <Card>
         <CardHeader className="space-y-2">
           <Skeleton className="h-7 w-56" />
@@ -64,6 +67,10 @@ export default function CampaignDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const t = useTranslations("campaigns");
+  const tDetail = useTranslations("campaigns.detail");
+  const tStatus = useTranslations("common.status");
+  const tCommon = useTranslations("common");
   const [closeOpen, setCloseOpen] = useState(false);
   const [participantOpen, setParticipantOpen] = useState(false);
   const [itemOpen, setItemOpen] = useState(false);
@@ -88,14 +95,14 @@ export default function CampaignDetailPage({
 
   return (
     <AppShell
-      title={campaign?.name ?? "Campaign"}
+      title={campaign?.name ?? t("detailFallbackTitle")}
       actions={
         <Link
           href="/campaigns"
           className="inline-flex h-7 items-center gap-1 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ArrowLeftIcon className="size-4" />
-          Back
+          {tCommon("actions.back")}
         </Link>
       }
     >
@@ -107,7 +114,7 @@ export default function CampaignDetailPage({
         {isError && (
           <QueryErrorState
             message={
-              error instanceof Error ? error.message : "Failed to load campaign"
+              error instanceof Error ? error.message : tDetail("loadError")
             }
             onRetry={() => refetch()}
           />
@@ -120,29 +127,37 @@ export default function CampaignDetailPage({
                 <div>
                   <CardTitle className="text-xl">{campaign.name}</CardTitle>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Created {formatDateTime(campaign.createdAt)}
+                    {tDetail("createdAt", {
+                      date: formatDateTime(campaign.createdAt),
+                    })}
                   </p>
                 </div>
-                <Badge
-                  variant={campaign.status === "OPEN" ? "default" : "secondary"}
+                <StatusBadge
+                  variant={campaign.status === "OPEN" ? "info" : "neutral"}
                 >
-                  {campaign.status === "OPEN" ? "Open" : "Closed"}
-                </Badge>
+                  {campaignStatusLabel(tStatus, campaign.status)}
+                </StatusBadge>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Event date</p>
+                    <p className="text-sm text-muted-foreground">
+                      {tDetail("eventDate")}
+                    </p>
                     <p className="font-medium">{formatDate(campaign.eventDate)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Bag price</p>
+                    <p className="text-sm text-muted-foreground">
+                      {tDetail("bagPrice")}
+                    </p>
                     <p className="font-medium tabular-nums">
                       {vnd.format(campaign.bagPrice)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Bags sold</p>
+                    <p className="text-sm text-muted-foreground">
+                      {tDetail("bagsSold")}
+                    </p>
                     <p className="text-2xl font-semibold tabular-nums tracking-tight">
                       {campaign.bagsSold}
                       <span className="text-base font-normal text-muted-foreground">
@@ -152,7 +167,9 @@ export default function CampaignDetailPage({
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Remaining bags</p>
+                    <p className="text-sm text-muted-foreground">
+                      {tDetail("remainingBags")}
+                    </p>
                     <p className="font-medium tabular-nums">
                       {campaign.totalBags - campaign.bagsSold}
                     </p>
@@ -162,24 +179,24 @@ export default function CampaignDetailPage({
                 {campaign.status === "OPEN" && (
                   <div className="flex flex-wrap gap-2">
                     <Button onClick={() => setParticipantOpen(true)}>
-                      Record Participant
+                      {tDetail("recordParticipant")}
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => openRecordItem()}
                       disabled={campaign.participants.length === 0}
                     >
-                      Record Item
+                      {tDetail("recordItem")}
                     </Button>
                     <Button variant="outline" onClick={() => setCloseOpen(true)}>
-                      Close Campaign
+                      {tDetail("closeCampaign")}
                     </Button>
                   </div>
                 )}
 
                 {campaign.status === "CLOSED" && (
                   <p className="text-sm text-muted-foreground">
-                    This campaign is closed, no further entries allowed.
+                    {tDetail("closedNotice")}
                   </p>
                 )}
               </CardContent>
@@ -187,13 +204,13 @@ export default function CampaignDetailPage({
 
             <section className="space-y-3">
               <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
-                Product pool
+                {tDetail("poolTitle")}
               </h2>
 
               {campaign.pool.length === 0 ? (
                 <Card className="border-border/70 bg-muted/20">
                   <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                    No products in this campaign pool.
+                    {tDetail("poolEmpty")}
                   </CardContent>
                 </Card>
               ) : (
@@ -208,13 +225,17 @@ export default function CampaignDetailPage({
                         </CardHeader>
                         <CardContent className="grid grid-cols-2 gap-2 text-sm">
                           <div>
-                            <p className="text-muted-foreground">Loaded</p>
+                            <p className="text-muted-foreground">
+                              {tDetail("loaded")}
+                            </p>
                             <p className="font-medium tabular-nums">
                               {item.loadedQuantity}
                             </p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Remaining</p>
+                            <p className="text-muted-foreground">
+                              {tDetail("remaining")}
+                            </p>
                             <p className="font-medium tabular-nums">
                               {item.remainingQuantity}
                             </p>
@@ -228,9 +249,9 @@ export default function CampaignDetailPage({
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Product</TableHead>
-                          <TableHead>Loaded</TableHead>
-                          <TableHead>Remaining</TableHead>
+                          <TableHead>{tCommon("fields.product")}</TableHead>
+                          <TableHead>{tDetail("loaded")}</TableHead>
+                          <TableHead>{tDetail("remaining")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -257,7 +278,7 @@ export default function CampaignDetailPage({
             <section className="space-y-3">
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
-                  Participants
+                  {tDetail("participantsTitle")}
                 </h2>
                 {campaign.status === "OPEN" && (
                   <Button
@@ -265,7 +286,7 @@ export default function CampaignDetailPage({
                     variant="outline"
                     onClick={() => setParticipantOpen(true)}
                   >
-                    Record Participant
+                    {tDetail("recordParticipant")}
                   </Button>
                 )}
               </div>
@@ -273,7 +294,7 @@ export default function CampaignDetailPage({
               {campaign.participants.length === 0 ? (
                 <Card className="border-border/70 bg-muted/20">
                   <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                    No participants recorded yet.
+                    {tDetail("participantsEmpty")}
                   </CardContent>
                 </Card>
               ) : (

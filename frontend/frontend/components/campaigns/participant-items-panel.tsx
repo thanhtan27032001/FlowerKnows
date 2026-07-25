@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDownIcon, ExternalLinkIcon } from "lucide-react";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
@@ -17,7 +18,7 @@ import {
 import type { CustomerToken, TokenStatus } from "@/src/lib/api/customer";
 import { formatCostPrice, formatDateTime, vnd } from "@/src/lib/format";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,7 +32,8 @@ type Props = {
 
 function toCustomerToken(
   token: ParticipantToken,
-  participant: ParticipantSummary
+  participant: ParticipantSummary,
+  sourceLabel: string
 ): CustomerToken {
   return {
     id: token.id,
@@ -42,7 +44,7 @@ function toCustomerToken(
     status: token.status as TokenStatus,
     sourceType: "CAMPAIGN",
     sourceId: participant.id,
-    sourceLabel: "Campaign",
+    sourceLabel,
     createdAt: token.createdAt,
     daysHeld: 0,
     overdue: false,
@@ -55,6 +57,8 @@ export function ParticipantItemsPanel({
   canRecordItem,
   onRecordItem,
 }: Props) {
+  const t = useTranslations("campaigns.participantPanel");
+  const tCommon = useTranslations("common");
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -70,15 +74,16 @@ export function ParticipantItemsPanel({
 
   const tokens = tokensQuery.data ?? [];
   const holdingTokens = useMemo(
-    () => tokens.filter((t) => t.actionable),
+    () => tokens.filter((tok) => tok.actionable),
     [tokens]
   );
+  const sourceCampaignLabel = t("sourceCampaign");
   const selectedTokens = useMemo(
     () =>
       holdingTokens
-        .filter((t) => selectedIds.has(t.id))
-        .map((t) => toCustomerToken(t, participant)),
-    [holdingTokens, selectedIds, participant]
+        .filter((tok) => selectedIds.has(tok.id))
+        .map((tok) => toCustomerToken(tok, participant, sourceCampaignLabel)),
+    [holdingTokens, selectedIds, participant, sourceCampaignLabel]
   );
 
   const toggleToken = (tokenId: string) => {
@@ -124,7 +129,7 @@ export function ParticipantItemsPanel({
                   {participant.customerName}
                 </CardTitle>
                 <p className="mt-0.5 text-sm text-muted-foreground">
-                  {participant.customerPhone || "No phone"}
+                  {participant.customerPhone || tCommon("fallback.noPhone")}
                 </p>
               </div>
             </div>
@@ -136,19 +141,19 @@ export function ParticipantItemsPanel({
             className="shrink-0"
             onClick={() => setExpanded((v) => !v)}
           >
-            {expanded ? "Hide items" : "View items"}
+            {expanded ? t("hideItems") : t("viewItems")}
           </Button>
         </div>
 
         <div className="grid grid-cols-2 gap-2 pl-6 text-sm">
           <div>
-            <p className="text-muted-foreground">Bags</p>
+            <p className="text-muted-foreground">{t("bags")}</p>
             <p className="font-medium tabular-nums">
               {participant.totalBagsPurchased}
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground">Prepaid</p>
+            <p className="text-muted-foreground">{t("prepaid")}</p>
             <p className="font-medium tabular-nums">
               {vnd.format(participant.prepaidAmount)}
             </p>
@@ -163,11 +168,11 @@ export function ParticipantItemsPanel({
             )}
           >
             <ExternalLinkIcon className="size-3.5" />
-            View full customer profile
+            {t("viewProfile")}
           </Link>
           {canRecordItem && (
             <Button size="sm" variant="outline" onClick={onRecordItem}>
-              Record Item
+              {t("recordItem")}
             </Button>
           )}
         </div>
@@ -179,11 +184,11 @@ export function ParticipantItemsPanel({
             <div
               className="space-y-2"
               aria-busy="true"
-              aria-label="Loading items"
+              aria-label={t("loading")}
             >
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Spinner />
-                Loading items…
+                {t("loading")}
               </div>
               {Array.from({ length: 2 }, (_, i) => (
                 <div
@@ -205,16 +210,14 @@ export function ParticipantItemsPanel({
               message={
                 tokensQuery.error instanceof Error
                   ? tokensQuery.error.message
-                  : "Failed to load participant items"
+                  : t("loadError")
               }
               onRetry={() => tokensQuery.refetch()}
             />
           )}
 
           {tokensQuery.isSuccess && tokens.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              No items recorded for this participant yet.
-            </p>
+            <p className="text-sm text-muted-foreground">{t("empty")}</p>
           )}
 
           {tokens.length > 0 && (
@@ -237,7 +240,7 @@ export function ParticipantItemsPanel({
                     disabled={selectedTokens.length === 0}
                     onClick={() => setExchangeOpen(true)}
                   >
-                    Item Exchange
+                    {t("itemExchange")}
                   </Button>
                   <Button
                     size="sm"
@@ -245,11 +248,11 @@ export function ParticipantItemsPanel({
                     disabled={selectedTokens.length === 0}
                     onClick={() => setCashOutOpen(true)}
                   >
-                    Cash Out
+                    {t("cashOut")}
                   </Button>
                   {selectedIds.size > 0 && (
                     <Button size="sm" variant="ghost" onClick={clearSelection}>
-                      Clear selection
+                      {t("clearSelection")}
                     </Button>
                   )}
                 </div>
@@ -296,27 +299,31 @@ function ParticipantTokenRow({
   selected: boolean;
   onToggle: () => void;
 }) {
+  const t = useTranslations("campaigns.participantPanel");
+
   if (!token.actionable) {
     return (
       <div className="rounded-xl border border-border/70 bg-muted/20 p-3 text-sm">
         <div className="flex items-start justify-between gap-2">
           <p className="font-medium leading-snug">{token.productName}</p>
-          <Badge variant="secondary" className="shrink-0">
-            {token.statusLabel}
-          </Badge>
+          <StatusBadge
+            type="token"
+            status={token.status}
+            className="shrink-0"
+          />
         </div>
         <div className="mt-2 grid grid-cols-2 gap-2">
           <div>
-            <p className="text-xs text-muted-foreground">Token value</p>
+            <p className="text-xs text-muted-foreground">{t("tokenValue")}</p>
             <p className="tabular-nums">{vnd.format(token.tokenValue)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Cost basis</p>
+            <p className="text-xs text-muted-foreground">{t("costBasis")}</p>
             <p className="tabular-nums">{formatCostPrice(token.costBasis)}</p>
           </div>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Issued {formatDateTime(token.createdAt)}
+          {t("issued", { date: formatDateTime(token.createdAt) })}
         </p>
       </div>
     );
@@ -350,26 +357,28 @@ function ParticipantTokenRow({
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <p className="font-medium leading-snug">{token.productName}</p>
-              <Badge variant="outline" className="shrink-0">
-                Holding
-              </Badge>
+              <StatusBadge
+                type="token"
+                status="HOLDING"
+                className="shrink-0"
+              />
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <div>
-                <p className="text-xs text-muted-foreground">Token value</p>
+                <p className="text-xs text-muted-foreground">{t("tokenValue")}</p>
                 <p className="font-medium tabular-nums">
                   {vnd.format(token.tokenValue)}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Cost basis</p>
+                <p className="text-xs text-muted-foreground">{t("costBasis")}</p>
                 <p className="font-medium tabular-nums">
                   {formatCostPrice(token.costBasis)}
                 </p>
               </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Issued {formatDateTime(token.createdAt)}
+              {t("issued", { date: formatDateTime(token.createdAt) })}
             </p>
           </div>
         </div>

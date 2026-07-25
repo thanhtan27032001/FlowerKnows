@@ -1,11 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { productApi, productKeys } from "@/src/lib/api/product";
 import { formatCostPrice, formatDateTime } from "@/src/lib/format";
+import { stockTxLabel } from "@/src/lib/i18n-labels";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -22,6 +24,9 @@ type Props = {
 };
 
 export function MovementHistory({ productId }: Props) {
+  const t = useTranslations("products.history");
+  const tStatus = useTranslations("common.status");
+  const tCommon = useTranslations("common");
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: productKeys.transactions(productId),
     queryFn: () => productApi.listStockTransactions(productId),
@@ -39,7 +44,7 @@ export function MovementHistory({ productId }: Props) {
       {isError && (
         <QueryErrorState
           message={
-            error instanceof Error ? error.message : "Failed to load history"
+            error instanceof Error ? error.message : t("loadError")
           }
           onRetry={() => refetch()}
         />
@@ -48,7 +53,7 @@ export function MovementHistory({ productId }: Props) {
       {!isLoading && !isError && rows.length === 0 && (
         <Card className="border-border/70 bg-muted/20">
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No stock movements recorded for this product yet.
+            {t("empty")}
           </CardContent>
         </Card>
       )}
@@ -67,7 +72,9 @@ export function MovementHistory({ productId }: Props) {
               <Card key={row.id}>
                 <CardContent className="space-y-2 pt-4 text-sm">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium leading-snug">{row.typeLabel}</p>
+                    <p className="font-medium leading-snug">
+                      {stockTxLabel(tStatus, row.type)}
+                    </p>
                     <QuantityChange value={row.quantityChange} />
                   </div>
                   <p className="text-muted-foreground">
@@ -76,14 +83,17 @@ export function MovementHistory({ productId }: Props) {
                   {row.note && <p>{row.note}</p>}
                   {row.costPrice != null && (
                     <p className="text-muted-foreground">
-                      Cost price:{" "}
+                      {t("cost")}:{" "}
                       <span className="font-medium text-foreground tabular-nums">
-                        {formatCostPrice(row.costPrice)}
+                        {formatCostPrice(
+                          row.costPrice,
+                          tCommon("format.notSet")
+                        )}
                       </span>
                     </p>
                   )}
                   <p className="text-muted-foreground">
-                    Balance after:{" "}
+                    {t("balanceAfter")}:{" "}
                     <span className="font-medium text-foreground tabular-nums">
                       {row.balanceAfter}
                     </span>
@@ -97,12 +107,12 @@ export function MovementHistory({ productId }: Props) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Change</TableHead>
-                  <TableHead>Cost</TableHead>
-                  <TableHead>Note</TableHead>
-                  <TableHead>Balance after</TableHead>
+                  <TableHead>{t("date")}</TableHead>
+                  <TableHead>{t("type")}</TableHead>
+                  <TableHead>{t("change")}</TableHead>
+                  <TableHead>{t("cost")}</TableHead>
+                  <TableHead>{t("note")}</TableHead>
+                  <TableHead>{t("balanceAfter")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -112,18 +122,23 @@ export function MovementHistory({ productId }: Props) {
                       {formatDateTime(row.createdAt)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{row.typeLabel}</Badge>
+                      <Badge variant="secondary">
+                        {stockTxLabel(tStatus, row.type)}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <QuantityChange value={row.quantityChange} />
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {row.costPrice != null
-                        ? formatCostPrice(row.costPrice)
-                        : "—"}
+                        ? formatCostPrice(
+                            row.costPrice,
+                            tCommon("format.notSet")
+                          )
+                        : tCommon("fallback.emDash")}
                     </TableCell>
                     <TableCell className="max-w-[280px] truncate">
-                      {row.note || "—"}
+                      {row.note || tCommon("fallback.emDash")}
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {row.balanceAfter}

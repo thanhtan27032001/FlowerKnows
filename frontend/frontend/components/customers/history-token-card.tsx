@@ -1,17 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import type { CustomerToken, TokenStatus } from "@/src/lib/api/customer";
+import type { CustomerToken } from "@/src/lib/api/customer";
 import { formatDateTime, vnd } from "@/src/lib/format";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const STATUS_LABEL: Record<Exclude<TokenStatus, "HOLDING">, string> = {
-  EXCHANGED: "Exchanged",
-  CASHED_OUT: "Cashed out",
-  ORDERED: "Ordered",
-  CANCELLED: "Cancelled",
-};
 
 type Props = {
   token: CustomerToken;
@@ -19,10 +13,12 @@ type Props = {
 };
 
 export function HistoryTokenCard({ token, highlighted = false }: Props) {
-  const statusLabel =
-    token.status === "HOLDING"
-      ? "Holding"
-      : STATUS_LABEL[token.status as Exclude<TokenStatus, "HOLDING">];
+  const t = useTranslations("customers.tokenCard");
+  const tStatus = useTranslations("common.status");
+  const sourceLabel =
+    token.sourceType === "EXCHANGE"
+      ? tStatus("exchange.itemExchange")
+      : token.sourceLabel;
 
   return (
     <Card className={cn(highlighted && "fk-token-flash")}>
@@ -30,21 +26,21 @@ export function HistoryTokenCard({ token, highlighted = false }: Props) {
         <CardTitle className="text-base leading-snug">
           {token.productName}
         </CardTitle>
-        <Badge variant="secondary">{statusLabel}</Badge>
+        <StatusBadge type="token" status={token.status} />
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-2 text-sm">
         <div>
-          <p className="text-muted-foreground">Token value</p>
+          <p className="text-muted-foreground">{t("tokenValue")}</p>
           <p className="font-medium tabular-nums">
             {vnd.format(token.tokenValue)}
           </p>
         </div>
         <div>
-          <p className="text-muted-foreground">Source</p>
-          <p className="font-medium leading-snug">{token.sourceLabel}</p>
+          <p className="text-muted-foreground">{t("source")}</p>
+          <p className="font-medium leading-snug">{sourceLabel}</p>
         </div>
         <div className="col-span-2">
-          <p className="text-muted-foreground">Issued</p>
+          <p className="text-muted-foreground">{t("issued")}</p>
           <p className="font-medium">{formatDateTime(token.createdAt)}</p>
         </div>
       </CardContent>

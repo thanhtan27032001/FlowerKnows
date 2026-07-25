@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import { customerKeys, type CustomerToken } from "@/src/lib/api/customer";
@@ -9,6 +10,7 @@ import { orderApi, orderKeys } from "@/src/lib/api/order";
 import { productKeys } from "@/src/lib/api/product";
 import { reportKeys } from "@/src/lib/api/report";
 import { formatCostPrice, formatDateTime, vnd, vndCost } from "@/src/lib/format";
+import { exchangeTypeLabel } from "@/src/lib/i18n-labels";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +49,11 @@ export function CreateOrderForm({
   tokens,
   onSuccess,
 }: Props) {
+  const t = useTranslations("orders.create");
+  const tCommon = useTranslations("common");
+  const tStatus = useTranslations("common.status");
+  const tToken = useTranslations("customers.tokenCard");
+  const tActionBar = useTranslations("customers.actionBar");
   const isMobile = useIsMobile();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -56,11 +63,11 @@ export function CreateOrderForm({
 
   // Display-only preview of figures the backend will persist on create (US-09 AC #1)
   const expectedRevenue = useMemo(
-    () => tokens.reduce((sum, t) => sum + t.tokenValue, 0),
+    () => tokens.reduce((sum, token) => sum + token.tokenValue, 0),
     [tokens]
   );
   const expectedTotalCost = useMemo(
-    () => tokens.reduce((sum, t) => sum + (t.costBasis ?? 0), 0),
+    () => tokens.reduce((sum, token) => sum + (token.costBasis ?? 0), 0),
     [tokens]
   );
   const expectedGrossMargin = expectedRevenue - expectedTotalCost;
@@ -83,7 +90,7 @@ export function CreateOrderForm({
     },
     onError: (err: unknown) => {
       setFormError(
-        err instanceof ApiError ? err.message : "Failed to create order"
+        err instanceof ApiError ? err.message : t("failed")
       );
     },
   });
@@ -94,7 +101,7 @@ export function CreateOrderForm({
     setFormError(null);
     mutation.mutate({
       customerId,
-      tokenIds: tokens.map((t) => t.id),
+      tokenIds: tokens.map((token) => token.id),
       carrierOrderId: carrierOrderId.trim() || null,
     });
   };
@@ -108,26 +115,34 @@ export function CreateOrderForm({
     }
   };
 
+  const sourceDisplay = (token: CustomerToken) =>
+    token.sourceType === "EXCHANGE"
+      ? exchangeTypeLabel(tStatus, "item_exchange")
+      : token.sourceLabel;
+
   const formBody = (
     <fieldset disabled={locked} className="min-w-0 space-y-4">
       <div className="rounded-xl border border-border/80 bg-muted/20 p-3">
         <p className="text-xs font-medium text-muted-foreground">
-          Selected tokens ({tokens.length})
+          {tActionBar("selected", { count: tokens.length })}
         </p>
         <ul className="mt-2 space-y-2 text-sm">
-          {tokens.map((t) => (
-            <li key={t.id} className="flex justify-between gap-3">
+          {tokens.map((token) => (
+            <li key={token.id} className="flex justify-between gap-3">
               <span className="min-w-0">
-                <span className="block truncate font-medium">{t.productName}</span>
+                <span className="block truncate font-medium">
+                  {token.productName}
+                </span>
                 <span className="text-xs text-muted-foreground">
-                  {t.sourceLabel} · {formatDateTime(t.createdAt)}
+                  {sourceDisplay(token)} · {formatDateTime(token.createdAt)}
                 </span>
                 <span className="mt-0.5 block text-xs text-muted-foreground">
-                  Cost basis {formatCostPrice(t.costBasis)}
+                  {tToken("costBasis")}{" "}
+                  {formatCostPrice(token.costBasis, tCommon("format.notSet"))}
                 </span>
               </span>
               <span className="shrink-0 text-right tabular-nums">
-                <span className="block">{vnd.format(t.tokenValue)}</span>
+                <span className="block">{vnd.format(token.tokenValue)}</span>
               </span>
             </li>
           ))}
@@ -137,19 +152,23 @@ export function CreateOrderForm({
       <div className="grid gap-2 rounded-xl border border-border/80 bg-background p-3">
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <p className="text-sm text-muted-foreground">Expected revenue</p>
+            <p className="text-sm text-muted-foreground">{t("expectedRevenue")}</p>
             <p className="text-lg font-semibold tabular-nums tracking-tight sm:text-xl">
               {vnd.format(expectedRevenue)}
             </p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Expected total cost</p>
+            <p className="text-sm text-muted-foreground">
+              {t("expectedTotalCost")}
+            </p>
             <p className="text-lg font-semibold tabular-nums tracking-tight sm:text-xl">
               {vndCost.format(expectedTotalCost)}
             </p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Expected gross margin</p>
+            <p className="text-sm text-muted-foreground">
+              {t("expectedGrossMargin")}
+            </p>
             <p className="text-lg font-semibold tabular-nums tracking-tight sm:text-xl">
               {vndCost.format(expectedGrossMargin)}
             </p>
@@ -158,12 +177,12 @@ export function CreateOrderForm({
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="carrier-order-id">Carrier order ID (optional)</Label>
+        <Label htmlFor="carrier-order-id">{t("carrierOptional")}</Label>
         <Input
           id="carrier-order-id"
           value={carrierOrderId}
           onChange={(e) => setCarrierOrderId(e.target.value)}
-          placeholder="Leave blank and fill in later"
+          placeholder={t("carrierPlaceholder")}
         />
       </div>
 
@@ -179,17 +198,17 @@ export function CreateOrderForm({
         disabled={locked}
         onClick={() => handleOpenChange(false)}
       >
-        Cancel
+        {tCommon("actions.cancel")}
       </Button>
       <PendingButton
         type="button"
         pending={mutation.isPending}
         success={succeeded}
-        pendingLabel="Creating…"
+        pendingLabel={tCommon("pending.creating")}
         disabled={tokens.length === 0}
         onClick={submit}
       >
-        Confirm Create Order
+        {t("confirm")}
       </PendingButton>
     </div>
   );
@@ -202,10 +221,8 @@ export function CreateOrderForm({
           className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
         >
           <SheetHeader>
-            <SheetTitle>Create Order</SheetTitle>
-            <SheetDescription>
-              Merge selected holding tokens into one order and recognize revenue.
-            </SheetDescription>
+            <SheetTitle>{t("title")}</SheetTitle>
+            <SheetDescription>{t("description")}</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
@@ -218,10 +235,8 @@ export function CreateOrderForm({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Create Order</DialogTitle>
-          <DialogDescription>
-            Merge selected holding tokens into one order and recognize revenue.
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         {formBody}
         <DialogFooter>{footer}</DialogFooter>

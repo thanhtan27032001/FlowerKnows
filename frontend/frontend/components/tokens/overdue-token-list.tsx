@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
@@ -9,7 +10,7 @@ import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { tokenApi, tokenKeys, type OverdueToken } from "@/src/lib/api/token";
 import { formatDateTime, vnd } from "@/src/lib/format";
 import { CancelTokenDialog } from "@/components/tokens/cancel-token-dialog";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/table";
 
 export function OverdueTokenList() {
+  const t = useTranslations("alerts.list");
   const [cancelTarget, setCancelTarget] = useState<OverdueToken | null>(null);
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
@@ -40,9 +42,7 @@ export function OverdueTokenList() {
       {isError && (
         <QueryErrorState
           message={
-            error instanceof Error
-              ? error.message
-              : "Failed to load overdue tokens"
+            error instanceof Error ? error.message : t("loadError")
           }
           onRetry={() => refetch()}
         />
@@ -51,7 +51,7 @@ export function OverdueTokenList() {
       {!isLoading && !isError && tokens.length === 0 && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No tokens held over 30 days. Nice work.
+            {t("empty")}
           </CardContent>
         </Card>
       )}
@@ -66,13 +66,15 @@ export function OverdueTokenList() {
                     <CardTitle className="text-base leading-snug">
                       {token.productName}
                     </CardTitle>
-                    <Badge variant="destructive">{token.daysHeld} days</Badge>
+                    <StatusBadge variant="danger">
+                      {t("daysBadge", { count: token.daysHeld })}
+                    </StatusBadge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <p className="text-muted-foreground">Customer</p>
+                      <p className="text-muted-foreground">{t("customer")}</p>
                       <Link
                         href={`/customers/${token.customerId}`}
                         className="font-medium hover:underline"
@@ -81,13 +83,13 @@ export function OverdueTokenList() {
                       </Link>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Value</p>
+                      <p className="text-muted-foreground">{t("value")}</p>
                       <p className="font-medium tabular-nums">
                         {vnd.format(token.tokenValue)}
                       </p>
                     </div>
                     <div className="col-span-2">
-                      <p className="text-muted-foreground">Issued</p>
+                      <p className="text-muted-foreground">{t("issued")}</p>
                       <p className="font-medium">
                         {formatDateTime(token.createdAt)}
                       </p>
@@ -99,7 +101,7 @@ export function OverdueTokenList() {
                     className="w-full"
                     onClick={() => setCancelTarget(token)}
                   >
-                    Cancel Token
+                    {t("cancelToken")}
                   </Button>
                 </CardContent>
               </Card>
@@ -110,11 +112,11 @@ export function OverdueTokenList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Issued</TableHead>
-                  <TableHead>Days held</TableHead>
-                  <TableHead>Value</TableHead>
+                  <TableHead>{t("customer")}</TableHead>
+                  <TableHead>{t("product")}</TableHead>
+                  <TableHead>{t("issued")}</TableHead>
+                  <TableHead>{t("daysHeld")}</TableHead>
+                  <TableHead>{t("value")}</TableHead>
                   <TableHead className="w-[140px]" />
                 </TableRow>
               </TableHeader>
@@ -137,7 +139,7 @@ export function OverdueTokenList() {
                     <TableCell>{token.productName}</TableCell>
                     <TableCell>{formatDateTime(token.createdAt)}</TableCell>
                     <TableCell>
-                      <Badge variant="destructive">{token.daysHeld}</Badge>
+                      <StatusBadge variant="danger">{token.daysHeld}</StatusBadge>
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {vnd.format(token.tokenValue)}
@@ -148,7 +150,7 @@ export function OverdueTokenList() {
                         variant="destructive"
                         onClick={() => setCancelTarget(token)}
                       >
-                        Cancel Token
+                        {t("cancelToken")}
                       </Button>
                     </TableCell>
                   </TableRow>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +18,8 @@ import { getNavSections, isNavActive } from "@/components/layout/nav-config";
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const t = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const sections = getNavSections();
 
   return (
@@ -29,39 +32,46 @@ export function AppSidebar() {
           href="/"
           className="px-2 font-[family-name:var(--font-display)] text-base font-semibold tracking-tight text-sidebar-foreground"
         >
-          Flower Knows
+          {tCommon("brand")}
         </Link>
       </SidebarHeader>
 
       <SidebarContent className="gap-1 px-1 py-2">
-        {sections.map((section) => (
-          <SidebarGroup key={section.id} className="py-1">
-            {section.label ? (
-              <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
-            ) : null}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const active = isNavActive(pathname, item.href);
+        {sections.map((section) => {
+          const sectionLabel = section.labelKey
+            ? t(`sections.${section.labelKey}`)
+            : null;
 
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        isActive={active}
-                        tooltip={item.label}
-                        render={<Link href={item.href} />}
-                      >
-                        <Icon />
-                        <span>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+          return (
+            <SidebarGroup key={section.id} className="py-1">
+              {sectionLabel ? (
+                <SidebarGroupLabel>{sectionLabel}</SidebarGroupLabel>
+              ) : null}
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    const active = isNavActive(pathname, item.href);
+                    const label = t(item.labelKey);
+
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          isActive={active}
+                          tooltip={label}
+                          render={<Link href={item.href} />}
+                        >
+                          <Icon />
+                          <span>{label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
     </Sidebar>
   );

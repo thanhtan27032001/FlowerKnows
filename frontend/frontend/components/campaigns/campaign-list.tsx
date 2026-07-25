@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { campaignApi, campaignKeys } from "@/src/lib/api/campaign";
+import { campaignStatusLabel } from "@/src/lib/i18n-labels";
 import { formatDate, vnd } from "@/src/lib/format";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -24,6 +26,8 @@ type Props = {
 };
 
 export function CampaignList({ onCreate }: Props) {
+  const t = useTranslations("campaigns.list");
+  const tStatus = useTranslations("common.status");
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: campaignKeys.lists(),
     queryFn: campaignApi.list,
@@ -36,7 +40,7 @@ export function CampaignList({ onCreate }: Props) {
       <QueryProgressBar active={isFetching && !isLoading} />
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={onCreate}>Create Campaign</Button>
+        <Button onClick={onCreate}>{t("createButton")}</Button>
       </div>
 
       {isLoading && <ListSkeleton columns={5} />}
@@ -44,7 +48,7 @@ export function CampaignList({ onCreate }: Props) {
       {isError && (
         <QueryErrorState
           message={
-            error instanceof Error ? error.message : "Failed to load campaigns"
+            error instanceof Error ? error.message : t("loadError")
           }
           onRetry={() => refetch()}
         />
@@ -53,7 +57,7 @@ export function CampaignList({ onCreate }: Props) {
       {!isLoading && !isError && campaigns.length === 0 && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No campaigns yet. Create your first campaign to start selling bags.
+            {t("empty")}
           </CardContent>
         </Card>
       )}
@@ -69,28 +73,28 @@ export function CampaignList({ onCreate }: Props) {
                       <CardTitle className="text-base leading-snug">
                         {campaign.name}
                       </CardTitle>
-                      <Badge
+                      <StatusBadge
                         variant={
-                          campaign.status === "OPEN" ? "default" : "secondary"
+                          campaign.status === "OPEN" ? "info" : "neutral"
                         }
                       >
-                        {campaign.status === "OPEN" ? "Open" : "Closed"}
-                      </Badge>
+                        {campaignStatusLabel(tStatus, campaign.status)}
+                      </StatusBadge>
                     </div>
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <p className="text-muted-foreground">Event date</p>
+                      <p className="text-muted-foreground">{t("eventDate")}</p>
                       <p className="font-medium">{formatDate(campaign.eventDate)}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Bag price</p>
+                      <p className="text-muted-foreground">{t("bagPrice")}</p>
                       <p className="font-medium tabular-nums">
                         {vnd.format(campaign.bagPrice)}
                       </p>
                     </div>
                     <div className="col-span-2">
-                      <p className="text-muted-foreground">Bags sold</p>
+                      <p className="text-muted-foreground">{t("bagsSold")}</p>
                       <p className="font-medium tabular-nums">
                         {campaign.bagsSold} / {campaign.totalBags}
                       </p>
@@ -105,11 +109,11 @@ export function CampaignList({ onCreate }: Props) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Event date</TableHead>
-                  <TableHead>Bag price</TableHead>
-                  <TableHead>Bags sold</TableHead>
-                  <TableHead className="w-[100px]">Status</TableHead>
+                  <TableHead>{t("name")}</TableHead>
+                  <TableHead>{t("eventDate")}</TableHead>
+                  <TableHead>{t("bagPrice")}</TableHead>
+                  <TableHead>{t("bagsSold")}</TableHead>
+                  <TableHead className="w-[100px]">{t("status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -131,13 +135,13 @@ export function CampaignList({ onCreate }: Props) {
                       {campaign.bagsSold} / {campaign.totalBags}
                     </TableCell>
                     <TableCell>
-                      <Badge
+                      <StatusBadge
                         variant={
-                          campaign.status === "OPEN" ? "default" : "secondary"
+                          campaign.status === "OPEN" ? "info" : "neutral"
                         }
                       >
-                        {campaign.status === "OPEN" ? "Open" : "Closed"}
-                      </Badge>
+                        {campaignStatusLabel(tStatus, campaign.status)}
+                      </StatusBadge>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -1,0 +1,580 @@
+{
+  "common": {
+    "meta": {
+      "title": "Flower Knows — Kho hàng",
+      "description": "Quản lý kho blind bag nội bộ"
+    },
+    "brand": "Flower Knows",
+    "actions": {
+      "retry": "Thử lại",
+      "cancel": "Hủy",
+      "back": "Quay lại",
+      "done": "Xong",
+      "save": "Lưu",
+      "clear": "Bỏ chọn",
+      "selectAll": "Chọn tất cả",
+      "apply": "Áp dụng",
+      "clearFilters": "Xóa bộ lọc",
+      "addProduct": "Thêm sản phẩm",
+      "addRow": "Thêm dòng",
+      "removeRow": "Xóa dòng",
+      "selectProduct": "Chọn sản phẩm",
+      "keepToken": "Giữ token"
+    },
+    "pending": {
+      "saving": "Đang lưu…",
+      "creating": "Đang tạo…",
+      "confirming": "Đang xác nhận…",
+      "closing": "Đang đóng…",
+      "cancelling": "Đang hủy…"
+    },
+    "a11y": {
+      "loading": "Đang tải",
+      "updating": "Đang cập nhật",
+      "toggleSidebar": "Bật/tắt thanh bên",
+      "mobileSidebar": "Hiển thị thanh bên trên mobile",
+      "primaryNav": "Điều hướng chính",
+      "searchCustomers": "Tìm khách hàng"
+    },
+    "fields": {
+      "name": "Tên",
+      "phone": "Số điện thoại",
+      "address": "Địa chỉ",
+      "status": "Trạng thái",
+      "quantity": "Số lượng",
+      "note": "Ghi chú",
+      "product": "Sản phẩm",
+      "customer": "Khách hàng",
+      "date": "Ngày",
+      "type": "Loại",
+      "value": "Giá trị"
+    },
+    "fallback": {
+      "noPhone": "Không có SĐT",
+      "notSet": "Chưa có",
+      "notSetYet": "Chưa có",
+      "emDash": "—"
+    },
+    "format": {
+      "notSet": "Chưa có"
+    },
+    "status": {
+      "token": {
+        "holding": "Đang giữ",
+        "exchanged": "Đã đổi",
+        "cashedOut": "Đã đổi tiền",
+        "ordered": "Đã lên đơn",
+        "cancelled": "Đã hủy"
+      },
+      "action": {
+        "undetermined": "Chưa xác định",
+        "negotiating": "Đang trao đổi",
+        "consolidating": "Dồn đơn",
+        "needsImmediateOrder": "Cần đi đơn ngay"
+      },
+      "shipping": {
+        "orderCreated": "Đã tạo đơn",
+        "shipped": "Đã đi đơn",
+        "completed": "Đã hoàn thành"
+      },
+      "campaign": {
+        "open": "Đang mở",
+        "closed": "Đã đóng"
+      },
+      "stockTx": {
+        "stockIn": "Nhập kho",
+        "stockAdjustment": "Điều chỉnh tồn kho",
+        "campaignLock": "Khóa kho cho Campaign",
+        "campaignReturn": "Hoàn kho từ đóng Campaign",
+        "exchangeIn": "Hoàn kho từ đổi món (token cũ)",
+        "exchangeOut": "Xuất kho do đổi món (token mới)",
+        "cashOutReturn": "Hoàn kho từ đổi tiền",
+        "tokenCancelReturn": "Hoàn kho từ hủy token quá hạn",
+        "orderFulfillment": "Xuất kho do lên đơn"
+      },
+      "exchange": {
+        "itemExchange": "Đổi món",
+        "cashOut": "Đổi tiền"
+      }
+    }
+  },
+  "nav": {
+    "dashboard": "Tổng quan",
+    "dashboardShort": "Tổng quan",
+    "campaigns": "Chiến dịch",
+    "customers": "Khách hàng",
+    "orders": "Đơn hàng",
+    "products": "Sản phẩm",
+    "alerts": "Cảnh báo",
+    "reports": "Báo cáo",
+    "more": "Thêm",
+    "sections": {
+      "operations": "Vận hành",
+      "management": "Quản lý"
+    }
+  },
+  "dashboard": {
+    "title": "Tổng quan",
+    "profit": {
+      "title": "Tổng quan lợi nhuận",
+      "linkGrossMargin": "Báo cáo biên lợi nhuận",
+      "loadError": "Không tải được tổng quan lợi nhuận",
+      "totalCapital": "Tổng vốn đã đầu tư",
+      "totalRevenue": "Tổng doanh thu",
+      "revenueBreakdown": "Đơn hàng {orders} · Đã hủy {cancelled}",
+      "totalProfit": "Tổng lợi nhuận",
+      "negativeHint": "Số âm là bình thường giai đoạn đầu khi nhập kho nhiều hơn bán"
+    },
+    "stats": {
+      "availableStock": "Tồn kho khả dụng",
+      "lockedInCampaigns": "Đang khóa trong chiến dịch mở",
+      "overdueTokens": "Token quá hạn",
+      "viewAlerts": "Xem cảnh báo"
+    },
+    "overdue": {
+      "loadError": "Không tải được danh sách token quá hạn"
+    },
+    "inventory": {
+      "title": "Tổng quan tồn kho",
+      "linkRevenue": "Báo cáo doanh thu",
+      "loadError": "Không tải được tồn kho",
+      "empty": "Chưa có sản phẩm.",
+      "lowStockBanner": "{count, plural, =1 {# sản phẩm sắp hết hàng.} other {# sản phẩm sắp hết hàng.}}",
+      "stock": "Tồn",
+      "locked": "Đã khóa",
+      "lowStock": "Sắp hết",
+      "columns": {
+        "product": "Sản phẩm",
+        "stock": "Tồn kho",
+        "locked": "Khóa trong chiến dịch",
+        "status": "Trạng thái"
+      }
+    }
+  },
+  "campaigns": {
+    "title": "Chiến dịch",
+    "detailFallbackTitle": "Chiến dịch",
+    "list": {
+      "createButton": "Tạo chiến dịch",
+      "loadError": "Không tải được danh sách chiến dịch",
+      "empty": "Chưa có chiến dịch. Tạo chiến dịch đầu tiên để bắt đầu bán túi.",
+      "eventDate": "Ngày sự kiện",
+      "bagPrice": "Giá túi",
+      "bagsSold": "Túi đã bán",
+      "name": "Tên",
+      "status": "Trạng thái"
+    },
+    "detail": {
+      "createdAt": "Tạo lúc {date}",
+      "loadError": "Không tải được chiến dịch",
+      "eventDate": "Ngày sự kiện",
+      "bagPrice": "Giá túi",
+      "bagsSold": "Túi đã bán",
+      "remainingBags": "Túi còn lại",
+      "recordParticipant": "Ghi nhận người tham gia",
+      "recordItem": "Ghi nhận món",
+      "closeCampaign": "Đóng chiến dịch",
+      "closedNotice": "Chiến dịch đã đóng, không thể ghi nhận thêm.",
+      "poolTitle": "Pool sản phẩm",
+      "loaded": "Đã nạp",
+      "remaining": "Còn lại",
+      "poolEmpty": "Chưa có sản phẩm trong pool chiến dịch.",
+      "participantsTitle": "Người tham gia",
+      "participantsEmpty": "Chưa ghi nhận người tham gia."
+    },
+    "create": {
+      "title": "Tạo chiến dịch",
+      "description": "Định nghĩa pool sản phẩm và tổng số túi trước khi bán.",
+      "name": "Tên",
+      "eventDate": "Ngày sự kiện",
+      "bagPrice": "Giá túi (VND)",
+      "totalBags": "Tổng số túi (N)",
+      "productPool": "Pool sản phẩm",
+      "loadedQuantity": "Số lượng nạp",
+      "namePlaceholder": "vd. Little Angel Blind Bag — Tháng 8",
+      "createButton": "Tạo chiến dịch",
+      "nameRequired": "Tên là bắt buộc",
+      "eventDateRequired": "Ngày sự kiện là bắt buộc",
+      "bagPriceInvalid": "Giá túi phải là số dương",
+      "totalBagsInvalid": "Tổng số túi phải là số nguyên ≥ 1",
+      "selectProduct": "Chọn một sản phẩm",
+      "loadedQtyInvalid": "Số lượng nạp phải là số nguyên ≥ 1",
+      "fixPool": "Sửa pool sản phẩm trước khi tạo",
+      "duplicateProduct": "Mỗi sản phẩm chỉ được xuất hiện một lần trong pool",
+      "quantitiesMismatch": "Tổng số lượng nạp phải bằng tổng số túi",
+      "failed": "Không tạo được chiến dịch"
+    },
+    "recordParticipant": {
+      "title": "Ghi nhận người tham gia",
+      "description": "Gắn khách hàng với số túi đã mua trong chiến dịch này.",
+      "existingCustomer": "Khách hiện có",
+      "createNewCustomer": "Tạo khách mới",
+      "searchCustomer": "Tìm khách hàng",
+      "nameOrPhone": "Tên hoặc SĐT",
+      "customer": "Khách hàng",
+      "loading": "Đang tải…",
+      "selectCustomer": "Chọn khách hàng",
+      "name": "Tên",
+      "phone": "Số điện thoại",
+      "bagsPurchased": "Số túi đã mua",
+      "submit": "Ghi nhận người tham gia",
+      "nameRequired": "Tên là bắt buộc",
+      "phoneRequired": "Số điện thoại là bắt buộc",
+      "customerRequired": "Chọn một khách hàng",
+      "bagsInvalid": "Số túi phải là số nguyên từ 1 đến số túi còn lại",
+      "noBagsRemaining": "Không còn túi để ghi nhận",
+      "failed": "Không ghi nhận được người tham gia"
+    },
+    "recordItem": {
+      "title": "Ghi nhận món",
+      "description": "Xuất món từ pool chiến dịch cho người tham gia (tạo token).",
+      "participant": "Người tham gia",
+      "product": "Sản phẩm",
+      "quantity": "Số lượng",
+      "selectParticipant": "Chọn người tham gia",
+      "selectProduct": "Chọn sản phẩm",
+      "poolEmpty": "Không còn sản phẩm trong pool chiến dịch.",
+      "submit": "Ghi nhận món",
+      "participantRequired": "Chọn một người tham gia",
+      "productRequired": "Chọn một sản phẩm",
+      "quantityInvalid": "Số lượng phải là số nguyên ≥ 1 và không vượt quá còn lại",
+      "failed": "Không ghi nhận được món"
+    },
+    "close": {
+      "title": "Đóng chiến dịch",
+      "loadingPreview": "Đang tải xem trước hoàn kho…",
+      "previewError": "Không tải được xem trước đóng chiến dịch",
+      "nothingReturned": "Không có gì được hoàn về kho.",
+      "confirm": "Xác nhận đóng",
+      "failed": "Không đóng được chiến dịch"
+    },
+    "participantPanel": {
+      "hideItems": "Ẩn món",
+      "viewItems": "Xem món",
+      "bags": "Túi",
+      "prepaid": "Trả trước",
+      "viewProfile": "Xem hồ sơ khách",
+      "recordItem": "Ghi nhận món",
+      "loading": "Đang tải món…",
+      "loadError": "Không tải được món của người tham gia",
+      "empty": "Chưa ghi nhận món cho người tham gia này.",
+      "itemExchange": "Đổi món",
+      "cashOut": "Đổi tiền",
+      "clearSelection": "Bỏ chọn",
+      "tokenValue": "Giá trị token",
+      "costBasis": "Giá vốn",
+      "issued": "Phát hành {date}",
+      "sourceCampaign": "Chiến dịch"
+    }
+  },
+  "customers": {
+    "title": "Khách hàng",
+    "detailFallbackTitle": "Khách hàng",
+    "search": {
+      "placeholder": "Tìm theo tên hoặc SĐT",
+      "createButton": "Tạo khách hàng",
+      "actionStatus": "Trạng thái xử lý",
+      "shippingStatus": "Trạng thái giao hàng",
+      "allActionStatuses": "Tất cả trạng thái xử lý",
+      "allShippingStatuses": "Tất cả trạng thái giao hàng",
+      "needsOrderNow": "Cần đi đơn ngay",
+      "notYetShipped": "Chưa đi đơn",
+      "loadError": "Không tải được danh sách khách hàng",
+      "emptyFiltered": "Không có khách khớp tìm kiếm/bộ lọc.",
+      "empty": "Chưa có khách hàng. Tạo khách để bắt đầu.",
+      "columns": {
+        "name": "Tên",
+        "phone": "SĐT",
+        "actionStatus": "Trạng thái xử lý",
+        "shippingStatus": "Trạng thái giao hàng"
+      }
+    },
+    "create": {
+      "title": "Tạo khách hàng",
+      "description": "Thêm khách để ghi nhận mua hàng, đổi món và lên đơn.",
+      "name": "Tên",
+      "phone": "Số điện thoại",
+      "address": "Địa chỉ (tuỳ chọn)",
+      "namePlaceholder": "vd. Nguyễn Văn A",
+      "phonePlaceholder": "vd. 0901234567",
+      "submit": "Tạo khách hàng",
+      "nameRequired": "Tên là bắt buộc",
+      "phoneRequired": "Số điện thoại là bắt buộc",
+      "failed": "Không tạo được khách hàng"
+    },
+    "detail": {
+      "loadError": "Không tải được khách hàng",
+      "actionStatus": "Trạng thái xử lý",
+      "overdueCount": "{count} quá hạn",
+      "prepaidBalance": "Số dư trả trước",
+      "prepaidHint": "Tổng giá trị token đang giữ",
+      "holdingTokens": "Token đang giữ",
+      "holdingEmpty": "Khách này hiện không giữ món nào",
+      "history": "Lịch sử",
+      "historyEmpty": "Chưa có token đã xử lý."
+    },
+    "tokenCard": {
+      "overdue": "Quá hạn (30+ ngày)",
+      "tokenValue": "Giá trị token",
+      "costBasis": "Giá vốn",
+      "daysHeld": "Số ngày giữ",
+      "source": "Nguồn",
+      "issued": "Phát hành"
+    },
+    "actionBar": {
+      "selected": "{count, plural, =1 {# token đã chọn} other {# token đã chọn}}",
+      "selectPrompt": "Chọn token để thao tác",
+      "cancelRequiresOne": "Hủy chỉ áp dụng cho 1 token",
+      "itemExchange": "Đổi món",
+      "cashOut": "Đổi tiền",
+      "createOrder": "Tạo đơn",
+      "cancel": "Hủy"
+    },
+    "actionStatus": {
+      "aria": "Trạng thái xử lý khách hàng",
+      "updateFailed": "Cập nhật thất bại"
+    },
+    "orderStatus": {
+      "title": "Trạng thái giao hàng đơn",
+      "shippingStatus": "Trạng thái giao hàng",
+      "carrierOrderId": "Mã vận đơn",
+      "notSetYet": "Chưa có",
+      "save": "Lưu",
+      "saveFailed": "Không cập nhật được trạng thái giao hàng",
+      "revenue": "Doanh thu",
+      "items": "Món",
+      "openInOrders": "Mở trong Đơn hàng",
+      "hidePast": "Ẩn đơn cũ",
+      "showPast": "{count, plural, =1 {Hiện # đơn cũ} other {Hiện # đơn cũ}}",
+      "carrierIdLabel": "Mã vận đơn: {id}"
+    },
+    "badges": {
+      "noOrderYet": "Chưa có đơn"
+    }
+  },
+  "products": {
+    "title": "Sản phẩm",
+    "detailFallbackTitle": "Sản phẩm",
+    "list": {
+      "createButton": "Tạo sản phẩm",
+      "stockInButton": "Nhập kho",
+      "loadError": "Không tải được danh sách sản phẩm",
+      "empty": "Chưa có sản phẩm. Tạo sản phẩm đầu tiên để quản lý tồn kho.",
+      "lowStock": "Sắp hết",
+      "listPrice": "Giá niêm yết",
+      "stock": "Tồn kho",
+      "avgCost": "Giá vốn TB",
+      "name": "Tên",
+      "status": "Trạng thái"
+    },
+    "create": {
+      "title": "Tạo sản phẩm",
+      "description": "Thêm sản phẩm cho chiến dịch, đổi món và nhập kho.",
+      "name": "Tên",
+      "listPrice": "Giá niêm yết (VND)",
+      "initialStock": "Tồn ban đầu (tuỳ chọn)",
+      "namePlaceholder": "vd. Little Angel Blush",
+      "submit": "Tạo sản phẩm",
+      "nameRequired": "Tên là bắt buộc",
+      "listPriceInvalid": "Giá niêm yết phải là số dương",
+      "stockInvalid": "Tồn ban đầu phải là số nguyên ≥ 0",
+      "nameCheckFailed": "Không kiểm tra được tên sản phẩm",
+      "failed": "Không tạo được sản phẩm",
+      "duplicateTitle": "Trùng tên sản phẩm",
+      "duplicateDescription": "Đã có sản phẩm tên \"{name}\". Tạo thêm cùng tên có thể làm lệch báo cáo. Vẫn tạo, hoặc hủy và chọn sản phẩm có sẵn.",
+      "createAnyway": "Vẫn tạo"
+    },
+    "detail": {
+      "loadError": "Không tải được sản phẩm",
+      "listPrice": "Giá niêm yết",
+      "currentStock": "Tồn hiện tại",
+      "avgCost": "Giá vốn trung bình",
+      "lowStock": "Sắp hết",
+      "stockIn": "Nhập kho",
+      "adjustStock": "Điều chỉnh tồn",
+      "movementHistory": "Lịch sử chuyển kho",
+      "stockInNotice": "Đã nhập kho. Giá vốn trung bình hiện là {avgCost}."
+    },
+    "stockIn": {
+      "title": "Nhập kho",
+      "description": "Ghi nhận hàng nhập và cập nhật giá vốn trung bình gia quyền.",
+      "product": "Sản phẩm",
+      "quantityReceived": "Số lượng nhận",
+      "costPrice": "Giá vốn (VND)",
+      "note": "Ghi chú (tuỳ chọn)",
+      "noteRequired": "Bắt buộc",
+      "notePlaceholder": "vd. Lô tháng 7",
+      "confirm": "Xác nhận nhập kho",
+      "successTitle": "Đã ghi nhận nhập kho",
+      "updatedAvg": "Giá vốn trung bình đã cập nhật:",
+      "stock": "Tồn",
+      "avgCost": "Giá vốn TB",
+      "selectProduct": "Chọn một sản phẩm",
+      "quantityInvalid": "Số lượng phải là số nguyên ≥ 1",
+      "costInvalid": "Giá vốn phải là số ≥ 0",
+      "failed": "Nhập kho thất bại"
+    },
+    "adjust": {
+      "title": "Điều chỉnh tồn",
+      "description": "Chỉnh thủ công tồn kho cho {name}",
+      "adjustmentType": "Loại điều chỉnh",
+      "increase": "Tăng",
+      "decrease": "Giảm",
+      "quantity": "Số lượng",
+      "reason": "Lý do",
+      "reasonPlaceholder": "vd. Kiểm kê / hư hỏng",
+      "confirm": "Xác nhận điều chỉnh",
+      "quantityInvalid": "Số lượng phải là số nguyên ≥ 1",
+      "reasonRequired": "Vui lòng nhập lý do",
+      "belowZero": "Không thể giảm dưới 0",
+      "failed": "Điều chỉnh thất bại"
+    },
+    "history": {
+      "loadError": "Không tải được lịch sử",
+      "empty": "Chưa có biến động tồn kho.",
+      "date": "Ngày",
+      "type": "Loại",
+      "change": "Thay đổi",
+      "cost": "Giá vốn",
+      "note": "Ghi chú",
+      "balanceAfter": "Tồn sau"
+    }
+  },
+  "orders": {
+    "title": "Đơn hàng",
+    "loading": "Đang tải đơn hàng…",
+    "list": {
+      "loadError": "Không tải được danh sách đơn hàng",
+      "updateShippingFailed": "Không cập nhật được trạng thái giao hàng",
+      "empty": "Chưa có đơn. Tạo đơn từ token đang giữ của khách.",
+      "revenue": "Doanh thu",
+      "totalCost": "Tổng giá vốn",
+      "grossMargin": "Biên lợi nhuận gộp",
+      "carrierOrderId": "Mã vận đơn",
+      "notSetYet": "Chưa có",
+      "shippingStatus": "Trạng thái giao hàng",
+      "customer": "Khách hàng",
+      "created": "Tạo lúc",
+      "items": "Món",
+      "carrierId": "Mã vận đơn",
+      "shipping": "Giao hàng",
+      "itemsCount": "{count, plural, =1 {# món} other {# món}}",
+      "costLabel": "Giá vốn {cost}"
+    },
+    "create": {
+      "title": "Tạo đơn",
+      "description": "Gộp các token đang giữ đã chọn thành một đơn giao hàng.",
+      "expectedRevenue": "Doanh thu dự kiến",
+      "expectedTotalCost": "Tổng giá vốn dự kiến",
+      "expectedGrossMargin": "Biên lợi nhuận gộp dự kiến",
+      "carrierOptional": "Mã vận đơn (tuỳ chọn)",
+      "carrierPlaceholder": "Để trống và điền sau",
+      "confirm": "Xác nhận tạo đơn",
+      "failed": "Không tạo được đơn"
+    }
+  },
+  "alerts": {
+    "title": "Cảnh báo token quá hạn",
+    "list": {
+      "loadError": "Không tải được token quá hạn",
+      "empty": "Không có token giữ quá 30 ngày. Tốt lắm.",
+      "customer": "Khách hàng",
+      "value": "Giá trị",
+      "issued": "Phát hành",
+      "product": "Sản phẩm",
+      "daysHeld": "Số ngày giữ",
+      "daysBadge": "{count} ngày",
+      "cancelToken": "Hủy token"
+    },
+    "cancelDialog": {
+      "title": "Hủy token",
+      "description": "Hủy token này sẽ hoàn sản phẩm về kho và ghi nhận doanh thu bằng giá trị token ({value}).",
+      "product": "Sản phẩm: {name}",
+      "confirm": "Xác nhận hủy",
+      "failed": "Không hủy được token"
+    }
+  },
+  "reports": {
+    "title": "Báo cáo doanh thu",
+    "filters": {
+      "from": "Từ ngày",
+      "to": "Đến ngày",
+      "campaignOptional": "Chiến dịch (tuỳ chọn)",
+      "allCampaigns": "Tất cả chiến dịch",
+      "apply": "Áp dụng bộ lọc"
+    },
+    "loadError": "Không tải được báo cáo doanh thu",
+    "reconciliationWarning": {
+      "title": "Cảnh báo đối soát",
+      "body": "Công thức đối soát không cân. Kiểm tra dữ liệu hoặc liên hệ hỗ trợ."
+    },
+    "missingCost": {
+      "title": "Thiếu dữ liệu giá vốn",
+      "body": "{count, plural, =1 {# đơn} other {# đơn}} thiếu giá vốn. Biên lợi nhuận gộp có thể bị thấp hơn thực tế."
+    },
+    "kpis": {
+      "revenueFromOrders": "Doanh thu từ đơn",
+      "cancelledTokenRevenue": "Doanh thu từ hủy token",
+      "totalRevenue": "Tổng doanh thu",
+      "totalRefunded": "Tổng hoàn tiền (đổi tiền)"
+    },
+    "margin": {
+      "title": "Biên lợi nhuận gộp",
+      "orderGrossMargin": "Biên gộp từ đơn",
+      "cancelledTokenMargin": "Biên từ hủy token",
+      "fullMargin": "100% biên (không có giá vốn)",
+      "totalGrossMargin": "Tổng biên gộp",
+      "grossMarginPct": "Biên gộp %"
+    },
+    "reconciliation": {
+      "title": "Đối soát",
+      "balanced": "Cân bằng",
+      "outOfBalance": "Lệch",
+      "totalPrepaid": "Tổng trả trước",
+      "holdingTokens": "Token đang giữ",
+      "recognizedRevenue": "Doanh thu đã ghi nhận",
+      "totalRefunded": "Tổng hoàn tiền"
+    },
+    "campaignBreakdown": {
+      "campaign": "Chiến dịch: {name}",
+      "prepaid": "Trả trước",
+      "bagsSold": "Túi đã bán",
+      "tokensByStatus": "Token theo trạng thái"
+    }
+  },
+  "exchange": {
+    "item": {
+      "title": "Đổi món",
+      "description": "Đổi token đã chọn lấy sản phẩm từ kho (có thể kèm thanh toán thêm).",
+      "totalTokenValue": "Tổng giá trị token",
+      "receiveProducts": "Nhận sản phẩm (từ kho)",
+      "product": "Sản phẩm",
+      "quantity": "Số lượng",
+      "addProduct": "Thêm sản phẩm",
+      "noStock": "Không có sản phẩm còn tồn để đổi.",
+      "additionalPayment": "Thanh toán thêm (VND, tuỳ chọn)",
+      "additionalPaymentLabel": "Thanh toán thêm",
+      "oldTokens": "Token cũ",
+      "newTokensTotal": "Tổng giá trị token mới",
+      "confirm": "Xác nhận đổi món",
+      "additionalInvalid": "Thanh toán thêm phải là một số",
+      "selectProduct": "Chọn một sản phẩm",
+      "quantityInvalid": "Số lượng phải là số nguyên ≥ 1",
+      "fixRows": "Sửa các dòng sản phẩm nhận trước khi xác nhận",
+      "failed": "Đổi món thất bại"
+    },
+    "cashOut": {
+      "title": "Đổi tiền",
+      "description": "Hoàn tiền cho các token đã chọn và trả sản phẩm về kho.",
+      "suggestedRefund": "Số tiền hoàn gợi ý",
+      "actualRefund": "Số tiền hoàn thực tế (VND)",
+      "confirm": "Xác nhận đổi tiền",
+      "amountInvalid": "Số tiền hoàn thực tế phải là số ≥ 0",
+      "failed": "Đổi tiền thất bại"
+    },
+    "errors": {
+      "notHolding": "Token không ở trạng thái Đang giữ",
+      "conflict": "Xung đột: {message}. Tải lại trang khách và chỉ thử với token Đang giữ."
+    }
+  }
+}

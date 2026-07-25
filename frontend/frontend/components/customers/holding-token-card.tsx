@@ -1,9 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { CustomerToken } from "@/src/lib/api/customer";
 import { formatCostPrice, formatDateTime, vnd } from "@/src/lib/format";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Props = {
@@ -13,6 +14,13 @@ type Props = {
 };
 
 export function HoldingTokenCard({ token, selected, onToggle }: Props) {
+  const t = useTranslations("customers.tokenCard");
+  const tStatus = useTranslations("common.status");
+  const sourceLabel =
+    token.sourceType === "EXCHANGE"
+      ? tStatus("exchange.itemExchange")
+      : token.sourceLabel;
+
   return (
     <button
       type="button"
@@ -45,28 +53,28 @@ export function HoldingTokenCard({ token, selected, onToggle }: Props) {
                 {token.productName}
               </CardTitle>
               {token.overdue && (
-                <Badge variant="destructive" className="shrink-0">
-                  Overdue (30+ days)
-                </Badge>
+                <StatusBadge variant="danger" className="shrink-0">
+                  {t("overdue")}
+                </StatusBadge>
               )}
             </div>
           </div>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-2 pl-11 text-sm">
           <div>
-            <p className="text-muted-foreground">Token value</p>
+            <p className="text-muted-foreground">{t("tokenValue")}</p>
             <p className="font-medium tabular-nums">
               {vnd.format(token.tokenValue)}
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground">Cost basis</p>
+            <p className="text-muted-foreground">{t("costBasis")}</p>
             <p className="font-medium tabular-nums">
               {formatCostPrice(token.costBasis)}
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground">Days held</p>
+            <p className="text-muted-foreground">{t("daysHeld")}</p>
             <p
               className={cn(
                 "font-medium tabular-nums",
@@ -77,11 +85,11 @@ export function HoldingTokenCard({ token, selected, onToggle }: Props) {
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground">Source</p>
-            <p className="font-medium leading-snug">{token.sourceLabel}</p>
+            <p className="text-muted-foreground">{t("source")}</p>
+            <p className="font-medium leading-snug">{sourceLabel}</p>
           </div>
           <div className="col-span-2">
-            <p className="text-muted-foreground">Issued</p>
+            <p className="text-muted-foreground">{t("issued")}</p>
             <p className="font-medium">{formatDateTime(token.createdAt)}</p>
           </div>
         </CardContent>

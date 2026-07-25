@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,10 +11,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export default function DashboardLoading() {
+export default async function DashboardLoading() {
+  const t = await getTranslations("dashboard");
+  const tCommon = await getTranslations("common");
+
   return (
-    <AppShell title="Dashboard">
-      <div className="space-y-6" aria-busy="true" aria-label="Loading">
+    <AppShell title={t("title")}>
+      <div
+        className="space-y-6"
+        aria-busy="true"
+        aria-label={tCommon("a11y.loading")}
+      >
         <section className="space-y-3">
           <Skeleton className="h-6 w-36" />
           <div className="grid gap-3 sm:grid-cols-3">

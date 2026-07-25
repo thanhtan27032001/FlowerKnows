@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/layout/app-shell";
 import { OrderList } from "@/components/orders/order-list";
 
@@ -13,11 +14,13 @@ function OrdersContent() {
 }
 
 export default function OrdersPage() {
+  const t = useTranslations("orders");
+
   return (
-    <AppShell title="Orders">
+    <AppShell title={t("title")}>
       <Suspense
         fallback={
-          <p className="text-sm text-muted-foreground">Loading orders…</p>
+          <p className="text-sm text-muted-foreground">{t("loading")}</p>
         }
       >
         <OrdersContent />

@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { productApi, productKeys } from "@/src/lib/api/product";
 import { formatCostPrice, vnd } from "@/src/lib/format";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -25,6 +26,8 @@ type Props = {
 };
 
 export function ProductList({ onCreate, onStockIn }: Props) {
+  const t = useTranslations("products.list");
+  const tCommon = useTranslations("common");
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: productKeys.lists(),
     queryFn: productApi.list,
@@ -37,13 +40,13 @@ export function ProductList({ onCreate, onStockIn }: Props) {
       <QueryProgressBar active={isFetching && !isLoading} />
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={onCreate}>Create Product</Button>
+        <Button onClick={onCreate}>{t("createButton")}</Button>
         <Button
           variant="outline"
           onClick={onStockIn}
           disabled={isLoading || products.length === 0}
         >
-          Stock In
+          {t("stockInButton")}
         </Button>
       </div>
 
@@ -52,7 +55,7 @@ export function ProductList({ onCreate, onStockIn }: Props) {
       {isError && (
         <QueryErrorState
           message={
-            error instanceof Error ? error.message : "Failed to load products"
+            error instanceof Error ? error.message : t("loadError")
           }
           onRetry={() => refetch()}
         />
@@ -61,7 +64,7 @@ export function ProductList({ onCreate, onStockIn }: Props) {
       {!isLoading && !isError && products.length === 0 && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No products yet. Create your first product to manage inventory.
+            {t("empty")}
           </CardContent>
         </Card>
       )}
@@ -77,28 +80,29 @@ export function ProductList({ onCreate, onStockIn }: Props) {
                       <CardTitle className="text-base leading-snug">
                         {product.name}
                       </CardTitle>
-                      {product.lowStock && (
-                        <Badge variant="destructive">Low stock</Badge>
-                      )}
+                      {product.lowStock && <StatusBadge type="lowStock" />}
                     </div>
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <p className="text-muted-foreground">List price</p>
+                      <p className="text-muted-foreground">{t("listPrice")}</p>
                       <p className="font-medium tabular-nums">
                         {vnd.format(product.listPrice)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Stock</p>
+                      <p className="text-muted-foreground">{t("stock")}</p>
                       <p className="font-medium tabular-nums">
                         {product.stockQuantity}
                       </p>
                     </div>
                     <div className="col-span-2">
-                      <p className="text-muted-foreground">Avg cost</p>
+                      <p className="text-muted-foreground">{t("avgCost")}</p>
                       <p className="font-medium tabular-nums">
-                        {formatCostPrice(product.averageCostPrice)}
+                        {formatCostPrice(
+                          product.averageCostPrice,
+                          tCommon("format.notSet")
+                        )}
                       </p>
                     </div>
                   </CardContent>
@@ -111,11 +115,11 @@ export function ProductList({ onCreate, onStockIn }: Props) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>List price</TableHead>
-                  <TableHead>Avg cost</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead className="w-[120px]">Status</TableHead>
+                  <TableHead>{t("name")}</TableHead>
+                  <TableHead>{t("listPrice")}</TableHead>
+                  <TableHead>{t("avgCost")}</TableHead>
+                  <TableHead>{t("stock")}</TableHead>
+                  <TableHead className="w-[120px]">{t("status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -133,16 +137,21 @@ export function ProductList({ onCreate, onStockIn }: Props) {
                       {vnd.format(product.listPrice)}
                     </TableCell>
                     <TableCell className="tabular-nums">
-                      {formatCostPrice(product.averageCostPrice)}
+                      {formatCostPrice(
+                        product.averageCostPrice,
+                        tCommon("format.notSet")
+                      )}
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {product.stockQuantity}
                     </TableCell>
                     <TableCell>
                       {product.lowStock ? (
-                        <Badge variant="destructive">Low stock</Badge>
+                        <StatusBadge type="lowStock" />
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">
+                          {tCommon("fallback.emDash")}
+                        </span>
                       )}
                     </TableCell>
                   </TableRow>

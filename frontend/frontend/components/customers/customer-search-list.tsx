@@ -1,22 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ActionStatusBadge,
-  ShippingStatusBadge,
-} from "@/components/customers/customer-status-badges";
 import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
+import { StatusBadge } from "@/components/shared/status-badge";
 import {
-  ACTION_STATUS_LABEL,
   ACTION_STATUS_VALUES,
   customerApi,
   customerKeys,
   type CustomerActionStatus,
 } from "@/src/lib/api/customer";
-import { SHIPPING_LABEL, type ShippingStatus } from "@/src/lib/api/order";
+import { type ShippingStatus } from "@/src/lib/api/order";
+import {
+  actionStatusLabel,
+  shippingStatusLabel,
+} from "@/src/lib/i18n-labels";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -61,6 +62,9 @@ export function CustomerSearchList({
   onShippingStatusChange,
   onCreate,
 }: Props) {
+  const t = useTranslations("customers.search");
+  const tStatus = useTranslations("common.status");
+  const tCommon = useTranslations("common");
   const searchParams = {
     q: query,
     actionStatus,
@@ -83,12 +87,12 @@ export function CustomerSearchList({
         <Input
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="Search by name or phone"
+          placeholder={t("placeholder")}
           className="sm:max-w-sm"
-          aria-label="Search customers"
+          aria-label={tCommon("a11y.searchCustomers")}
         />
         <Button onClick={onCreate} className="sm:ml-auto">
-          Create Customer
+          {t("createButton")}
         </Button>
       </div>
 
@@ -104,15 +108,15 @@ export function CustomerSearchList({
         >
           <SelectTrigger
             className="w-full sm:w-[200px]"
-            aria-label="Filter by action status"
+            aria-label={t("actionStatus")}
           >
-            <SelectValue placeholder="Action status" />
+            <SelectValue placeholder={t("actionStatus")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__">All action statuses</SelectItem>
+            <SelectItem value="__all__">{t("allActionStatuses")}</SelectItem>
             {ACTION_STATUS_VALUES.map((status) => (
               <SelectItem key={status} value={status}>
-                {ACTION_STATUS_LABEL[status]}
+                {actionStatusLabel(tStatus, status)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -129,15 +133,15 @@ export function CustomerSearchList({
         >
           <SelectTrigger
             className="w-full sm:w-[200px]"
-            aria-label="Filter by shipping status"
+            aria-label={t("shippingStatus")}
           >
-            <SelectValue placeholder="Shipping status" />
+            <SelectValue placeholder={t("shippingStatus")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__">All shipping statuses</SelectItem>
+            <SelectItem value="__all__">{t("allShippingStatuses")}</SelectItem>
             {SHIPPING_FILTER_VALUES.map((status) => (
               <SelectItem key={status} value={status}>
-                {SHIPPING_LABEL[status]}
+                {shippingStatusLabel(tStatus, status)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -153,7 +157,7 @@ export function CustomerSearchList({
               onShippingStatusChange("");
             }}
           >
-            Clear filters
+            {tCommon("actions.clearFilters")}
           </Button>
         )}
       </div>
@@ -173,7 +177,7 @@ export function CustomerSearchList({
             )
           }
         >
-          Needs Order Now
+          {t("needsOrderNow")}
         </Button>
         <Button
           type="button"
@@ -185,7 +189,7 @@ export function CustomerSearchList({
             )
           }
         >
-          Not yet shipped
+          {t("notYetShipped")}
         </Button>
       </div>
 
@@ -194,7 +198,7 @@ export function CustomerSearchList({
       {isError && (
         <QueryErrorState
           message={
-            error instanceof Error ? error.message : "Failed to load customers"
+            error instanceof Error ? error.message : t("loadError")
           }
           onRetry={() => refetch()}
         />
@@ -203,9 +207,7 @@ export function CustomerSearchList({
       {!isLoading && !isError && customers.length === 0 && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            {query.trim() || hasFilters
-              ? "No customers match your search/filters."
-              : "No customers yet. Create one to get started."}
+            {query.trim() || hasFilters ? t("emptyFiltered") : t("empty")}
           </CardContent>
         </Card>
       )}
@@ -221,12 +223,13 @@ export function CustomerSearchList({
                       {customer.name}
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      {customer.phone || "No phone"}
+                      {customer.phone || tCommon("fallback.noPhone")}
                     </p>
                   </CardHeader>
                   <CardContent className="flex flex-wrap gap-2">
-                    <ActionStatusBadge status={customer.actionStatus} />
-                    <ShippingStatusBadge
+                    <StatusBadge type="action" status={customer.actionStatus} />
+                    <StatusBadge
+                      type="shipping"
                       status={customer.latestShippingStatus}
                     />
                   </CardContent>
@@ -239,10 +242,10 @@ export function CustomerSearchList({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Action status</TableHead>
-                  <TableHead>Shipping status</TableHead>
+                  <TableHead>{t("columns.name")}</TableHead>
+                  <TableHead>{t("columns.phone")}</TableHead>
+                  <TableHead>{t("columns.actionStatus")}</TableHead>
+                  <TableHead>{t("columns.shippingStatus")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -256,12 +259,18 @@ export function CustomerSearchList({
                         {customer.name}
                       </Link>
                     </TableCell>
-                    <TableCell>{customer.phone || "—"}</TableCell>
                     <TableCell>
-                      <ActionStatusBadge status={customer.actionStatus} />
+                      {customer.phone || tCommon("fallback.emDash")}
                     </TableCell>
                     <TableCell>
-                      <ShippingStatusBadge
+                      <StatusBadge
+                        type="action"
+                        status={customer.actionStatus}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge
+                        type="shipping"
                         status={customer.latestShippingStatus}
                       />
                     </TableCell>

@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Spinner } from "@/components/feedback/spinner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,12 +17,15 @@ export function PendingButton({
   pending = false,
   success = false,
   pendingLabel,
-  successLabel = "Done",
+  successLabel,
   children,
   className,
   disabled,
   ...props
 }: PendingButtonProps) {
+  const t = useTranslations("common.actions");
+  const resolvedSuccessLabel = successLabel ?? t("done");
+
   return (
     <Button
       className={cn(className)}
@@ -31,7 +35,7 @@ export function PendingButton({
       {success ? (
         <span className="inline-flex items-center gap-1.5">
           <CheckIcon className="size-4" aria-hidden />
-          <span>{successLabel}</span>
+          <span>{resolvedSuccessLabel}</span>
         </span>
       ) : pending ? (
         <span className="inline-flex items-center gap-1.5">

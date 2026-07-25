@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { createClientId } from "@/lib/utils";
 
 type Row = {
   key: string;
@@ -57,7 +58,7 @@ type Props = {
 
 function newRow(productId = ""): Row {
   return {
-    key: crypto.randomUUID(),
+    key: createClientId(),
     productId,
     quantity: "",
     costPrice: "",

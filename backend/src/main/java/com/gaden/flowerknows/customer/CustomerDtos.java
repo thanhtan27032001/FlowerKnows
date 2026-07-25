@@ -31,18 +31,9 @@ public final class CustomerDtos {
             String phone,
             String address,
             CustomerActionStatus actionStatus,
+            String latestShippingStatus,
             Instant createdAt
     ) {
-        public static CustomerResponse from(Customer customer) {
-            return new CustomerResponse(
-                    customer.getId(),
-                    customer.getName(),
-                    customer.getPhone(),
-                    customer.getAddress(),
-                    customer.getActionStatus(),
-                    customer.getCreatedAt()
-            );
-        }
     }
 
     public record TokenCardResponse(

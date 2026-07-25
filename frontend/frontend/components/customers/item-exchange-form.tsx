@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { createClientId } from "@/lib/utils";
 
 type ReceiveRow = {
   key: string;
@@ -52,7 +53,7 @@ type Props = {
 };
 
 function newRow(): ReceiveRow {
-  return { key: crypto.randomUUID(), productId: "", quantity: "1" };
+  return { key: createClientId(), productId: "", quantity: "1" };
 }
 
 export function ItemExchangeForm({

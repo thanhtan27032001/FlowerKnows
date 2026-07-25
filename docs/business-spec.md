@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 1.6 (Adds US-18 — customer action status (4 pre-order values) shown alongside order shipping status (3 post-order values: order_created / shipped / completed) on the Customer Page)
+**Version:** 1.7 (Adds US-19 — status badges directly on the customer list)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -246,6 +246,26 @@ This is the single source of truth for schema design across the whole document.
 ---
 
 ## MODULE 4 — Customer Page (Core Screen)
+
+### US-19: View Customer List with status badges
+
+**As** Staff, **I want to** see `action_status` and `shipping_status` (if any order exists) directly on each row of the customer list, **so that** I can triage which customers need attention without opening each one individually.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Staff opens the `/customers` list screen | Views the list | Each row shows: customer `name`, `phone`, an **`action_status` badge**, and a **`shipping_status` badge** for the most recent order (if the customer has at least one order) |
+| 2 | A customer has no order yet | Viewing their row | No `shipping_status` badge is shown (or a neutral placeholder like "No order yet") — only the `action_status` badge is shown |
+| 3 | A customer has multiple orders | Viewing their row | The `shipping_status` badge reflects only the **most recent** order; the full order history remains available on the Customer Page (US-18 AC #5) |
+| 4 | Staff wants to quickly find customers needing action | Uses a status filter (dropdown or quick-filter chips) | The list can be filtered by `action_status` (e.g. show only `needs_immediate_order`) and/or by `shipping_status` (e.g. show only `order_created` — not yet shipped) |
+| 5 | Staff searches by name/phone | Types in the search box | The list filters by the search term AND respects any active status filter at the same time |
+| 6 | Mobile (< 768px) | Viewing the list | Each customer renders as a card (not a table row) with both badges clearly visible without needing to scroll horizontally |
+| 7 | Staff taps/clicks a row | — | Navigates to that customer's full Customer Page (US-05) |
+
+**Note:** Badge colors should visually distinguish urgency — e.g. `needs_immediate_order` (action_status) and `order_created` (shipping_status, meaning not yet shipped) are the two states most likely to need Staff follow-up, and should stand out from calmer states like `undetermined` or `completed`.
+
+---
 
 ### US-05: View a Customer's consolidated Item Tokens
 

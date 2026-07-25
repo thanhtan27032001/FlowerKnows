@@ -1,4 +1,5 @@
 import { apiClient } from "@/src/lib/api/client";
+import type { ShippingStatus } from "@/src/lib/api/order";
 
 export type CustomerActionStatus =
   | "UNDETERMINED"
@@ -12,6 +13,7 @@ export type Customer = {
   phone: string | null;
   address: string | null;
   actionStatus: CustomerActionStatus;
+  latestShippingStatus: ShippingStatus | null;
   createdAt: string;
 };
 
@@ -83,19 +85,36 @@ export const ACTION_STATUS_VALUES: CustomerActionStatus[] = [
   "NEEDS_IMMEDIATE_ORDER",
 ];
 
+export type CustomerSearchParams = {
+  q?: string;
+  actionStatus?: CustomerActionStatus | "";
+  shippingStatus?: ShippingStatus | "";
+};
+
 export const customerKeys = {
   all: ["customers"] as const,
-  search: (q: string) => [...customerKeys.all, "search", q] as const,
+  search: (params: CustomerSearchParams) =>
+    [
+      ...customerKeys.all,
+      "search",
+      params.q ?? "",
+      params.actionStatus ?? "",
+      params.shippingStatus ?? "",
+    ] as const,
   detail: (id: string) => [...customerKeys.all, "detail", id] as const,
 };
 
 export const customerApi = {
-  search: (q = "") =>
-    apiClient.get<Customer[]>(
-      q.trim()
-        ? `/api/customers?q=${encodeURIComponent(q.trim())}`
-        : "/api/customers"
-    ),
+  search: (params: CustomerSearchParams = {}) => {
+    const search = new URLSearchParams();
+    if (params.q?.trim()) search.set("q", params.q.trim());
+    if (params.actionStatus) search.set("actionStatus", params.actionStatus);
+    if (params.shippingStatus) search.set("shippingStatus", params.shippingStatus);
+    const qs = search.toString();
+    return apiClient.get<Customer[]>(
+      qs ? `/api/customers?${qs}` : "/api/customers"
+    );
+  },
 
   get: (id: string) =>
     apiClient.get<CustomerDetail>(`/api/customers/${id}`),

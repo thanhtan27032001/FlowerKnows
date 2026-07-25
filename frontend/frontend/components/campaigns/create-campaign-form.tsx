@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { createClientId } from "@/lib/utils";
 
 type PoolRow = {
   key: string;
@@ -53,7 +54,7 @@ type Props = {
 
 function newPoolRow(): PoolRow {
   return {
-    key: crypto.randomUUID(),
+    key: createClientId(),
     productId: "",
     loadedQuantity: "",
   };

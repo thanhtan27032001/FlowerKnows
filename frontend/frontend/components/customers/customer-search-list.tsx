@@ -2,10 +2,28 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { customerApi, customerKeys } from "@/src/lib/api/customer";
+import {
+  ActionStatusBadge,
+  ShippingStatusBadge,
+} from "@/components/customers/customer-status-badges";
+import {
+  ACTION_STATUS_LABEL,
+  ACTION_STATUS_VALUES,
+  customerApi,
+  customerKeys,
+  type CustomerActionStatus,
+} from "@/src/lib/api/customer";
+import { SHIPPING_LABEL, type ShippingStatus } from "@/src/lib/api/order";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -15,23 +33,44 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+const SHIPPING_FILTER_VALUES: ShippingStatus[] = [
+  "ORDER_CREATED",
+  "SHIPPED",
+  "COMPLETED",
+];
+
 type Props = {
   query: string;
   onQueryChange: (q: string) => void;
+  actionStatus: CustomerActionStatus | "";
+  onActionStatusChange: (value: CustomerActionStatus | "") => void;
+  shippingStatus: ShippingStatus | "";
+  onShippingStatusChange: (value: ShippingStatus | "") => void;
   onCreate: () => void;
 };
 
 export function CustomerSearchList({
   query,
   onQueryChange,
+  actionStatus,
+  onActionStatusChange,
+  shippingStatus,
+  onShippingStatusChange,
   onCreate,
 }: Props) {
+  const searchParams = {
+    q: query,
+    actionStatus,
+    shippingStatus,
+  };
+
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: customerKeys.search(query),
-    queryFn: () => customerApi.search(query),
+    queryKey: customerKeys.search(searchParams),
+    queryFn: () => customerApi.search(searchParams),
   });
 
   const customers = data ?? [];
+  const hasFilters = !!actionStatus || !!shippingStatus;
 
   return (
     <div className="space-y-4">
@@ -45,6 +84,100 @@ export function CustomerSearchList({
         />
         <Button onClick={onCreate} className="sm:ml-auto">
           Create Customer
+        </Button>
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <Select
+          value={actionStatus || "__all__"}
+          onValueChange={(value) => {
+            const next = String(value ?? "");
+            onActionStatusChange(
+              next === "__all__" ? "" : (next as CustomerActionStatus)
+            );
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-[200px]" aria-label="Filter by action status">
+            <SelectValue placeholder="Action status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All action statuses</SelectItem>
+            {ACTION_STATUS_VALUES.map((status) => (
+              <SelectItem key={status} value={status}>
+                {ACTION_STATUS_LABEL[status]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={shippingStatus || "__all__"}
+          onValueChange={(value) => {
+            const next = String(value ?? "");
+            onShippingStatusChange(
+              next === "__all__" ? "" : (next as ShippingStatus)
+            );
+          }}
+        >
+          <SelectTrigger
+            className="w-full sm:w-[200px]"
+            aria-label="Filter by shipping status"
+          >
+            <SelectValue placeholder="Shipping status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All shipping statuses</SelectItem>
+            {SHIPPING_FILTER_VALUES.map((status) => (
+              <SelectItem key={status} value={status}>
+                {SHIPPING_LABEL[status]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {hasFilters && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              onActionStatusChange("");
+              onShippingStatusChange("");
+            }}
+          >
+            Clear filters
+          </Button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={
+            actionStatus === "NEEDS_IMMEDIATE_ORDER" ? "default" : "outline"
+          }
+          onClick={() =>
+            onActionStatusChange(
+              actionStatus === "NEEDS_IMMEDIATE_ORDER"
+                ? ""
+                : "NEEDS_IMMEDIATE_ORDER"
+            )
+          }
+        >
+          Needs Order Now
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={shippingStatus === "ORDER_CREATED" ? "default" : "outline"}
+          onClick={() =>
+            onShippingStatusChange(
+              shippingStatus === "ORDER_CREATED" ? "" : "ORDER_CREATED"
+            )
+          }
+        >
+          Not yet shipped
         </Button>
       </div>
 
@@ -71,8 +204,8 @@ export function CustomerSearchList({
       {!isLoading && !isError && customers.length === 0 && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            {query.trim()
-              ? "No customers match your search."
+            {query.trim() || hasFilters
+              ? "No customers match your search/filters."
               : "No customers yet. Create one to get started."}
           </CardContent>
         </Card>
@@ -92,10 +225,15 @@ export function CustomerSearchList({
                     <CardTitle className="text-base leading-snug">
                       {customer.name}
                     </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      {customer.phone || "No phone"}
+                    </p>
                   </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
-                    {customer.phone || "No phone"}
-                    {customer.address ? ` · ${customer.address}` : ""}
+                  <CardContent className="flex flex-wrap gap-2">
+                    <ActionStatusBadge status={customer.actionStatus} />
+                    <ShippingStatusBadge
+                      status={customer.latestShippingStatus}
+                    />
                   </CardContent>
                 </Card>
               </Link>
@@ -108,12 +246,13 @@ export function CustomerSearchList({
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Address</TableHead>
+                  <TableHead>Action status</TableHead>
+                  <TableHead>Shipping status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {customers.map((customer) => (
-                  <TableRow key={customer.id}>
+                  <TableRow key={customer.id} className="cursor-pointer">
                     <TableCell>
                       <Link
                         href={`/customers/${customer.id}`}
@@ -123,8 +262,13 @@ export function CustomerSearchList({
                       </Link>
                     </TableCell>
                     <TableCell>{customer.phone || "—"}</TableCell>
-                    <TableCell className="max-w-xs truncate text-muted-foreground">
-                      {customer.address || "—"}
+                    <TableCell>
+                      <ActionStatusBadge status={customer.actionStatus} />
+                    </TableCell>
+                    <TableCell>
+                      <ShippingStatusBadge
+                        status={customer.latestShippingStatus}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

@@ -5,6 +5,7 @@ import com.gaden.flowerknows.campaign.CampaignParticipantRepository;
 import com.gaden.flowerknows.common.ResourceNotFoundException;
 import com.gaden.flowerknows.order.Order;
 import com.gaden.flowerknows.order.OrderRepository;
+import com.gaden.flowerknows.order.ShippingStatus;
 import com.gaden.flowerknows.token.ItemToken;
 import com.gaden.flowerknows.token.ItemTokenRepository;
 import com.gaden.flowerknows.token.SourceType;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,15 +46,30 @@ public class CustomerService {
     }
 
     @Transactional(readOnly = true)
-    public List<CustomerDtos.CustomerResponse> search(String query) {
+    public List<CustomerDtos.CustomerResponse> search(
+            String query,
+            CustomerActionStatus actionStatus,
+            ShippingStatus shippingStatus
+    ) {
+        List<Customer> customers;
         if (query == null || query.isBlank()) {
-            return customerRepository.findAll().stream()
-                    .map(CustomerDtos.CustomerResponse::from)
-                    .toList();
+            customers = customerRepository.findAll();
+        } else {
+            String q = query.trim();
+            customers = customerRepository.findByNameContainingIgnoreCaseOrPhoneContaining(q, q);
         }
-        String q = query.trim();
-        return customerRepository.findByNameContainingIgnoreCaseOrPhoneContaining(q, q).stream()
-                .map(CustomerDtos.CustomerResponse::from)
+
+        Map<UUID, ShippingStatus> latestShippingByCustomer = latestShippingStatusByCustomer();
+
+        return customers.stream()
+                .filter(c -> actionStatus == null || c.getActionStatus() == actionStatus)
+                .filter(c -> {
+                    if (shippingStatus == null) {
+                        return true;
+                    }
+                    return shippingStatus == latestShippingByCustomer.get(c.getId());
+                })
+                .map(c -> toListResponse(c, latestShippingByCustomer.get(c.getId())))
                 .toList();
     }
 
@@ -107,8 +124,10 @@ public class CustomerService {
 
     @Transactional
     public CustomerDtos.CustomerResponse create(CustomerDtos.CreateCustomerRequest request) {
-        Customer customer = new Customer(request.name(), request.phone(), request.address());
-        return CustomerDtos.CustomerResponse.from(customerRepository.save(customer));
+        Customer customer = customerRepository.save(
+                new Customer(request.name(), request.phone(), request.address())
+        );
+        return toListResponse(customer, null);
     }
 
     @Transactional
@@ -124,6 +143,29 @@ public class CustomerService {
     public Customer requireCustomer(UUID id) {
         return customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found: " + id));
+    }
+
+    private Map<UUID, ShippingStatus> latestShippingStatusByCustomer() {
+        Map<UUID, ShippingStatus> latest = new LinkedHashMap<>();
+        for (Order order : orderRepository.findAllByOrderByCreatedAtDesc()) {
+            latest.putIfAbsent(order.getCustomer().getId(), order.getShippingStatus());
+        }
+        return latest;
+    }
+
+    private CustomerDtos.CustomerResponse toListResponse(
+            Customer customer,
+            ShippingStatus latestShippingStatus
+    ) {
+        return new CustomerDtos.CustomerResponse(
+                customer.getId(),
+                customer.getName(),
+                customer.getPhone(),
+                customer.getAddress(),
+                customer.getActionStatus(),
+                latestShippingStatus == null ? null : latestShippingStatus.name(),
+                customer.getCreatedAt()
+        );
     }
 
     private CustomerDtos.CustomerOrderSummaryResponse toOrderSummary(Order order) {

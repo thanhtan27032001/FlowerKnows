@@ -1,5 +1,6 @@
 package com.gaden.flowerknows.customer;
 
+import com.gaden.flowerknows.order.ShippingStatus;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,8 +27,12 @@ public class CustomerController {
     }
 
     @GetMapping
-    public List<CustomerDtos.CustomerResponse> search(@RequestParam(required = false) String q) {
-        return customerService.search(q);
+    public List<CustomerDtos.CustomerResponse> search(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) CustomerActionStatus actionStatus,
+            @RequestParam(required = false) ShippingStatus shippingStatus
+    ) {
+        return customerService.search(q, actionStatus, shippingStatus);
     }
 
     @GetMapping("/{id}")

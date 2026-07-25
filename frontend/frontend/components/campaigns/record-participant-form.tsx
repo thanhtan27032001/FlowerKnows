@@ -65,8 +65,8 @@ export function RecordParticipantForm({
   const bagsRemaining = campaign.totalBags - campaign.bagsSold;
 
   const { data: customers = [], isLoading: customersLoading } = useQuery({
-    queryKey: customerKeys.search(search),
-    queryFn: () => customerApi.search(search),
+    queryKey: customerKeys.search({ q: search }),
+    queryFn: () => customerApi.search({ q: search }),
     enabled: open && mode === "existing",
   });
 

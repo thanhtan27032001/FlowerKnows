@@ -11,6 +11,7 @@ import {
   MORE_NAV_ICON,
 } from "@/components/layout/nav-config";
 import { cn } from "@/lib/utils";
+import { ThemePresetList } from "@/components/layout/theme-picker";
 import {
   Sheet,
   SheetContent,
@@ -22,6 +23,7 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
+  const tTheme = useTranslations("theme");
   const [moreOpen, setMoreOpen] = useState(false);
 
   const primaryItems = getMobilePrimaryItems();
@@ -122,6 +124,12 @@ export function MobileBottomNav() {
               );
             })}
           </ul>
+          <div className="border-t border-border/70 px-2 pt-3 pb-1">
+            <p className="px-3 pb-1.5 text-xs font-medium text-muted-foreground">
+              {tTheme("pickerTitle")}
+            </p>
+            <ThemePresetList className="px-1" />
+          </div>
         </SheetContent>
       </Sheet>
     </>

@@ -14,9 +14,57 @@ import {
 import { cn } from "@/lib/utils";
 import { THEME_PRESET_SWATCHES } from "@/src/lib/theme-presets";
 
-export function ThemePicker() {
+export function ThemePresetList({ className }: { className?: string }) {
   const t = useTranslations("theme");
   const { preset, setPreset, presets } = useThemePreset();
+
+  return (
+    <div
+      className={cn("flex flex-col gap-0.5", className)}
+      role="listbox"
+      aria-label={t("pickerTitle")}
+    >
+      {presets.map((id) => {
+        const selected = preset === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="option"
+            aria-selected={selected}
+            onClick={() => setPreset(id)}
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+              "hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+              selected && "bg-muted"
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                "size-4 shrink-0 rounded-full ring-1 ring-foreground/15",
+                selected && "ring-2 ring-ring"
+              )}
+              style={{ backgroundColor: THEME_PRESET_SWATCHES[id] }}
+            />
+            <span className="truncate">{t(`presets.${id}`)}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ThemePicker({
+  className,
+  side = "top",
+  align = "start",
+}: {
+  className?: string;
+  side?: "top" | "bottom" | "left" | "right";
+  align?: "start" | "center" | "end";
+}) {
+  const t = useTranslations("theme");
 
   return (
     <Popover>
@@ -26,15 +74,15 @@ export function ThemePicker() {
             variant="ghost"
             size="icon-sm"
             aria-label={t("pickerLabel")}
-            className="text-sidebar-foreground"
+            className={cn("text-foreground", className)}
           />
         }
       >
         <PaletteIcon />
       </PopoverTrigger>
       <PopoverContent
-        side="top"
-        align="start"
+        side={side}
+        align={align}
         sideOffset={8}
         className="w-56 gap-2 p-2"
       >
@@ -43,39 +91,7 @@ export function ThemePicker() {
             {t("pickerTitle")}
           </PopoverTitle>
         </PopoverHeader>
-        <div
-          className="flex flex-col gap-0.5"
-          role="listbox"
-          aria-label={t("pickerTitle")}
-        >
-          {presets.map((id) => {
-            const selected = preset === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="option"
-                aria-selected={selected}
-                onClick={() => setPreset(id)}
-                className={cn(
-                  "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
-                  "hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
-                  selected && "bg-muted"
-                )}
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    "size-4 shrink-0 rounded-full ring-1 ring-foreground/15",
-                    selected && "ring-2 ring-ring"
-                  )}
-                  style={{ backgroundColor: THEME_PRESET_SWATCHES[id] }}
-                />
-                <span className="truncate">{t(`presets.${id}`)}</span>
-              </button>
-            );
-          })}
-        </div>
+        <ThemePresetList />
       </PopoverContent>
     </Popover>
   );

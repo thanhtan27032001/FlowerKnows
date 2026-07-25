@@ -190,8 +190,9 @@ export default function ReportsPage() {
               <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 <p className="font-medium">{t("reconciliationWarning.title")}</p>
                 <p className="mt-1">{t("reconciliationWarning.body")}</p>
-                {/* API-sourced; may remain EN until backend i18n */}
-                <p className="mt-1 text-xs opacity-90">{reconciliation.formula}</p>
+                <p className="mt-1 text-xs opacity-90">
+                  {t("reconciliation.formula")}
+                </p>
               </div>
             )}
 
@@ -353,9 +354,8 @@ export default function ReportsPage() {
                     {vnd.format(reconciliation.totalRefunded)}
                   </span>
                 </div>
-                {/* API-sourced; may remain EN until backend i18n */}
                 <p className="pt-2 text-xs text-muted-foreground">
-                  {reconciliation.formula}
+                  {t("reconciliation.formula")}
                 </p>
               </CardContent>
             </Card>

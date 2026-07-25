@@ -123,7 +123,8 @@
       "totalRevenue": "Tổng doanh thu",
       "revenueBreakdown": "Đơn hàng {orders} · Đã hủy {cancelled}",
       "totalProfit": "Tổng lợi nhuận",
-      "negativeHint": "Số âm là bình thường giai đoạn đầu khi nhập kho nhiều hơn bán"
+      "negativeHint": "Số âm là bình thường giai đoạn đầu khi nhập kho nhiều hơn bán",
+      "cashBasisNote": "Đây là số liệu theo cơ sở tiền mặt đơn giản, bao gồm toàn bộ chi phí nhập kho dù đã bán hay chưa. Để xem biên lợi nhuận khớp theo từng đơn, mở Báo cáo biên lợi nhuận."
     },
     "stats": {
       "availableStock": "Tồn kho khả dụng",
@@ -437,7 +438,8 @@
       "change": "Thay đổi",
       "cost": "Giá vốn",
       "note": "Ghi chú",
-      "balanceAfter": "Tồn sau"
+      "balanceAfter": "Tồn sau",
+      "ledgerMismatch": "Lệch sổ cái: tổng biến động tồn không khớp số tồn hiện tại. Kiểm tra các giao dịch ghi thiếu."
     }
   },
   "orders": {
@@ -533,7 +535,8 @@
       "totalPrepaid": "Tổng trả trước",
       "holdingTokens": "Token đang giữ",
       "recognizedRevenue": "Doanh thu đã ghi nhận",
-      "totalRefunded": "Tổng hoàn tiền"
+      "totalRefunded": "Tổng hoàn tiền",
+      "formula": "Tổng trả trước = Token đang giữ + Doanh thu đã ghi nhận + Tổng hoàn tiền"
     },
     "campaignBreakdown": {
       "campaign": "Chiến dịch: {name}",

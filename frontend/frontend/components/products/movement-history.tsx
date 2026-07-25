@@ -62,8 +62,7 @@ export function MovementHistory({ productId }: Props) {
         <>
           {mismatch && (
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900">
-              Ledger mismatch: the sum of stock transactions does not equal the
-              current stock quantity. Check for missing transaction writes.
+              {t("ledgerMismatch")}
             </div>
           )}
 
@@ -103,7 +102,7 @@ export function MovementHistory({ productId }: Props) {
             ))}
           </div>
 
-          <div className="hidden overflow-hidden rounded-xl border border-border/80 md:block">
+          <div className="fk-table-surface hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>

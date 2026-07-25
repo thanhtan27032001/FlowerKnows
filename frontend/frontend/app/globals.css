@@ -58,97 +58,110 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Flower Knows theme v3 — vivid orange primary (#FB8500) + emerald + pink accent */
+/* Flower Knows theme v5 — contrast fix.
+   Root cause of the previous "khó nhìn" issue: background, border, muted, and
+   sidebar were all pale variants of the SAME warm-yellow hue family with very
+   little lightness separation, so almost nothing visually distinguished itself.
+   Fix: pull the main content area back to a near-neutral background, keep
+   sage (#CCD5AE) / terracotta (#D4A373) as ACCENTS (buttons, active states,
+   badges) rather than large background fills, and darken border enough to
+   actually read as a line. Sidebar is now visually separated by a border +
+   elevation (shadow), not by a large distinct background color. */
 :root {
-  --background: oklch(0.996 0.002 345.2); /* #FFFDFE */
-  --foreground: oklch(0.233 0.029 321.2); /* #241926 */
+  --background: oklch(0.988 0.004 91.4); /* #FCFBF8 near-neutral, barely warm */
+  --foreground: oklch(0.33 0.024 90.7);  /* #3A3527 deep olive-brown */
   --card: oklch(1 0 0); /* #FFFFFF */
-  --card-foreground: oklch(0.233 0.029 321.2);
+  --card-foreground: oklch(0.33 0.024 90.7);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.233 0.029 321.2);
-  --primary: oklch(0.734 0.179 56.1); /* #FB8500 vivid orange */
-  --primary-foreground: oklch(0.233 0.029 321.2); /* dark text — white fails contrast on this orange (2.48:1), dark passes (6.81:1) */
-  --secondary: oklch(0.643 0.134 164.7); /* #0CA678 vivid emerald */
-  --secondary-foreground: oklch(1 0 0);
-  --muted: oklch(0.955 0.008 349.2); /* #F5EEF1 */
-  --muted-foreground: oklch(0.544 0.022 344.4); /* #7A6B73 */
-  --accent: oklch(0.597 0.221 4.8); /* #E0256E pink-magenta — tertiary accent, ties to logo's rose motif */
-  --accent-foreground: oklch(1 0 0);
+  --popover-foreground: oklch(0.33 0.024 90.7);
+  --primary: oklch(0.856 0.053 118.1); /* #CCD5AE sage */
+  --primary-foreground: oklch(0.33 0.024 90.7);
+  --secondary: oklch(0.75 0.086 65.3); /* #D4A373 terracotta */
+  --secondary-foreground: oklch(0.33 0.024 90.7);
+  --muted: oklch(0.952 0.012 91.5); /* #F2EFE6 — much closer to bg now, used sparingly */
+  --muted-foreground: oklch(0.523 0.025 95.5); /* #6E6A5A darkened for legibility */
+  --accent: oklch(0.75 0.086 65.3);
+  --accent-foreground: oklch(0.33 0.024 90.7);
   --destructive: oklch(0.546 0.195 26.6); /* #C92A2A */
-  --border: oklch(0.87 0.04 350.4); /* strengthened from #F1D9E4 to #E8B4CB-ish for visibility */
-  --input: oklch(0.87 0.04 350.4);
-  --ring: oklch(0.734 0.179 56.1);
-  --chart-1: oklch(0.734 0.179 56.1); /* orange */
-  --chart-2: oklch(0.643 0.134 164.7); /* emerald */
-  --chart-3: oklch(0.597 0.221 4.8);   /* pink-magenta */
-  --chart-4: oklch(0.669 0.157 248.3); /* blue */
-  --chart-5: oklch(0.603 0.218 289.7); /* violet */
+  --border: oklch(0.811 0.033 91.1); /* #C9C1AA — darkened significantly so it's actually visible */
+  --input: oklch(0.811 0.033 91.1);
+  --ring: oklch(0.75 0.086 65.3);
+  --chart-1: oklch(0.75 0.086 65.3);
+  --chart-2: oklch(0.508 0.076 119.9);
+  --chart-3: oklch(0.856 0.053 118.1);
+  --chart-4: oklch(0.628 0.064 249.6);
+  --chart-5: oklch(0.597 0.221 4.8);
   --radius: 0.5rem;
-  --sidebar: oklch(0.996 0.002 345.2);
-  --sidebar-foreground: oklch(0.233 0.029 321.2);
-  --sidebar-primary: oklch(0.734 0.179 56.1);
-  --sidebar-primary-foreground: oklch(0.233 0.029 321.2);
-  --sidebar-accent: oklch(0.955 0.008 349.2);
-  --sidebar-accent-foreground: oklch(0.233 0.029 321.2);
-  --sidebar-border: oklch(0.87 0.04 350.4);
-  --sidebar-ring: oklch(0.734 0.179 56.1);
 
-  /* Semantic status — badges (token / action / shipping / low-stock) */
-  --status-success-bg: oklch(0.962 0.043 156.7); /* #DCFCE7 */
-  --status-success-fg: oklch(0.529 0.11 164.7);  /* #087F5B */
-  --status-warning-bg: oklch(0.961 0.068 96.6);  /* #FFF3BF */
-  --status-warning-fg: oklch(0.562 0.126 65.5);  /* #A66300 */
-  --status-danger-bg: oklch(0.939 0.031 17.7);   /* #FFE3E3 */
-  --status-danger-fg: oklch(0.546 0.195 26.6);   /* #C92A2A */
-  --status-info-bg: oklch(0.963 0.02 238.7);     /* #E7F5FF */
-  --status-info-fg: oklch(0.543 0.149 251.7);    /* #1971C2 */
-  --status-neutral-bg: oklch(0.963 0.003 247.9); /* #F1F3F5 */
-  --status-neutral-fg: oklch(0.428 0.015 248.2); /* #495057 */
+  /* Sidebar: same neutral background as content, NOT a separate large color
+     zone — visually separated via border-right + shadow instead. */
+  --sidebar: oklch(1 0 0); /* white panel, elevated */
+  --sidebar-foreground: oklch(0.33 0.024 90.7);
+  --sidebar-primary: oklch(0.75 0.086 65.3);
+  --sidebar-primary-foreground: oklch(0.33 0.024 90.7);
+  --sidebar-accent: oklch(0.952 0.012 91.5); /* active-item fill — subtle, paired with left accent bar, see fk-nav-active below */
+  --sidebar-accent-foreground: oklch(0.33 0.024 90.7);
+  --sidebar-border: oklch(0.811 0.033 91.1);
+  --sidebar-ring: oklch(0.75 0.086 65.3);
+
+  /* Status badges — kept saturated; a border ring is added via .fk-badge
+     (see below) so the chip stays visible even against a near-white card,
+     independent of bg-fill contrast. */
+  --status-success-bg: oklch(0.962 0.043 156.7);
+  --status-success-fg: oklch(0.529 0.11 164.7);
+  --status-warning-bg: oklch(0.961 0.068 96.6);
+  --status-warning-fg: oklch(0.562 0.126 65.5);
+  --status-danger-bg: oklch(0.939 0.031 17.7);
+  --status-danger-fg: oklch(0.546 0.195 26.6);
+  --status-info-bg: oklch(0.963 0.02 238.7);
+  --status-info-fg: oklch(0.543 0.149 251.7);
+  --status-neutral-bg: oklch(0.963 0.003 247.9);
+  --status-neutral-fg: oklch(0.428 0.015 248.2);
 }
 
 .dark {
-  --background: oklch(0.197 0.032 311.1); /* #1A1120 */
-  --foreground: oklch(0.955 0.008 349.2); /* #F5EEF1 */
-  --card: oklch(0.238 0.035 310.7);       /* #241A2B */
-  --card-foreground: oklch(0.955 0.008 349.2);
-  --popover: oklch(0.238 0.035 310.7);
-  --popover-foreground: oklch(0.955 0.008 349.2);
-  --primary: oklch(0.803 0.146 64.6);     /* #FFA94D lighter orange for dark bg, 9.64:1 vs dark text */
-  --primary-foreground: oklch(0.197 0.032 311.1);
-  --secondary: oklch(0.766 0.141 165.8);  /* #3FCF9E */
-  --secondary-foreground: oklch(0.197 0.032 311.1);
-  --muted: oklch(0.275 0.038 312.7);      /* #2E2235 */
-  --muted-foreground: oklch(0.749 0.024 337); /* #B8A8B3 */
-  --accent: oklch(0.673 0.195 1);         /* #F0568F lighter pink for dark bg */
-  --accent-foreground: oklch(0.197 0.032 311.1);
+  --background: oklch(0.22 0.012 90);
+  --foreground: oklch(0.93 0.015 88);
+  --card: oklch(0.27 0.015 90);
+  --card-foreground: oklch(0.93 0.015 88);
+  --popover: oklch(0.27 0.015 90);
+  --popover-foreground: oklch(0.93 0.015 88);
+  --primary: oklch(0.86 0.05 118);
+  --primary-foreground: oklch(0.22 0.012 90);
+  --secondary: oklch(0.78 0.08 65.8);
+  --secondary-foreground: oklch(0.22 0.012 90);
+  --muted: oklch(0.31 0.015 90);
+  --muted-foreground: oklch(0.72 0.02 90);
+  --accent: oklch(0.78 0.08 65.8);
+  --accent-foreground: oklch(0.22 0.012 90);
   --destructive: oklch(0.589 0.161 23.4);
-  --border: oklch(0.318 0.043 312.9);     /* #3A2C42 */
-  --input: oklch(0.318 0.043 312.9);
-  --ring: oklch(0.803 0.146 64.6);
-  --chart-1: oklch(0.803 0.146 64.6);
-  --chart-2: oklch(0.766 0.141 165.8);
-  --chart-3: oklch(0.673 0.195 1);
-  --chart-4: oklch(0.782 0.115 243.8);
-  --chart-5: oklch(0.7 0.19 300);
-  --sidebar: oklch(0.238 0.035 310.7);
-  --sidebar-foreground: oklch(0.955 0.008 349.2);
-  --sidebar-primary: oklch(0.803 0.146 64.6);
-  --sidebar-primary-foreground: oklch(0.197 0.032 311.1);
-  --sidebar-accent: oklch(0.275 0.038 312.7);
-  --sidebar-accent-foreground: oklch(0.955 0.008 349.2);
-  --sidebar-border: oklch(0.318 0.043 312.9);
-  --sidebar-ring: oklch(0.803 0.146 64.6);
+  --border: oklch(0.4 0.02 90);
+  --input: oklch(0.4 0.02 90);
+  --ring: oklch(0.78 0.08 65.8);
+  --chart-1: oklch(0.78 0.08 65.8);
+  --chart-2: oklch(0.6 0.07 120);
+  --chart-3: oklch(0.86 0.05 118);
+  --chart-4: oklch(0.7 0.07 249.6);
+  --chart-5: oklch(0.673 0.195 1);
+  --sidebar: oklch(0.27 0.015 90);
+  --sidebar-foreground: oklch(0.93 0.015 88);
+  --sidebar-primary: oklch(0.78 0.08 65.8);
+  --sidebar-primary-foreground: oklch(0.22 0.012 90);
+  --sidebar-accent: oklch(0.31 0.015 90);
+  --sidebar-accent-foreground: oklch(0.93 0.015 88);
+  --sidebar-border: oklch(0.4 0.02 90);
+  --sidebar-ring: oklch(0.78 0.08 65.8);
 
-  --status-success-bg: oklch(0.317 0.055 166.7); /* #0F3B2C */
-  --status-success-fg: oklch(0.829 0.138 164.7); /* #5FE3B0 */
-  --status-warning-bg: oklch(0.313 0.055 87.4);  /* #3D2F0A */
-  --status-warning-fg: oklch(0.844 0.151 87.9);  /* #F5C542 */
-  --status-danger-bg: oklch(0.257 0.065 22.8);   /* #3D1414 */
-  --status-danger-fg: oklch(0.756 0.146 21.1);   /* #FF8787 */
-  --status-info-bg: oklch(0.274 0.048 242.1);    /* #0F2A3D */
-  --status-info-fg: oklch(0.782 0.115 243.8);    /* #74C0FC */
-  --status-neutral-bg: oklch(0.275 0.021 305.6); /* #2A2530 */
-  --status-neutral-fg: oklch(0.797 0.026 317.7); /* #C4B8C8 */
+  --status-success-bg: oklch(0.317 0.055 166.7);
+  --status-success-fg: oklch(0.829 0.138 164.7);
+  --status-warning-bg: oklch(0.313 0.055 87.4);
+  --status-warning-fg: oklch(0.844 0.151 87.9);
+  --status-danger-bg: oklch(0.257 0.065 22.8);
+  --status-danger-fg: oklch(0.756 0.146 21.1);
+  --status-info-bg: oklch(0.274 0.048 242.1);
+  --status-info-fg: oklch(0.782 0.115 243.8);
+  --status-neutral-bg: oklch(0.275 0.021 305.6);
+  --status-neutral-fg: oklch(0.797 0.026 317.7);
 }
 
 @layer base {
@@ -164,14 +177,36 @@
 }
 
 /* ---------------------------------------------------------------------- */
+/* Sidebar separation — border + shadow instead of a big color fill       */
+/* ---------------------------------------------------------------------- */
+
+.fk-sidebar-shell {
+  background-color: var(--sidebar);
+  border-right: 1px solid var(--sidebar-border);
+  box-shadow: 1px 0 8px 0 color-mix(in oklch, var(--foreground) 4%, transparent);
+}
+
+/* Active nav item — a solid left accent bar does the differentiation, not
+   subtle background contrast (which is unreliable at this lightness range). */
+.fk-nav-active {
+  background-color: var(--sidebar-accent);
+  border-left: 3px solid var(--secondary);
+  font-weight: 600;
+}
+
+.fk-nav-item {
+  border-left: 3px solid transparent;
+}
+
+/* ---------------------------------------------------------------------- */
 /* Card / surface shadow system                                          */
 /* ---------------------------------------------------------------------- */
 
 .fk-card-shadow {
   box-shadow:
-    0 1px 2px 0 color-mix(in oklch, var(--foreground) 6%, transparent),
-    0 10px 28px -10px color-mix(in oklch, var(--primary) 28%, transparent),
-    0 4px 10px -6px color-mix(in oklch, var(--foreground) 10%, transparent);
+    0 1px 2px 0 color-mix(in oklch, var(--foreground) 7%, transparent),
+    0 10px 28px -10px color-mix(in oklch, var(--secondary) 28%, transparent),
+    0 4px 10px -6px color-mix(in oklch, var(--foreground) 9%, transparent);
 }
 
 .fk-card-shadow-hover {
@@ -181,42 +216,65 @@
 .fk-card-shadow-hover:hover {
   transform: translateY(-2px);
   box-shadow:
-    0 2px 4px 0 color-mix(in oklch, var(--foreground) 8%, transparent),
-    0 18px 36px -12px color-mix(in oklch, var(--primary) 38%, transparent),
-    0 8px 16px -8px color-mix(in oklch, var(--foreground) 12%, transparent);
+    0 2px 4px 0 color-mix(in oklch, var(--foreground) 9%, transparent),
+    0 18px 36px -12px color-mix(in oklch, var(--secondary) 38%, transparent),
+    0 8px 16px -8px color-mix(in oklch, var(--foreground) 11%, transparent);
 }
 
 .fk-card-shadow-accent {
   box-shadow:
-    0 1px 2px 0 color-mix(in oklch, var(--foreground) 6%, transparent),
-    0 10px 28px -10px color-mix(in oklch, var(--secondary) 32%, transparent);
+    0 1px 2px 0 color-mix(in oklch, var(--foreground) 7%, transparent),
+    0 10px 28px -10px color-mix(in oklch, var(--chart-2) 30%, transparent);
 }
 
-/* Solid, readable surface for form controls (input/select/textarea) — these
-   were previously effectively transparent (bg-background matched the page
-   background almost exactly), making the outline-only style hard to read. */
 .fk-field-surface {
   background-color: var(--card);
   box-shadow:
-    0 1px 2px 0 color-mix(in oklch, var(--foreground) 5%, transparent),
+    0 1px 2px 0 color-mix(in oklch, var(--foreground) 6%, transparent),
     0 0 0 1px var(--border);
 }
 
 .fk-field-surface:focus-within {
   box-shadow:
-    0 1px 2px 0 color-mix(in oklch, var(--foreground) 5%, transparent),
+    0 1px 2px 0 color-mix(in oklch, var(--foreground) 6%, transparent),
     0 0 0 2px var(--ring);
 }
 
-/* Table container surface — same reasoning as fk-field-surface */
 .fk-table-surface {
   background-color: var(--card);
   border-radius: var(--radius-lg);
   box-shadow:
-    0 1px 3px 0 color-mix(in oklch, var(--foreground) 7%, transparent),
-    0 12px 28px -12px color-mix(in oklch, var(--foreground) 14%, transparent);
+    0 1px 3px 0 color-mix(in oklch, var(--foreground) 8%, transparent),
+    0 12px 28px -12px color-mix(in oklch, var(--foreground) 16%, transparent);
   overflow: hidden;
 }
+
+.fk-table-surface table,
+.fk-table-surface [data-slot="table"],
+.fk-table-surface [data-slot="table-container"] {
+  background-color: var(--card);
+}
+
+.fk-table-surface [data-slot="table-row"] {
+  border-bottom-color: var(--border);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Status badge — adds a colored border ring so the chip stays visibly    */
+/* distinct even when sitting on a near-white card (low bg-fill contrast  */
+/* alone isn't enough to read as a discrete element).                     */
+/* ---------------------------------------------------------------------- */
+
+.fk-badge {
+  border-width: 1px;
+  border-style: solid;
+}
+
+.fk-badge-success { border-color: color-mix(in oklch, var(--status-success-fg) 40%, transparent); }
+.fk-badge-warning { border-color: color-mix(in oklch, var(--status-warning-fg) 40%, transparent); }
+.fk-badge-danger  { border-color: color-mix(in oklch, var(--status-danger-fg) 40%, transparent); }
+.fk-badge-info    { border-color: color-mix(in oklch, var(--status-info-fg) 40%, transparent); }
+.fk-badge-neutral { border-color: color-mix(in oklch, var(--status-neutral-fg) 40%, transparent); }
 
 @media (prefers-reduced-motion: reduce) {
   .fk-card-shadow-hover:hover {
@@ -226,28 +284,18 @@
 
 /* Query refetch progress (isFetching && !isLoading) */
 @keyframes fk-query-progress {
-  0% {
-    transform: translateX(-120%);
-  }
-  100% {
-    transform: translateX(400%);
-  }
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(400%); }
 }
-
 .fk-query-progress {
   animation: fk-query-progress 1.1s ease-in-out infinite;
 }
 
 /* Route / page content entrance */
 @keyframes fk-page-fade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
-
 .fk-page-fade {
   animation: fk-page-fade 180ms ease-out both;
 }
@@ -255,15 +303,14 @@
 /* Token card status-change confirmation */
 @keyframes fk-token-flash {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 45%, transparent);
-    background-color: color-mix(in oklch, var(--primary) 12%, var(--card));
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--secondary) 45%, transparent);
+    background-color: color-mix(in oklch, var(--secondary) 12%, var(--card));
   }
   100% {
     box-shadow: 0 0 0 0 transparent;
     background-color: var(--card);
   }
 }
-
 .fk-token-flash {
   animation: fk-token-flash 600ms ease-out;
 }

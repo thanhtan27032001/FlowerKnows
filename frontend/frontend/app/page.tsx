@@ -55,7 +55,7 @@ function InventorySkeleton({ loadingLabel }: { loadingLabel: string }) {
           </Card>
         ))}
       </div>
-      <div className="hidden overflow-hidden rounded-xl border border-border/80 md:block">
+      <div className="fk-table-surface hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -210,9 +210,8 @@ export default function DashboardPage() {
                 </Card>
               </div>
 
-              {/* API-sourced; may remain EN until backend i18n */}
               <p className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-                {profit.note}
+                {t("profit.cashBasisNote")}
               </p>
             </>
           )}
@@ -370,7 +369,7 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              <div className="hidden overflow-hidden rounded-xl border border-border/80 md:block">
+              <div className="fk-table-surface hidden md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>

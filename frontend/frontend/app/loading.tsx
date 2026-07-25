@@ -67,7 +67,7 @@ export default async function DashboardLoading() {
               </Card>
             ))}
           </div>
-          <div className="hidden overflow-hidden rounded-xl border border-border/80 md:block">
+          <div className="fk-table-surface hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>

@@ -18,7 +18,7 @@ export function AppShell({
   return (
     <TooltipProvider>
       <SidebarProvider
-        className="min-h-svh bg-[linear-gradient(165deg,#fffdfe_0%,#fff4e8_42%,#ffffff_100%)]"
+        className="min-h-svh bg-[linear-gradient(165deg,var(--background)_0%,var(--muted)_42%,var(--background)_100%)]"
         style={
           {
             "--sidebar-width": "15rem",

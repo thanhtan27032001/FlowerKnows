@@ -19,18 +19,19 @@ export type StatusVariant =
   | "neutral";
 
 const statusBadgeVariants = cva(
-  "inline-flex h-5 w-fit shrink-0 items-center justify-center rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+  "fk-badge inline-flex h-5 w-fit shrink-0 items-center justify-center rounded-4xl px-2 py-0.5 text-xs font-medium whitespace-nowrap",
   {
     variants: {
       variant: {
         success:
-          "bg-[var(--status-success-bg)] text-[var(--status-success-fg)]",
+          "fk-badge-success bg-[var(--status-success-bg)] text-[var(--status-success-fg)]",
         warning:
-          "bg-[var(--status-warning-bg)] text-[var(--status-warning-fg)]",
-        danger: "bg-[var(--status-danger-bg)] text-[var(--status-danger-fg)]",
-        info: "bg-[var(--status-info-bg)] text-[var(--status-info-fg)]",
+          "fk-badge-warning bg-[var(--status-warning-bg)] text-[var(--status-warning-fg)]",
+        danger:
+          "fk-badge-danger bg-[var(--status-danger-bg)] text-[var(--status-danger-fg)]",
+        info: "fk-badge-info bg-[var(--status-info-bg)] text-[var(--status-info-fg)]",
         neutral:
-          "bg-[var(--status-neutral-bg)] text-[var(--status-neutral-fg)]",
+          "fk-badge-neutral bg-[var(--status-neutral-bg)] text-[var(--status-neutral-fg)]",
       },
     },
     defaultVariants: {

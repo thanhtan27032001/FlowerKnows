@@ -82,7 +82,7 @@ public class ReportService {
                 totalProfit,
                 revenueFromOrders,
                 revenueFromCancelled,
-                "This is a simple cash-basis figure that includes the cost of all inventory purchased, whether sold or not. For per-order matched profit margin, see the Gross Margin Report."
+                "Đây là số liệu theo cơ sở tiền mặt đơn giản, bao gồm toàn bộ chi phí nhập kho dù đã bán hay chưa. Để xem biên lợi nhuận khớp theo từng đơn, mở Báo cáo biên lợi nhuận."
         );
     }
 
@@ -157,7 +157,7 @@ public class ReportService {
                 totalRefunded,
                 rhs,
                 balanced,
-                "Total Prepaid = Holding Tokens + Recognized Revenue + Total Refunded"
+                "Tổng trả trước = Token đang giữ + Doanh thu đã ghi nhận + Tổng hoàn tiền"
         );
     }
 

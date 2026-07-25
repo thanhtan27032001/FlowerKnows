@@ -25,7 +25,7 @@ export function AppSidebar() {
   return (
     <Sidebar
       collapsible="none"
-      className="sticky top-0 hidden h-svh border-r border-sidebar-border bg-sidebar lg:flex"
+      className="fk-sidebar-shell sticky top-0 hidden h-svh lg:flex"
     >
       <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
         <Link
@@ -59,6 +59,7 @@ export function AppSidebar() {
                         <SidebarMenuButton
                           isActive={active}
                           tooltip={label}
+                          className={active ? "fk-nav-active" : "fk-nav-item"}
                           render={<Link href={item.href} />}
                         >
                           <Icon />

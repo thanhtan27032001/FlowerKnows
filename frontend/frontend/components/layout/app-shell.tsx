@@ -1,5 +1,6 @@
 "use client";
 
+import { PageFade } from "@/components/feedback/page-fade";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -36,7 +37,7 @@ export function AppShell({
                 <div className="flex shrink-0 items-center gap-2">{actions}</div>
               ) : null}
             </div>
-            {children}
+            <PageFade>{children}</PageFade>
           </div>
         </SidebarInset>
 

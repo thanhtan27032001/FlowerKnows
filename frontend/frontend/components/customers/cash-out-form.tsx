@@ -7,6 +7,7 @@ import { campaignKeys } from "@/src/lib/api/campaign";
 import { exchangeApi, exchangeErrorMessage } from "@/src/lib/api/exchange";
 import { productApi, productKeys } from "@/src/lib/api/product";
 import { vnd } from "@/src/lib/format";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +28,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useSuccessClose } from "@/hooks/use-success-close";
 
 type Props = {
   open: boolean;
@@ -45,6 +47,7 @@ export function CashOutForm({
 }: Props) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { succeeded, runSuccess, reset } = useSuccessClose(250);
 
   // null = still following suggested; string = staff override
   const [actualRefund, setActualRefund] = useState<string | null>(null);
@@ -65,7 +68,7 @@ export function CashOutForm({
   const refundDisplay =
     actualRefund ?? (products.length > 0 ? String(suggestedRefund) : "");
 
-  const reset = () => {
+  const resetForm = () => {
     setActualRefund(null);
     setFormError(null);
     setFieldError(null);
@@ -79,14 +82,18 @@ export function CashOutForm({
       });
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
       await queryClient.invalidateQueries({ queryKey: campaignKeys.all });
-      onOpenChange(false);
-      reset();
-      onSuccess?.();
+      await runSuccess(() => {
+        onOpenChange(false);
+        resetForm();
+        onSuccess?.();
+      });
     },
     onError: (err: unknown) => {
       setFormError(exchangeErrorMessage(err, "Cash out failed"));
     },
   });
+
+  const locked = mutation.isPending || succeeded;
 
   const validateAndSubmit = () => {
     setFormError(null);
@@ -106,11 +113,14 @@ export function CashOutForm({
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
-    if (!next) reset();
+    if (!next) {
+      reset();
+      resetForm();
+    }
   };
 
   const formBody = (
-    <div className="grid gap-4">
+    <fieldset disabled={locked} className="min-w-0 space-y-4">
       <div className="rounded-xl border border-border/80 bg-muted/20 p-3">
         <p className="text-xs font-medium text-muted-foreground">
           Cashing out ({tokens.length} token{tokens.length === 1 ? "" : "s"})
@@ -170,7 +180,7 @@ export function CashOutForm({
           {formError}
         </p>
       )}
-    </div>
+    </fieldset>
   );
 
   const footer = (
@@ -178,17 +188,21 @@ export function CashOutForm({
       <Button
         type="button"
         variant="outline"
+        disabled={locked}
         onClick={() => handleOpenChange(false)}
       >
         Cancel
       </Button>
-      <Button
+      <PendingButton
         type="button"
-        disabled={mutation.isPending || tokens.length === 0}
+        pending={mutation.isPending}
+        success={succeeded}
+        pendingLabel="Confirming…"
+        disabled={tokens.length === 0}
         onClick={validateAndSubmit}
       >
-        {mutation.isPending ? "Confirming…" : "Confirm Cash Out"}
-      </Button>
+        Confirm Cash Out
+      </PendingButton>
     </div>
   );
 

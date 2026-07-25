@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -19,18 +20,28 @@ export function CustomerTokenActionBar({
   onCreateOrder,
   onCancel,
 }: Props) {
-  const enabled = selectedCount >= 1;
+  const visible = selectedCount >= 1;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 p-3 md:p-4">
-      <div className="pointer-events-auto mx-auto max-w-6xl rounded-2xl border border-border/80 bg-background/95 p-3 shadow-lg backdrop-blur-sm">
+    <div
+      className={cn(
+        "fixed inset-x-0 z-40 p-3 md:p-4",
+        "bottom-16 lg:bottom-0",
+        "transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none",
+        visible
+          ? "translate-y-0 opacity-100"
+          : "pointer-events-none translate-y-full opacity-0"
+      )}
+      aria-hidden={!visible}
+    >
+      <div className="mx-auto max-w-6xl rounded-2xl border border-border/80 bg-background/95 p-3 shadow-lg backdrop-blur-sm">
         <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
           <p className="text-sm font-medium">
-            {enabled
+            {visible
               ? `${selectedCount} token${selectedCount === 1 ? "" : "s"} selected`
               : "Select tokens to take action"}
           </p>
-          {enabled && selectedCount > 1 && (
+          {visible && selectedCount > 1 && (
             <p className="text-xs text-muted-foreground">
               Cancel requires 1 token
             </p>
@@ -39,36 +50,40 @@ export function CustomerTokenActionBar({
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Button
             size="sm"
-            disabled={!enabled}
+            disabled={!visible}
             onClick={onItemExchange}
             className="w-full"
+            tabIndex={visible ? undefined : -1}
           >
             Item Exchange
           </Button>
           <Button
             size="sm"
             variant="outline"
-            disabled={!enabled}
+            disabled={!visible}
             onClick={onCashOut}
             className="w-full"
+            tabIndex={visible ? undefined : -1}
           >
             Cash Out
           </Button>
           <Button
             size="sm"
             variant="outline"
-            disabled={!enabled}
+            disabled={!visible}
             onClick={onCreateOrder}
             className="w-full"
+            tabIndex={visible ? undefined : -1}
           >
             Create Order
           </Button>
           <Button
             size="sm"
             variant="destructive"
-            disabled={!enabled || !cancelEnabled}
+            disabled={!visible || !cancelEnabled}
             onClick={onCancel}
             className="w-full"
+            tabIndex={visible ? undefined : -1}
           >
             Cancel
           </Button>

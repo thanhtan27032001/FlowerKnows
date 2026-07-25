@@ -4,9 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import { campaignApi, campaignKeys } from "@/src/lib/api/campaign";
 import { productKeys } from "@/src/lib/api/product";
+import { PendingButton } from "@/components/feedback/pending-button";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -14,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useSuccessClose } from "@/hooks/use-success-close";
 
 type Props = {
   campaignId: string;
@@ -29,6 +30,7 @@ export function CloseCampaignDialog({
   onClosed,
 }: Props) {
   const queryClient = useQueryClient();
+  const { succeeded, runSuccess, reset } = useSuccessClose(250);
 
   const {
     data: preview,
@@ -46,10 +48,14 @@ export function CloseCampaignDialog({
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: campaignKeys.all });
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
-      onOpenChange(false);
-      onClosed?.();
+      await runSuccess(() => {
+        onOpenChange(false);
+        onClosed?.();
+      });
     },
   });
+
+  const locked = closeMutation.isPending || succeeded;
 
   const mutationError =
     closeMutation.error instanceof ApiError
@@ -58,8 +64,13 @@ export function CloseCampaignDialog({
         ? "Failed to close campaign"
         : null;
 
+  const handleOpenChange = (next: boolean) => {
+    onOpenChange(next);
+    if (!next) reset();
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Close Campaign</AlertDialogTitle>
@@ -105,20 +116,19 @@ export function CloseCampaignDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={closeMutation.isPending}>
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction
-            disabled={
-              isLoading || isError || !preview || closeMutation.isPending
-            }
-            onClick={(e) => {
-              e.preventDefault();
+          <AlertDialogCancel disabled={locked}>Cancel</AlertDialogCancel>
+          <PendingButton
+            type="button"
+            pending={closeMutation.isPending}
+            success={succeeded}
+            pendingLabel="Closing…"
+            disabled={isLoading || isError || !preview}
+            onClick={() => {
               closeMutation.mutate();
             }}
           >
-            {closeMutation.isPending ? "Closing…" : "Confirm close"}
-          </AlertDialogAction>
+            Confirm close
+          </PendingButton>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -11,6 +11,7 @@ import {
   type CreateCampaignInput,
 } from "@/src/lib/api/campaign";
 import { productApi, productKeys } from "@/src/lib/api/product";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useSuccessClose } from "@/hooks/use-success-close";
 import { createClientId } from "@/lib/utils";
 
 type PoolRow = {
@@ -64,6 +66,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
   const isMobile = useIsMobile();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { succeeded, runSuccess, reset } = useSuccessClose(250);
 
   const [name, setName] = useState("");
   const [eventDate, setEventDate] = useState("");
@@ -95,7 +98,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
     totalBagsNum > 0 &&
     poolSum === totalBagsNum;
 
-  const reset = () => {
+  const resetForm = () => {
     setName("");
     setEventDate("");
     setBagPrice("");
@@ -110,9 +113,11 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
     onSuccess: async (campaign) => {
       await queryClient.invalidateQueries({ queryKey: campaignKeys.all });
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
-      onOpenChange(false);
-      reset();
-      router.push(`/campaigns/${campaign.id}`);
+      await runSuccess(() => {
+        onOpenChange(false);
+        resetForm();
+        router.push(`/campaigns/${campaign.id}`);
+      });
     },
     onError: (err: unknown) => {
       setFormError(
@@ -120,6 +125,8 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
       );
     },
   });
+
+  const locked = createMutation.isPending || succeeded;
 
   const updateRow = (key: string, patch: Partial<PoolRow>) => {
     setPoolRows((prev) =>
@@ -214,181 +221,185 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
         submit();
       }}
     >
-      <div className="grid gap-2">
-        <Label htmlFor="campaign-name">Name</Label>
-        <Input
-          id="campaign-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Little Angel Blind Bag — Aug"
-          aria-invalid={!!fieldErrors.name}
-        />
-        {fieldErrors.name && (
-          <p className="text-xs text-destructive">{fieldErrors.name}</p>
-        )}
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="campaign-event-date">Event date</Label>
-        <Input
-          id="campaign-event-date"
-          type="date"
-          value={eventDate}
-          onChange={(e) => setEventDate(e.target.value)}
-          aria-invalid={!!fieldErrors.eventDate}
-        />
-        {fieldErrors.eventDate && (
-          <p className="text-xs text-destructive">{fieldErrors.eventDate}</p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
+      <fieldset disabled={locked} className="min-w-0 space-y-4">
         <div className="grid gap-2">
-          <Label htmlFor="campaign-bag-price">Bag price (VND)</Label>
+          <Label htmlFor="campaign-name">Name</Label>
           <Input
-            id="campaign-bag-price"
-            type="number"
-            min={1}
-            inputMode="numeric"
-            value={bagPrice}
-            onChange={(e) => setBagPrice(e.target.value)}
-            placeholder="89000"
-            aria-invalid={!!fieldErrors.bagPrice}
+            id="campaign-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Little Angel Blind Bag — Aug"
+            aria-invalid={!!fieldErrors.name}
           />
-          {fieldErrors.bagPrice && (
-            <p className="text-xs text-destructive">{fieldErrors.bagPrice}</p>
+          {fieldErrors.name && (
+            <p className="text-xs text-destructive">{fieldErrors.name}</p>
           )}
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="campaign-total-bags">Total bags (N)</Label>
+          <Label htmlFor="campaign-event-date">Event date</Label>
           <Input
-            id="campaign-total-bags"
-            type="number"
-            min={1}
-            inputMode="numeric"
-            value={totalBags}
-            onChange={(e) => setTotalBags(e.target.value)}
-            placeholder="50"
-            aria-invalid={!!fieldErrors.totalBags}
+            id="campaign-event-date"
+            type="date"
+            value={eventDate}
+            onChange={(e) => setEventDate(e.target.value)}
+            aria-invalid={!!fieldErrors.eventDate}
           />
-          {fieldErrors.totalBags && (
-            <p className="text-xs text-destructive">{fieldErrors.totalBags}</p>
+          {fieldErrors.eventDate && (
+            <p className="text-xs text-destructive">{fieldErrors.eventDate}</p>
           )}
         </div>
-      </div>
 
-      <div className="space-y-3">
-        <div className="flex items-end justify-between gap-2">
-          <div>
-            <Label>Product pool</Label>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Loaded sum:{" "}
-              <span
-                className={
-                  quantitiesMatch
-                    ? "font-medium text-foreground"
-                    : "font-medium text-destructive"
-                }
-              >
-                {poolSum}
-              </span>
-              {totalBags ? ` / ${totalBags}` : ""}
-              {!quantitiesMatch && totalBags
-                ? " — must equal total bags"
-                : ""}
-            </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-2">
+            <Label htmlFor="campaign-bag-price">Bag price (VND)</Label>
+            <Input
+              id="campaign-bag-price"
+              type="number"
+              min={1}
+              inputMode="numeric"
+              value={bagPrice}
+              onChange={(e) => setBagPrice(e.target.value)}
+              placeholder="89000"
+              aria-invalid={!!fieldErrors.bagPrice}
+            />
+            {fieldErrors.bagPrice && (
+              <p className="text-xs text-destructive">{fieldErrors.bagPrice}</p>
+            )}
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="campaign-total-bags">Total bags (N)</Label>
+            <Input
+              id="campaign-total-bags"
+              type="number"
+              min={1}
+              inputMode="numeric"
+              value={totalBags}
+              onChange={(e) => setTotalBags(e.target.value)}
+              placeholder="50"
+              aria-invalid={!!fieldErrors.totalBags}
+            />
+            {fieldErrors.totalBags && (
+              <p className="text-xs text-destructive">{fieldErrors.totalBags}</p>
+            )}
           </div>
         </div>
 
-        {poolRows.map((row, index) => {
-          const selected = products.find((p) => p.id === row.productId);
-          return (
-            <div
-              key={row.key}
-              className="grid gap-3 rounded-xl border border-border/80 bg-muted/20 p-3"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Product {index + 1}
-                </p>
-                {poolRows.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() =>
-                      setPoolRows((prev) => prev.filter((r) => r.key !== row.key))
-                    }
-                    aria-label="Remove row"
-                  >
-                    <Trash2Icon />
-                  </Button>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <Label>Product</Label>
-                <Select
-                  value={row.productId || undefined}
-                  onValueChange={(value) =>
-                    updateRow(row.key, { productId: String(value ?? "") })
+        <div className="space-y-3">
+          <div className="flex items-end justify-between gap-2">
+            <div>
+              <Label>Product pool</Label>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Loaded sum:{" "}
+                <span
+                  className={
+                    quantitiesMatch
+                      ? "font-medium text-foreground"
+                      : "font-medium text-destructive"
                   }
                 >
-                  <SelectTrigger className="w-full min-w-0">
-                    <SelectValue placeholder="Select product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name} ({product.stockQuantity} in stock)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  {poolSum}
+                </span>
+                {totalBags ? ` / ${totalBags}` : ""}
+                {!quantitiesMatch && totalBags
+                  ? " — must equal total bags"
+                  : ""}
+              </p>
+            </div>
+          </div>
 
-              <div className="grid gap-2">
-                <Label>Loaded quantity</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  inputMode="numeric"
-                  value={row.loadedQuantity}
-                  onChange={(e) =>
-                    updateRow(row.key, { loadedQuantity: e.target.value })
-                  }
-                  aria-invalid={!!row.error}
-                />
-                {selected && (
-                  <p className="text-xs text-muted-foreground">
-                    Available stock: {selected.stockQuantity}
+          {poolRows.map((row, index) => {
+            const selected = products.find((p) => p.id === row.productId);
+            return (
+              <div
+                key={row.key}
+                className="grid gap-3 rounded-xl border border-border/80 bg-muted/20 p-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Product {index + 1}
                   </p>
+                  {poolRows.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() =>
+                        setPoolRows((prev) =>
+                          prev.filter((r) => r.key !== row.key)
+                        )
+                      }
+                      aria-label="Remove row"
+                    >
+                      <Trash2Icon />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Product</Label>
+                  <Select
+                    value={row.productId || undefined}
+                    onValueChange={(value) =>
+                      updateRow(row.key, { productId: String(value ?? "") })
+                    }
+                  >
+                    <SelectTrigger className="w-full min-w-0">
+                      <SelectValue placeholder="Select product" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name} ({product.stockQuantity} in stock)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Loaded quantity</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    inputMode="numeric"
+                    value={row.loadedQuantity}
+                    onChange={(e) =>
+                      updateRow(row.key, { loadedQuantity: e.target.value })
+                    }
+                    aria-invalid={!!row.error}
+                  />
+                  {selected && (
+                    <p className="text-xs text-muted-foreground">
+                      Available stock: {selected.stockQuantity}
+                    </p>
+                  )}
+                </div>
+
+                {row.error && (
+                  <p className="text-xs text-destructive">{row.error}</p>
                 )}
               </div>
+            );
+          })}
 
-              {row.error && (
-                <p className="text-xs text-destructive">{row.error}</p>
-              )}
-            </div>
-          );
-        })}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setPoolRows((prev) => [...prev, newPoolRow()])}
+          >
+            <PlusIcon />
+            Add product
+          </Button>
 
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setPoolRows((prev) => [...prev, newPoolRow()])}
-        >
-          <PlusIcon />
-          Add product
-        </Button>
+          {fieldErrors.pool && (
+            <p className="text-sm text-destructive">{fieldErrors.pool}</p>
+          )}
+        </div>
 
-        {fieldErrors.pool && (
-          <p className="text-sm text-destructive">{fieldErrors.pool}</p>
-        )}
-      </div>
-
-      {formError && <p className="text-sm text-destructive">{formError}</p>}
+        {formError && <p className="text-sm text-destructive">{formError}</p>}
+      </fieldset>
     </form>
   );
 
@@ -397,26 +408,34 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
       <Button
         type="button"
         variant="outline"
+        disabled={locked}
         onClick={() => {
           onOpenChange(false);
           reset();
+          resetForm();
         }}
       >
         Cancel
       </Button>
-      <Button
+      <PendingButton
         type="button"
-        disabled={createMutation.isPending || !quantitiesMatch}
+        pending={createMutation.isPending}
+        success={succeeded}
+        pendingLabel="Creating…"
+        disabled={!quantitiesMatch}
         onClick={submit}
       >
-        {createMutation.isPending ? "Creating…" : "Create Campaign"}
-      </Button>
+        Create Campaign
+      </PendingButton>
     </div>
   );
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
-    if (!next) reset();
+    if (!next) {
+      reset();
+      resetForm();
+    }
   };
 
   if (isMobile) {

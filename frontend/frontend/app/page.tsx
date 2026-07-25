@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { QueryErrorState } from "@/components/feedback/query-error-state";
+import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { AppShell } from "@/components/layout/app-shell";
 import { reportApi, reportKeys } from "@/src/lib/api/report";
 import { tokenApi, tokenKeys } from "@/src/lib/api/token";
 import { vndCost } from "@/src/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -16,6 +19,68 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+function ProfitSkeleton() {
+  return (
+    <div className="grid gap-3 sm:grid-cols-3" aria-busy="true" aria-label="Loading">
+      {Array.from({ length: 3 }, (_, i) => (
+        <Card key={i}>
+          <CardHeader className="pb-2">
+            <Skeleton className="h-4 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="mt-2 h-3 w-48" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function InventorySkeleton() {
+  return (
+    <div className="space-y-3" aria-busy="true" aria-label="Loading">
+      <div className="grid gap-3 md:hidden">
+        {Array.from({ length: 3 }, (_, i) => (
+          <Card key={i}>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-2/3" />
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="hidden overflow-hidden rounded-xl border border-border/80 md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {Array.from({ length: 4 }, (_, i) => (
+                <TableHead key={i}>
+                  <Skeleton className="h-4 w-20" />
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 5 }, (_, i) => (
+              <TableRow key={i}>
+                {Array.from({ length: 4 }, (_, j) => (
+                  <TableCell key={j}>
+                    <Skeleton className="h-4 w-full max-w-[9rem]" />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const profitQuery = useQuery({
@@ -43,9 +108,16 @@ export default function DashboardPage() {
   );
   const stockTotal = inventory.reduce((sum, i) => sum + i.stockQuantity, 0);
 
+  const isBackgroundFetching =
+    (profitQuery.isFetching && !profitQuery.isLoading) ||
+    (inventoryQuery.isFetching && !inventoryQuery.isLoading) ||
+    (overdueQuery.isFetching && !overdueQuery.isLoading);
+
   return (
     <AppShell title="Dashboard">
-      <div className="space-y-6">
+      <div className="relative space-y-6">
+        <QueryProgressBar active={isBackgroundFetching} />
+
         <section className="space-y-3">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
@@ -59,16 +131,17 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {profitQuery.isLoading && (
-            <p className="text-sm text-muted-foreground">Loading profit overview…</p>
-          )}
+          {profitQuery.isLoading && <ProfitSkeleton />}
 
           {profitQuery.isError && (
-            <p className="text-sm text-destructive">
-              {profitQuery.error instanceof Error
-                ? profitQuery.error.message
-                : "Failed to load profit overview"}
-            </p>
+            <QueryErrorState
+              message={
+                profitQuery.error instanceof Error
+                  ? profitQuery.error.message
+                  : "Failed to load profit overview"
+              }
+              onRetry={() => profitQuery.refetch()}
+            />
           )}
 
           {profit && (
@@ -142,9 +215,13 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-semibold tabular-nums tracking-tight">
-                {inventoryQuery.isLoading ? "…" : stockTotal}
-              </p>
+              {inventoryQuery.isLoading ? (
+                <Skeleton className="h-9 w-16" />
+              ) : (
+                <p className="text-3xl font-semibold tabular-nums tracking-tight">
+                  {stockTotal}
+                </p>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -154,9 +231,13 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-semibold tabular-nums tracking-tight">
-                {inventoryQuery.isLoading ? "…" : lockedTotal}
-              </p>
+              {inventoryQuery.isLoading ? (
+                <Skeleton className="h-9 w-16" />
+              ) : (
+                <p className="text-3xl font-semibold tabular-nums tracking-tight">
+                  {lockedTotal}
+                </p>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -166,9 +247,13 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex items-end justify-between gap-2">
-              <p className="text-3xl font-semibold tabular-nums tracking-tight">
-                {overdueQuery.isLoading ? "…" : overdueCount}
-              </p>
+              {overdueQuery.isLoading ? (
+                <Skeleton className="h-9 w-16" />
+              ) : (
+                <p className="text-3xl font-semibold tabular-nums tracking-tight">
+                  {overdueCount}
+                </p>
+              )}
               {overdueCount > 0 && (
                 <Link
                   href="/alerts"
@@ -180,6 +265,17 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {overdueQuery.isError && (
+          <QueryErrorState
+            message={
+              overdueQuery.error instanceof Error
+                ? overdueQuery.error.message
+                : "Failed to load overdue tokens"
+            }
+            onRetry={() => overdueQuery.refetch()}
+          />
+        )}
 
         <section className="space-y-3">
           <div className="flex items-end justify-between gap-2">
@@ -194,22 +290,23 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {inventoryQuery.isLoading && (
-            <p className="text-sm text-muted-foreground">Loading inventory…</p>
-          )}
+          {inventoryQuery.isLoading && <InventorySkeleton />}
 
           {inventoryQuery.isError && (
-            <p className="text-sm text-destructive">
-              {inventoryQuery.error instanceof Error
-                ? inventoryQuery.error.message
-                : "Failed to load inventory"}
-            </p>
+            <QueryErrorState
+              message={
+                inventoryQuery.error instanceof Error
+                  ? inventoryQuery.error.message
+                  : "Failed to load inventory"
+              }
+              onRetry={() => inventoryQuery.refetch()}
+            />
           )}
 
           {!inventoryQuery.isLoading &&
             !inventoryQuery.isError &&
             inventory.length === 0 && (
-              <Card>
+              <Card className="border-border/70 bg-muted/20">
                 <CardContent className="py-8 text-center text-sm text-muted-foreground">
                   No products yet.
                 </CardContent>

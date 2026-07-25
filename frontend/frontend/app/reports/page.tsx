@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { QueryErrorState } from "@/components/feedback/query-error-state";
+import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { AppShell } from "@/components/layout/app-shell";
 import { campaignApi, campaignKeys } from "@/src/lib/api/campaign";
 import { reportApi, reportKeys } from "@/src/lib/api/report";
@@ -18,12 +20,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function defaultRange() {
   const to = new Date();
   const from = new Date(to.getFullYear(), to.getMonth(), 1);
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   return { from: iso(from), to: iso(to), campaignId: "" };
+}
+
+function ReportSkeleton() {
+  return (
+    <div className="space-y-4" aria-busy="true" aria-label="Loading">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <Card key={i}>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-4 w-28" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-32" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-36" />
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-6 w-28" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 export default function ReportsPage() {
@@ -57,7 +92,11 @@ export default function ReportsPage() {
 
   return (
     <AppShell title="Revenue Report">
-      <div className="space-y-6">
+      <div className="relative space-y-6">
+        <QueryProgressBar
+          active={revenueQuery.isFetching && !revenueQuery.isLoading}
+        />
+
         <Card>
           <CardContent className="grid gap-4 pt-5 sm:grid-cols-4">
             <div className="grid gap-2">
@@ -117,16 +156,17 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        {revenueQuery.isLoading && (
-          <p className="text-sm text-muted-foreground">Loading report…</p>
-        )}
+        {revenueQuery.isLoading && <ReportSkeleton />}
 
         {revenueQuery.isError && (
-          <p className="text-sm text-destructive">
-            {revenueQuery.error instanceof Error
-              ? revenueQuery.error.message
-              : "Failed to load revenue report"}
-          </p>
+          <QueryErrorState
+            message={
+              revenueQuery.error instanceof Error
+                ? revenueQuery.error.message
+                : "Failed to load revenue report"
+            }
+            onRetry={() => revenueQuery.refetch()}
+          />
         )}
 
         {report && reconciliation && (

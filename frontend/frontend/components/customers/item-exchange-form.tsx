@@ -8,6 +8,7 @@ import { campaignKeys } from "@/src/lib/api/campaign";
 import { exchangeApi, exchangeErrorMessage } from "@/src/lib/api/exchange";
 import { productApi, productKeys } from "@/src/lib/api/product";
 import { vnd } from "@/src/lib/format";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useSuccessClose } from "@/hooks/use-success-close";
 import { createClientId } from "@/lib/utils";
 
 type ReceiveRow = {
@@ -65,6 +67,7 @@ export function ItemExchangeForm({
 }: Props) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { succeeded, runSuccess, reset } = useSuccessClose(250);
 
   const [rows, setRows] = useState<ReceiveRow[]>([newRow()]);
   const [additionalPayment, setAdditionalPayment] = useState("0");
@@ -94,7 +97,7 @@ export function ItemExchangeForm({
     ? tokensTotal + additionalNum
     : tokensTotal;
 
-  const reset = () => {
+  const resetForm = () => {
     setRows([newRow()]);
     setAdditionalPayment("0");
     setFormError(null);
@@ -109,14 +112,18 @@ export function ItemExchangeForm({
       });
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
       await queryClient.invalidateQueries({ queryKey: campaignKeys.all });
-      onOpenChange(false);
-      reset();
-      onSuccess?.();
+      await runSuccess(() => {
+        onOpenChange(false);
+        resetForm();
+        onSuccess?.();
+      });
     },
     onError: (err: unknown) => {
       setFormError(exchangeErrorMessage(err, "Item exchange failed"));
     },
   });
+
+  const locked = mutation.isPending || succeeded;
 
   const updateRow = (key: string, patch: Partial<ReceiveRow>) => {
     setRows((prev) =>
@@ -193,7 +200,7 @@ export function ItemExchangeForm({
   };
 
   const formBody = (
-    <div className="grid gap-4">
+    <fieldset disabled={locked} className="min-w-0 space-y-4">
       <div className="rounded-xl border border-border/80 bg-muted/20 p-3">
         <p className="text-xs font-medium text-muted-foreground">
           Giving up ({tokens.length} token{tokens.length === 1 ? "" : "s"})
@@ -355,7 +362,7 @@ export function ItemExchangeForm({
           {formError}
         </p>
       )}
-    </div>
+    </fieldset>
   );
 
   const footer = (
@@ -363,26 +370,34 @@ export function ItemExchangeForm({
       <Button
         type="button"
         variant="outline"
+        disabled={locked}
         onClick={() => {
           onOpenChange(false);
           reset();
+          resetForm();
         }}
       >
         Cancel
       </Button>
-      <Button
+      <PendingButton
         type="button"
-        disabled={mutation.isPending || tokens.length === 0}
+        pending={mutation.isPending}
+        success={succeeded}
+        pendingLabel="Confirming…"
+        disabled={tokens.length === 0}
         onClick={validateAndSubmit}
       >
-        {mutation.isPending ? "Confirming…" : "Confirm Exchange"}
-      </Button>
+        Confirm Exchange
+      </PendingButton>
     </div>
   );
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
-    if (!next) reset();
+    if (!next) {
+      reset();
+      resetForm();
+    }
   };
 
   if (isMobile) {

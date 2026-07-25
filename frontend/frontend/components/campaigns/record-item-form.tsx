@@ -8,6 +8,7 @@ import {
   campaignKeys,
   type CampaignDetail,
 } from "@/src/lib/api/campaign";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useSuccessClose } from "@/hooks/use-success-close";
 
 type Props = {
   open: boolean;
@@ -51,6 +53,7 @@ export function RecordItemForm({
 }: Props) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { succeeded, runSuccess, reset } = useSuccessClose(250);
 
   const [customerId, setCustomerId] = useState(defaultCustomerId);
   const [productId, setProductId] = useState("");
@@ -75,7 +78,7 @@ export function RecordItemForm({
     [availableProducts, productId]
   );
 
-  const reset = () => {
+  const resetForm = () => {
     setCustomerId(defaultCustomerId);
     setProductId("");
     setQuantity("");
@@ -89,8 +92,10 @@ export function RecordItemForm({
       campaignApi.recordItems(campaign.id, input),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: campaignKeys.all });
-      onOpenChange(false);
-      reset();
+      await runSuccess(() => {
+        onOpenChange(false);
+        resetForm();
+      });
     },
     onError: (err: unknown) => {
       const message =
@@ -101,6 +106,8 @@ export function RecordItemForm({
       }
     },
   });
+
+  const locked = mutation.isPending || succeeded;
 
   const validateAndSubmit = () => {
     setFormError(null);
@@ -129,13 +136,10 @@ export function RecordItemForm({
   const noParticipants = campaign.participants.length === 0;
   const noPoolLeft = availableProducts.length === 0;
   const submitDisabled =
-    mutation.isPending ||
-    blockedAllRecorded ||
-    noParticipants ||
-    noPoolLeft;
+    blockedAllRecorded || noParticipants || noPoolLeft;
 
   const formBody = (
-    <div className="grid gap-4">
+    <fieldset disabled={locked} className="min-w-0 space-y-4">
       {noParticipants ? (
         <p className="rounded-lg border border-border/80 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
           Record a participant first before recording opened bags.
@@ -235,7 +239,7 @@ export function RecordItemForm({
           blocked.
         </p>
       )}
-    </div>
+    </fieldset>
   );
 
   const footer = (
@@ -243,26 +247,34 @@ export function RecordItemForm({
       <Button
         type="button"
         variant="outline"
+        disabled={locked}
         onClick={() => {
           onOpenChange(false);
           reset();
+          resetForm();
         }}
       >
         Cancel
       </Button>
-      <Button
+      <PendingButton
         type="button"
+        pending={mutation.isPending}
+        success={succeeded}
+        pendingLabel="Saving…"
         disabled={submitDisabled}
         onClick={validateAndSubmit}
       >
-        {mutation.isPending ? "Saving…" : "Record Item"}
-      </Button>
+        Record Item
+      </PendingButton>
     </div>
   );
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
-    if (!next) reset();
+    if (!next) {
+      reset();
+      resetForm();
+    }
   };
 
   if (isMobile) {

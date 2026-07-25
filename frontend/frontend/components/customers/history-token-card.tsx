@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import type { CustomerToken, TokenStatus } from "@/src/lib/api/customer";
 import { formatDateTime, vnd } from "@/src/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -14,16 +15,17 @@ const STATUS_LABEL: Record<Exclude<TokenStatus, "HOLDING">, string> = {
 
 type Props = {
   token: CustomerToken;
+  highlighted?: boolean;
 };
 
-export function HistoryTokenCard({ token }: Props) {
+export function HistoryTokenCard({ token, highlighted = false }: Props) {
   const statusLabel =
     token.status === "HOLDING"
       ? "Holding"
       : STATUS_LABEL[token.status as Exclude<TokenStatus, "HOLDING">];
 
   return (
-    <Card>
+    <Card className={cn(highlighted && "fk-token-flash")}>
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
         <CardTitle className="text-base leading-snug">
           {token.productName}

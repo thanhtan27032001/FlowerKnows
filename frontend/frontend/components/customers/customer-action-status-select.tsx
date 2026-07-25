@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/src/lib/api/client";
 import {
   ACTION_STATUS_LABEL,
   ACTION_STATUS_VALUES,
@@ -8,6 +9,7 @@ import {
   customerKeys,
   type CustomerActionStatus,
 } from "@/src/lib/api/customer";
+import { Spinner } from "@/components/feedback/spinner";
 import {
   Select,
   SelectContent,
@@ -35,28 +37,43 @@ export function CustomerActionStatusSelect({ customerId, value }: Props) {
     },
   });
 
+  const errorMessage =
+    mutation.error instanceof ApiError
+      ? mutation.error.message
+      : mutation.isError
+        ? "Update failed"
+        : null;
+
   return (
-    <Select
-      value={value}
-      onValueChange={(next) => {
-        if (!next || next === value) return;
-        mutation.mutate(next as CustomerActionStatus);
-      }}
-      disabled={mutation.isPending}
-    >
-      <SelectTrigger
-        className="h-8 w-auto min-w-[10.5rem] border-primary/30 bg-primary/5 font-medium"
-        aria-label="Customer action status"
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {ACTION_STATUS_VALUES.map((status) => (
-          <SelectItem key={status} value={status}>
-            {ACTION_STATUS_LABEL[status]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="inline-flex flex-col gap-1">
+      <div className="inline-flex items-center gap-2">
+        <Select
+          value={value}
+          onValueChange={(next) => {
+            if (!next || next === value) return;
+            mutation.mutate(next as CustomerActionStatus);
+          }}
+          disabled={mutation.isPending}
+        >
+          <SelectTrigger
+            className="h-8 w-auto min-w-[10.5rem] border-primary/30 bg-primary/5 font-medium"
+            aria-label="Customer action status"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ACTION_STATUS_VALUES.map((status) => (
+              <SelectItem key={status} value={status}>
+                {ACTION_STATUS_LABEL[status]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {mutation.isPending && <Spinner className="size-3.5" />}
+      </div>
+      {errorMessage && (
+        <p className="text-[0.7rem] text-destructive">{errorMessage}</p>
+      )}
+    </div>
   );
 }

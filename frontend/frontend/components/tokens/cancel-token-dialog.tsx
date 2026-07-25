@@ -7,9 +7,9 @@ import { productKeys } from "@/src/lib/api/product";
 import { reportKeys } from "@/src/lib/api/report";
 import { tokenApi, tokenKeys } from "@/src/lib/api/token";
 import { vnd } from "@/src/lib/format";
+import { PendingButton } from "@/components/feedback/pending-button";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useSuccessClose } from "@/hooks/use-success-close";
 
 type Props = {
   open: boolean;
@@ -38,6 +39,7 @@ export function CancelTokenDialog({
   onSuccess,
 }: Props) {
   const queryClient = useQueryClient();
+  const { succeeded, runSuccess, reset } = useSuccessClose(250);
 
   const mutation = useMutation({
     mutationFn: () => tokenApi.cancel(tokenId),
@@ -52,10 +54,14 @@ export function CancelTokenDialog({
       } else {
         await queryClient.invalidateQueries({ queryKey: customerKeys.all });
       }
-      onOpenChange(false);
-      onSuccess?.();
+      await runSuccess(() => {
+        onOpenChange(false);
+        onSuccess?.();
+      });
     },
   });
+
+  const locked = mutation.isPending || succeeded;
 
   const errorMessage =
     mutation.error instanceof ApiError
@@ -64,8 +70,13 @@ export function CancelTokenDialog({
         ? "Failed to cancel token"
         : null;
 
+  const handleOpenChange = (next: boolean) => {
+    onOpenChange(next);
+    if (!next) reset();
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Cancel Token</AlertDialogTitle>
@@ -85,18 +96,18 @@ export function CancelTokenDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={mutation.isPending}>
-            Keep token
-          </AlertDialogCancel>
-          <AlertDialogAction
-            disabled={mutation.isPending}
-            onClick={(e) => {
-              e.preventDefault();
+          <AlertDialogCancel disabled={locked}>Keep token</AlertDialogCancel>
+          <PendingButton
+            type="button"
+            pending={mutation.isPending}
+            success={succeeded}
+            pendingLabel="Cancelling…"
+            onClick={() => {
               mutation.mutate();
             }}
           >
-            {mutation.isPending ? "Cancelling…" : "Confirm cancel"}
-          </AlertDialogAction>
+            Confirm cancel
+          </PendingButton>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

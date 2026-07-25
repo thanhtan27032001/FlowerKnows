@@ -9,6 +9,7 @@ import {
   type CampaignDetail,
 } from "@/src/lib/api/campaign";
 import { customerApi, customerKeys } from "@/src/lib/api/customer";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useSuccessClose } from "@/hooks/use-success-close";
 
 type Mode = "existing" | "new";
 
@@ -52,6 +54,7 @@ export function RecordParticipantForm({
 }: Props) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { succeeded, runSuccess, reset } = useSuccessClose(250);
 
   const [mode, setMode] = useState<Mode>("existing");
   const [customerId, setCustomerId] = useState("");
@@ -77,7 +80,7 @@ export function RecordParticipantForm({
     );
   }, [campaign.participants, customerId]);
 
-  const reset = () => {
+  const resetForm = () => {
     setMode("existing");
     setCustomerId("");
     setSearch("");
@@ -97,8 +100,10 @@ export function RecordParticipantForm({
       });
       await queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
       await queryClient.invalidateQueries({ queryKey: customerKeys.all });
-      onOpenChange(false);
-      reset();
+      await runSuccess(() => {
+        onOpenChange(false);
+        resetForm();
+      });
     },
     onError: (err: unknown) => {
       setFormError(
@@ -106,6 +111,8 @@ export function RecordParticipantForm({
       );
     },
   });
+
+  const locked = mutation.isPending || succeeded;
 
   const validateAndSubmit = () => {
     setFormError(null);
@@ -147,7 +154,7 @@ export function RecordParticipantForm({
   };
 
   const formBody = (
-    <div className="grid gap-4">
+    <fieldset disabled={locked} className="min-w-0 space-y-4">
       <div className="flex gap-2">
         <Button
           type="button"
@@ -278,7 +285,7 @@ export function RecordParticipantForm({
       </div>
 
       {formError && <p className="text-sm text-destructive">{formError}</p>}
-    </div>
+    </fieldset>
   );
 
   const footer = (
@@ -286,26 +293,34 @@ export function RecordParticipantForm({
       <Button
         type="button"
         variant="outline"
+        disabled={locked}
         onClick={() => {
           onOpenChange(false);
           reset();
+          resetForm();
         }}
       >
         Cancel
       </Button>
-      <Button
+      <PendingButton
         type="button"
-        disabled={mutation.isPending || bagsRemaining <= 0}
+        pending={mutation.isPending}
+        success={succeeded}
+        pendingLabel="Saving…"
+        disabled={bagsRemaining <= 0}
         onClick={validateAndSubmit}
       >
-        {mutation.isPending ? "Saving…" : "Record Participant"}
-      </Button>
+        Record Participant
+      </PendingButton>
     </div>
   );
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
-    if (!next) reset();
+    if (!next) {
+      reset();
+      resetForm();
+    }
   };
 
   if (isMobile) {

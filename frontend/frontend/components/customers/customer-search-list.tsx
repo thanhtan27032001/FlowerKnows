@@ -6,6 +6,9 @@ import {
   ActionStatusBadge,
   ShippingStatusBadge,
 } from "@/components/customers/customer-status-badges";
+import { ListSkeleton } from "@/components/feedback/list-skeleton";
+import { QueryErrorState } from "@/components/feedback/query-error-state";
+import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import {
   ACTION_STATUS_LABEL,
   ACTION_STATUS_VALUES,
@@ -73,7 +76,9 @@ export function CustomerSearchList({
   const hasFilters = !!actionStatus || !!shippingStatus;
 
   return (
-    <div className="space-y-4">
+    <div className="relative space-y-4">
+      <QueryProgressBar active={isFetching && !isLoading} />
+
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Input
           value={query}
@@ -97,7 +102,10 @@ export function CustomerSearchList({
             );
           }}
         >
-          <SelectTrigger className="w-full sm:w-[200px]" aria-label="Filter by action status">
+          <SelectTrigger
+            className="w-full sm:w-[200px]"
+            aria-label="Filter by action status"
+          >
             <SelectValue placeholder="Action status" />
           </SelectTrigger>
           <SelectContent>
@@ -181,24 +189,15 @@ export function CustomerSearchList({
         </Button>
       </div>
 
-      {isLoading && (
-        <p className="text-sm text-muted-foreground">Loading customers…</p>
-      )}
+      {isLoading && <ListSkeleton columns={4} />}
 
       {isError && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-          <p className="text-sm text-destructive">
-            {error instanceof Error ? error.message : "Failed to load customers"}
-          </p>
-          <Button
-            className="mt-3"
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-          >
-            Retry
-          </Button>
-        </div>
+        <QueryErrorState
+          message={
+            error instanceof Error ? error.message : "Failed to load customers"
+          }
+          onRetry={() => refetch()}
+        />
       )}
 
       {!isLoading && !isError && customers.length === 0 && (
@@ -213,14 +212,10 @@ export function CustomerSearchList({
 
       {!isLoading && !isError && customers.length > 0 && (
         <>
-          {isFetching && (
-            <p className="text-xs text-muted-foreground">Updating…</p>
-          )}
-
           <div className="grid gap-3 md:hidden">
             {customers.map((customer) => (
               <Link key={customer.id} href={`/customers/${customer.id}`}>
-                <Card className="transition-colors hover:bg-muted/30">
+                <Card className="transition-colors duration-200 hover:bg-muted/30 motion-reduce:transition-none">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base leading-snug">
                       {customer.name}

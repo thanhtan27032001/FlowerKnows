@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDownIcon, ExternalLinkIcon } from "lucide-react";
+import { QueryErrorState } from "@/components/feedback/query-error-state";
+import { Spinner } from "@/components/feedback/spinner";
 import { CashOutForm } from "@/components/customers/cash-out-form";
 import { ItemExchangeForm } from "@/components/customers/item-exchange-form";
 import {
@@ -18,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Props = {
   campaignId: string;
@@ -173,15 +176,39 @@ export function ParticipantItemsPanel({
       {expanded && (
         <CardContent className="space-y-3 border-t border-border/60 pt-4">
           {tokensQuery.isLoading && (
-            <p className="text-sm text-muted-foreground">Loading items…</p>
+            <div
+              className="space-y-2"
+              aria-busy="true"
+              aria-label="Loading items"
+            >
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner />
+                Loading items…
+              </div>
+              {Array.from({ length: 2 }, (_, i) => (
+                <div
+                  key={i}
+                  className="space-y-2 rounded-xl border border-border/70 p-3"
+                >
+                  <Skeleton className="h-4 w-2/3" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
 
           {tokensQuery.isError && (
-            <p className="text-sm text-destructive">
-              {tokensQuery.error instanceof Error
-                ? tokensQuery.error.message
-                : "Failed to load participant items"}
-            </p>
+            <QueryErrorState
+              message={
+                tokensQuery.error instanceof Error
+                  ? tokensQuery.error.message
+                  : "Failed to load participant items"
+              }
+              onRetry={() => tokensQuery.refetch()}
+            />
           )}
 
           {tokensQuery.isSuccess && tokens.length === 0 && (

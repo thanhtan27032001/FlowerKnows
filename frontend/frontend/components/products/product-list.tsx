@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { ListSkeleton } from "@/components/feedback/list-skeleton";
+import { QueryErrorState } from "@/components/feedback/query-error-state";
+import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { productApi, productKeys } from "@/src/lib/api/product";
 import { formatCostPrice, vnd } from "@/src/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -22,52 +25,53 @@ type Props = {
 };
 
 export function ProductList({ onCreate, onStockIn }: Props) {
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: productKeys.lists(),
     queryFn: productApi.list,
   });
 
-  if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading products…</p>;
-  }
-
-  if (isError) {
-    return (
-      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-        <p className="text-sm text-destructive">
-          {error instanceof Error ? error.message : "Failed to load products"}
-        </p>
-        <Button className="mt-3" variant="outline" size="sm" onClick={() => refetch()}>
-          Retry
-        </Button>
-      </div>
-    );
-  }
-
   const products = data ?? [];
 
   return (
-    <div className="space-y-4">
+    <div className="relative space-y-4">
+      <QueryProgressBar active={isFetching && !isLoading} />
+
       <div className="flex flex-wrap gap-2">
         <Button onClick={onCreate}>Create Product</Button>
-        <Button variant="outline" onClick={onStockIn} disabled={products.length === 0}>
+        <Button
+          variant="outline"
+          onClick={onStockIn}
+          disabled={isLoading || products.length === 0}
+        >
           Stock In
         </Button>
       </div>
 
-      {products.length === 0 ? (
+      {isLoading && <ListSkeleton columns={5} />}
+
+      {isError && (
+        <QueryErrorState
+          message={
+            error instanceof Error ? error.message : "Failed to load products"
+          }
+          onRetry={() => refetch()}
+        />
+      )}
+
+      {!isLoading && !isError && products.length === 0 && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             No products yet. Create your first product to manage inventory.
           </CardContent>
         </Card>
-      ) : (
+      )}
+
+      {!isLoading && !isError && products.length > 0 && (
         <>
-          {/* Mobile card list */}
           <div className="grid gap-3 md:hidden">
             {products.map((product) => (
               <Link key={product.id} href={`/products/${product.id}`}>
-                <Card className="transition-colors hover:bg-muted/30">
+                <Card className="transition-colors duration-200 hover:bg-muted/30 motion-reduce:transition-none">
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-base leading-snug">
@@ -103,7 +107,6 @@ export function ProductList({ onCreate, onStockIn }: Props) {
             ))}
           </div>
 
-          {/* Desktop table */}
           <div className="hidden overflow-hidden rounded-xl border border-border/80 md:block">
             <Table>
               <TableHeader>

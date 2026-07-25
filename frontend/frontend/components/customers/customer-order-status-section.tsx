@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/src/lib/api/client";
 import type { CustomerOrderSummary } from "@/src/lib/api/customer";
 import {
   orderApi,
@@ -13,6 +14,7 @@ import {
 } from "@/src/lib/api/order";
 import { customerKeys } from "@/src/lib/api/customer";
 import { formatDateTime, vnd } from "@/src/lib/format";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,6 +75,14 @@ function OrderShippingControls({
 
   const status = order.shippingStatus as ShippingStatus;
   const options = SHIPPING_NEXT[status] ?? [status];
+  const locked = mutation.isPending;
+
+  const errorMessage =
+    mutation.error instanceof ApiError
+      ? mutation.error.message
+      : mutation.isError
+        ? "Failed to update shipping"
+        : null;
 
   return (
     <div className="space-y-3">
@@ -88,7 +98,7 @@ function OrderShippingControls({
                 carrierOrderId,
               });
             }}
-            disabled={mutation.isPending || status === "COMPLETED"}
+            disabled={locked || status === "COMPLETED"}
           >
             <SelectTrigger className="h-8 w-full">
               <SelectValue />
@@ -110,13 +120,15 @@ function OrderShippingControls({
               value={carrierOrderId}
               onChange={(e) => setCarrierOrderId(e.target.value)}
               placeholder="Not set yet"
+              disabled={locked}
             />
-            <Button
+            <PendingButton
               type="button"
               size="sm"
               variant="outline"
+              pending={mutation.isPending}
+              pendingLabel="Saving…"
               disabled={
-                mutation.isPending ||
                 carrierOrderId.trim() === (order.carrierOrderId ?? "")
               }
               onClick={() =>
@@ -127,10 +139,13 @@ function OrderShippingControls({
               }
             >
               Save
-            </Button>
+            </PendingButton>
           </div>
         </div>
       </div>
+      {errorMessage && (
+        <p className="text-xs text-destructive">{errorMessage}</p>
+      )}
     </div>
   );
 }

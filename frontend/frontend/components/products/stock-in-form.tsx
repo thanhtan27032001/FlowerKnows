@@ -11,6 +11,7 @@ import {
 } from "@/src/lib/api/product";
 import { reportKeys } from "@/src/lib/api/report";
 import { formatCostPrice } from "@/src/lib/format";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -162,7 +163,7 @@ export function StockInForm({
   };
 
   const formBody = successSummary ? (
-    <div className="grid gap-4">
+    <div className="fk-page-fade grid gap-4">
       <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-3 text-sm text-emerald-950">
         <p className="font-medium">Stock in recorded</p>
         <p className="mt-1 text-muted-foreground">
@@ -189,7 +190,7 @@ export function StockInForm({
       </div>
     </div>
   ) : (
-    <div className="grid gap-4">
+    <fieldset disabled={mutation.isPending} className="min-w-0 space-y-4">
       {rows.map((row, index) => (
         <div
           key={row.key}
@@ -289,7 +290,7 @@ export function StockInForm({
       </Button>
 
       {formError && <p className="text-sm text-destructive">{formError}</p>}
-    </div>
+    </fieldset>
   );
 
   const footer = successSummary ? (
@@ -300,16 +301,22 @@ export function StockInForm({
     </div>
   ) : (
     <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <Button type="button" variant="outline" onClick={close}>
-        Cancel
-      </Button>
       <Button
         type="button"
+        variant="outline"
         disabled={mutation.isPending}
+        onClick={close}
+      >
+        Cancel
+      </Button>
+      <PendingButton
+        type="button"
+        pending={mutation.isPending}
+        pendingLabel="Saving…"
         onClick={validateAndSubmit}
       >
-        {mutation.isPending ? "Saving…" : "Confirm Stock In"}
-      </Button>
+        Confirm Stock In
+      </PendingButton>
     </div>
   );
 

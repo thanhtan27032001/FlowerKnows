@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import { customerApi, customerKeys } from "@/src/lib/api/customer";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useSuccessClose } from "@/hooks/use-success-close";
 
 type Props = {
   open: boolean;
@@ -34,13 +36,14 @@ type Props = {
 export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { succeeded, runSuccess, reset } = useSuccessClose(250);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
-  const reset = () => {
+  const resetForm = () => {
     setName("");
     setPhone("");
     setAddress("");
@@ -52,9 +55,11 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
     mutationFn: customerApi.create,
     onSuccess: async (customer) => {
       await queryClient.invalidateQueries({ queryKey: customerKeys.all });
-      onOpenChange(false);
-      reset();
-      onCreated?.(customer.id);
+      await runSuccess(() => {
+        onOpenChange(false);
+        resetForm();
+        onCreated?.(customer.id);
+      });
     },
     onError: (err: unknown) => {
       setFormError(
@@ -62,6 +67,8 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
       );
     },
   });
+
+  const locked = mutation.isPending || succeeded;
 
   const submit = () => {
     setFormError(null);
@@ -86,45 +93,47 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
         submit();
       }}
     >
-      <div className="grid gap-2">
-        <Label htmlFor="customer-name">Name</Label>
-        <Input
-          id="customer-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Customer name"
-          aria-invalid={!!fieldErrors.name}
-        />
-        {fieldErrors.name && (
-          <p className="text-xs text-destructive">{fieldErrors.name}</p>
-        )}
-      </div>
+      <fieldset disabled={locked} className="min-w-0 space-y-4">
+        <div className="grid gap-2">
+          <Label htmlFor="customer-name">Name</Label>
+          <Input
+            id="customer-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Customer name"
+            aria-invalid={!!fieldErrors.name}
+          />
+          {fieldErrors.name && (
+            <p className="text-xs text-destructive">{fieldErrors.name}</p>
+          )}
+        </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="customer-phone">Phone</Label>
-        <Input
-          id="customer-phone"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="Phone number"
-          aria-invalid={!!fieldErrors.phone}
-        />
-        {fieldErrors.phone && (
-          <p className="text-xs text-destructive">{fieldErrors.phone}</p>
-        )}
-      </div>
+        <div className="grid gap-2">
+          <Label htmlFor="customer-phone">Phone</Label>
+          <Input
+            id="customer-phone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Phone number"
+            aria-invalid={!!fieldErrors.phone}
+          />
+          {fieldErrors.phone && (
+            <p className="text-xs text-destructive">{fieldErrors.phone}</p>
+          )}
+        </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="customer-address">Address (optional)</Label>
-        <Input
-          id="customer-address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Shipping address"
-        />
-      </div>
+        <div className="grid gap-2">
+          <Label htmlFor="customer-address">Address (optional)</Label>
+          <Input
+            id="customer-address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Shipping address"
+          />
+        </div>
 
-      {formError && <p className="text-sm text-destructive">{formError}</p>}
+        {formError && <p className="text-sm text-destructive">{formError}</p>}
+      </fieldset>
     </form>
   );
 
@@ -133,22 +142,33 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
       <Button
         type="button"
         variant="outline"
+        disabled={locked}
         onClick={() => {
           onOpenChange(false);
           reset();
+          resetForm();
         }}
       >
         Cancel
       </Button>
-      <Button type="button" disabled={mutation.isPending} onClick={submit}>
-        {mutation.isPending ? "Creating…" : "Create Customer"}
-      </Button>
+      <PendingButton
+        type="button"
+        pending={mutation.isPending}
+        success={succeeded}
+        pendingLabel="Creating…"
+        onClick={submit}
+      >
+        Create Customer
+      </PendingButton>
     </div>
   );
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
-    if (!next) reset();
+    if (!next) {
+      reset();
+      resetForm();
+    }
   };
 
   if (isMobile) {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import { productApi, productKeys, type Product } from "@/src/lib/api/product";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useSuccessClose } from "@/hooks/use-success-close";
 
 type Props = {
   open: boolean;
@@ -35,6 +37,7 @@ type Props = {
 export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { succeeded, runSuccess, reset } = useSuccessClose(250);
   const [direction, setDirection] = useState<"INCREASE" | "DECREASE">("INCREASE");
   const [quantity, setQuantity] = useState("");
   const [note, setNote] = useState("");
@@ -59,12 +62,16 @@ export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
     }) => productApi.adjustStock(product.id, input),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
-      onOpenChange(false);
+      await runSuccess(() => {
+        onOpenChange(false);
+      });
     },
     onError: (err: unknown) => {
       setFormError(err instanceof ApiError ? err.message : "Adjustment failed");
     },
   });
+
+  const locked = mutation.isPending || succeeded;
 
   const submit = () => {
     setFormError(null);
@@ -95,8 +102,13 @@ export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
     });
   };
 
+  const handleOpenChange = (next: boolean) => {
+    onOpenChange(next);
+    if (!next) reset();
+  };
+
   const formBody = (
-    <div className="grid gap-4">
+    <fieldset disabled={locked} className="min-w-0 space-y-4">
       <div className="rounded-xl border border-border/80 bg-muted/30 px-3 py-2 text-sm">
         Current stock:{" "}
         <span className="font-semibold tabular-nums">{product.stockQuantity}</span>
@@ -151,23 +163,34 @@ export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
       </div>
 
       {formError && <p className="text-sm text-destructive">{formError}</p>}
-    </div>
+    </fieldset>
   );
 
   const footer = (
     <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={locked}
+        onClick={() => handleOpenChange(false)}
+      >
         Cancel
       </Button>
-      <Button type="button" disabled={mutation.isPending} onClick={submit}>
-        {mutation.isPending ? "Saving…" : "Confirm Adjustment"}
-      </Button>
+      <PendingButton
+        type="button"
+        pending={mutation.isPending}
+        success={succeeded}
+        pendingLabel="Saving…"
+        onClick={submit}
+      >
+        Confirm Adjustment
+      </PendingButton>
     </div>
   );
 
   if (isMobile) {
     return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
+      <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-2xl">
           <SheetHeader>
             <SheetTitle>Adjust Stock</SheetTitle>
@@ -183,7 +206,7 @@ export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Adjust Stock</DialogTitle>

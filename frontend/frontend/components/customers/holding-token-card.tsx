@@ -22,7 +22,7 @@ export function HoldingTokenCard({ token, selected, onToggle }: Props) {
     >
       <Card
         className={cn(
-          "transition-colors",
+          "transition-[box-shadow,background-color,opacity] duration-200 motion-reduce:transition-none",
           selected && "ring-2 ring-primary/60 bg-primary/5",
           token.overdue && !selected && "border-amber-500/40 bg-amber-500/5"
         )}
@@ -30,7 +30,7 @@ export function HoldingTokenCard({ token, selected, onToggle }: Props) {
         <CardHeader className="flex flex-row items-start gap-3 space-y-0 pb-2">
           <span
             className={cn(
-              "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border text-xs",
+              "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border text-xs transition-[background-color,border-color,color] duration-200 motion-reduce:transition-none",
               selected
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-background text-transparent"

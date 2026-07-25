@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
 import { productApi, productKeys } from "@/src/lib/api/product";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useSuccessClose } from "@/hooks/use-success-close";
 
 type Props = {
   open: boolean;
@@ -43,6 +45,7 @@ type Props = {
 export function CreateProductForm({ open, onOpenChange }: Props) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { succeeded, runSuccess, reset } = useSuccessClose(250);
   const [name, setName] = useState("");
   const [listPrice, setListPrice] = useState("");
   const [stockQuantity, setStockQuantity] = useState("0");
@@ -55,7 +58,7 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
     stockQuantity: number;
   } | null>(null);
 
-  const reset = () => {
+  const resetForm = () => {
     setName("");
     setListPrice("");
     setStockQuantity("0");
@@ -68,13 +71,17 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
     mutationFn: productApi.create,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
-      onOpenChange(false);
-      reset();
+      await runSuccess(() => {
+        onOpenChange(false);
+        resetForm();
+      });
     },
     onError: (err: unknown) => {
       setFormError(err instanceof ApiError ? err.message : "Failed to create product");
     },
   });
+
+  const locked = createMutation.isPending || succeeded;
 
   const validate = () => {
     const errors: Record<string, string> = {};
@@ -127,54 +134,56 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
         void submit(false);
       }}
     >
-      <div className="grid gap-2">
-        <Label htmlFor="product-name">Name</Label>
-        <Input
-          id="product-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Little Angel Blush"
-          aria-invalid={!!fieldErrors.name}
-        />
-        {fieldErrors.name && (
-          <p className="text-xs text-destructive">{fieldErrors.name}</p>
-        )}
-      </div>
+      <fieldset disabled={locked} className="min-w-0 space-y-4">
+        <div className="grid gap-2">
+          <Label htmlFor="product-name">Name</Label>
+          <Input
+            id="product-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Little Angel Blush"
+            aria-invalid={!!fieldErrors.name}
+          />
+          {fieldErrors.name && (
+            <p className="text-xs text-destructive">{fieldErrors.name}</p>
+          )}
+        </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="product-price">List price (VND)</Label>
-        <Input
-          id="product-price"
-          type="number"
-          min={1}
-          inputMode="numeric"
-          value={listPrice}
-          onChange={(e) => setListPrice(e.target.value)}
-          placeholder="150000"
-          aria-invalid={!!fieldErrors.listPrice}
-        />
-        {fieldErrors.listPrice && (
-          <p className="text-xs text-destructive">{fieldErrors.listPrice}</p>
-        )}
-      </div>
+        <div className="grid gap-2">
+          <Label htmlFor="product-price">List price (VND)</Label>
+          <Input
+            id="product-price"
+            type="number"
+            min={1}
+            inputMode="numeric"
+            value={listPrice}
+            onChange={(e) => setListPrice(e.target.value)}
+            placeholder="150000"
+            aria-invalid={!!fieldErrors.listPrice}
+          />
+          {fieldErrors.listPrice && (
+            <p className="text-xs text-destructive">{fieldErrors.listPrice}</p>
+          )}
+        </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="product-stock">Initial stock (optional)</Label>
-        <Input
-          id="product-stock"
-          type="number"
-          min={0}
-          inputMode="numeric"
-          value={stockQuantity}
-          onChange={(e) => setStockQuantity(e.target.value)}
-          aria-invalid={!!fieldErrors.stockQuantity}
-        />
-        {fieldErrors.stockQuantity && (
-          <p className="text-xs text-destructive">{fieldErrors.stockQuantity}</p>
-        )}
-      </div>
+        <div className="grid gap-2">
+          <Label htmlFor="product-stock">Initial stock (optional)</Label>
+          <Input
+            id="product-stock"
+            type="number"
+            min={0}
+            inputMode="numeric"
+            value={stockQuantity}
+            onChange={(e) => setStockQuantity(e.target.value)}
+            aria-invalid={!!fieldErrors.stockQuantity}
+          />
+          {fieldErrors.stockQuantity && (
+            <p className="text-xs text-destructive">{fieldErrors.stockQuantity}</p>
+          )}
+        </div>
 
-      {formError && <p className="text-sm text-destructive">{formError}</p>}
+        {formError && <p className="text-sm text-destructive">{formError}</p>}
+      </fieldset>
     </form>
   );
 
@@ -183,26 +192,33 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
       <Button
         type="button"
         variant="outline"
+        disabled={locked}
         onClick={() => {
           onOpenChange(false);
           reset();
+          resetForm();
         }}
       >
         Cancel
       </Button>
-      <Button
+      <PendingButton
         type="button"
-        disabled={createMutation.isPending}
+        pending={createMutation.isPending}
+        success={succeeded}
+        pendingLabel="Creating…"
         onClick={() => void submit(false)}
       >
-        {createMutation.isPending ? "Creating…" : "Create Product"}
-      </Button>
+        Create Product
+      </PendingButton>
     </div>
   );
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
-    if (!next) reset();
+    if (!next) {
+      reset();
+      resetForm();
+    }
   };
 
   return (

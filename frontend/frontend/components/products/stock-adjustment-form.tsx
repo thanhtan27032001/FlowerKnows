@@ -195,7 +195,7 @@ export function StockAdjustmentForm({ open, onOpenChange, product }: Props) {
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={handleOpenChange}>
-        <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-2xl">
+        <SheetContent side="bottom" className="overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{t("title")}</SheetTitle>
             <SheetDescription>

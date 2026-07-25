@@ -178,7 +178,7 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
       <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent
           side="bottom"
-          className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
+          className="overflow-y-auto"
         >
           <SheetHeader>
             <SheetTitle>{t("title")}</SheetTitle>

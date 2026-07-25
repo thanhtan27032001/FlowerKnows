@@ -176,6 +176,15 @@
   }
 }
 
+/* Top/side sheets need notch padding on the header. Bottom sheets stay clear
+   of browser chrome via max-h: calc(100dvh - safe-area-inset-top - …) on the
+   sheet container itself, so they don't need extra header inset. */
+[data-slot="sheet-content"][data-side="top"] [data-slot="sheet-header"],
+[data-slot="sheet-content"][data-side="left"] [data-slot="sheet-header"],
+[data-slot="sheet-content"][data-side="right"] [data-slot="sheet-header"] {
+  padding-top: max(1rem, env(safe-area-inset-top, 0px));
+}
+
 /* ---------------------------------------------------------------------- */
 /* Sidebar separation — border + shadow instead of a big color fill       */
 /* ---------------------------------------------------------------------- */

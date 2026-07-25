@@ -283,7 +283,7 @@ export function RecordItemForm({
       <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent
           side="bottom"
-          className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
+          className="overflow-y-auto"
         >
           <SheetHeader>
             <SheetTitle>{t("title")}</SheetTitle>
@@ -298,7 +298,7 @@ export function RecordItemForm({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>{t("description")}</DialogDescription>

@@ -408,7 +408,7 @@ export function ItemExchangeForm({
       <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent
           side="bottom"
-          className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
+          className="overflow-y-auto"
         >
           <SheetHeader>
             <SheetTitle>{t("title")}</SheetTitle>
@@ -423,7 +423,7 @@ export function ItemExchangeForm({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>{t("description")}</DialogDescription>

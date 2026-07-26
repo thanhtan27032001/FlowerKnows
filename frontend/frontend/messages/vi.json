@@ -111,7 +111,7 @@
   "nav": {
     "dashboard": "Tổng quan",
     "dashboardShort": "Tổng quan",
-    "campaigns": "Chiến dịch",
+    "campaigns": "Phiên live",
     "customers": "Khách hàng",
     "orders": "Đơn hàng",
     "products": "Sản phẩm",
@@ -185,7 +185,7 @@
     },
     "stats": {
       "availableStock": "Tồn kho khả dụng",
-      "lockedInCampaigns": "Đang khóa trong chiến dịch mở",
+      "lockedInCampaigns": "Đang khóa trong phiên live mở",
       "overdueTokens": "Token quá hạn",
       "viewAlerts": "Xem cảnh báo"
     },
@@ -204,18 +204,18 @@
       "columns": {
         "product": "Sản phẩm",
         "stock": "Tồn kho",
-        "locked": "Khóa trong chiến dịch",
+        "locked": "Khóa trong phiên live",
         "status": "Trạng thái"
       }
     }
   },
   "campaigns": {
-    "title": "Chiến dịch",
-    "detailFallbackTitle": "Chiến dịch",
+    "title": "Phiên live",
+    "detailFallbackTitle": "Phiên live",
     "list": {
-      "createButton": "Tạo chiến dịch",
-      "loadError": "Không tải được danh sách chiến dịch",
-      "empty": "Chưa có chiến dịch. Tạo chiến dịch đầu tiên để bắt đầu bán túi.",
+      "createButton": "Tạo phiên live",
+      "loadError": "Không tải được danh sách phiên live",
+      "empty": "Chưa có phiên live. Tạo phiên live đầu tiên để bắt đầu bán túi.",
       "eventDate": "Ngày sự kiện",
       "bagPrice": "Giá túi",
       "bagsSold": "Túi đã bán",
@@ -224,24 +224,26 @@
     },
     "detail": {
       "createdAt": "Tạo lúc {date}",
-      "loadError": "Không tải được chiến dịch",
+      "loadError": "Không tải được phiên live",
       "eventDate": "Ngày sự kiện",
       "bagPrice": "Giá túi",
       "bagsSold": "Túi đã bán",
       "remainingBags": "Túi còn lại",
       "recordParticipant": "Ghi nhận người tham gia",
       "recordItem": "Ghi nhận món",
-      "closeCampaign": "Đóng chiến dịch",
-      "closedNotice": "Chiến dịch đã đóng, không thể ghi nhận thêm.",
+      "closeCampaign": "Đóng phiên live",
+      "closedNotice": "Phiên live đã đóng, không thể ghi nhận thêm.",
       "poolTitle": "Pool sản phẩm",
       "loaded": "Đã nạp",
       "remaining": "Còn lại",
-      "poolEmpty": "Chưa có sản phẩm trong pool chiến dịch.",
+      "poolEmpty": "Chưa có sản phẩm trong pool phiên live.",
+      "showMorePool": "Xem thêm ({count})",
+      "showLessPool": "Thu gọn",
       "participantsTitle": "Người tham gia",
       "participantsEmpty": "Chưa ghi nhận người tham gia."
     },
     "create": {
-      "title": "Tạo chiến dịch",
+      "title": "Tạo phiên live",
       "description": "Định nghĩa pool sản phẩm và tổng số túi trước khi bán.",
       "name": "Tên",
       "eventDate": "Ngày sự kiện",
@@ -250,7 +252,7 @@
       "productPool": "Pool sản phẩm",
       "loadedQuantity": "Số lượng nạp",
       "namePlaceholder": "vd. Little Angel Blind Bag — Tháng 8",
-      "createButton": "Tạo chiến dịch",
+      "createButton": "Tạo phiên live",
       "nameRequired": "Tên là bắt buộc",
       "eventDateRequired": "Ngày sự kiện là bắt buộc",
       "bagPriceInvalid": "Giá túi phải là số dương",
@@ -260,11 +262,11 @@
       "fixPool": "Sửa pool sản phẩm trước khi tạo",
       "duplicateProduct": "Mỗi sản phẩm chỉ được xuất hiện một lần trong pool",
       "quantitiesMismatch": "Tổng số lượng nạp phải bằng tổng số túi",
-      "failed": "Không tạo được chiến dịch"
+      "failed": "Không tạo được phiên live"
     },
     "recordParticipant": {
       "title": "Ghi nhận người tham gia",
-      "description": "Gắn khách hàng với số túi đã mua trong chiến dịch này.",
+      "description": "Gắn khách hàng với số túi đã mua trong phiên live này.",
       "existingCustomer": "Khách hiện có",
       "createNewCustomer": "Tạo khách mới",
       "searchCustomer": "Tìm khách hàng",
@@ -285,13 +287,13 @@
     },
     "recordItem": {
       "title": "Ghi nhận món",
-      "description": "Xuất món từ pool chiến dịch cho người tham gia (tạo token).",
+      "description": "Xuất món từ pool phiên live cho người tham gia (tạo token).",
       "participant": "Người tham gia",
       "product": "Sản phẩm",
       "quantity": "Số lượng",
       "selectParticipant": "Chọn người tham gia",
       "selectProduct": "Chọn sản phẩm",
-      "poolEmpty": "Không còn sản phẩm trong pool chiến dịch.",
+      "poolEmpty": "Không còn sản phẩm trong pool phiên live.",
       "submit": "Ghi nhận món",
       "participantRequired": "Chọn một người tham gia",
       "productRequired": "Chọn một sản phẩm",
@@ -299,17 +301,21 @@
       "failed": "Không ghi nhận được món"
     },
     "close": {
-      "title": "Đóng chiến dịch",
+      "title": "Đóng phiên live",
       "loadingPreview": "Đang tải xem trước hoàn kho…",
-      "previewError": "Không tải được xem trước đóng chiến dịch",
+      "previewError": "Không tải được xem trước đóng phiên live",
       "nothingReturned": "Không có gì được hoàn về kho.",
       "confirm": "Xác nhận đóng",
-      "failed": "Không đóng được chiến dịch"
+      "failed": "Không đóng được phiên live"
     },
     "participantPanel": {
       "hideItems": "Ẩn món",
       "viewItems": "Xem món",
       "bags": "Túi",
+      "itemNames": "Món",
+      "itemsRecorded": "Món đã ghi",
+      "itemsProgress": "{recorded}/{bags}",
+      "noItems": "—",
       "prepaid": "Trả trước",
       "viewProfile": "Xem hồ sơ khách",
       "recordItem": "Ghi nhận món",
@@ -322,7 +328,7 @@
       "tokenValue": "Giá trị token",
       "costBasis": "Giá vốn",
       "issued": "Phát hành {date}",
-      "sourceCampaign": "Chiến dịch"
+      "sourceCampaign": "Phiên live"
     }
   },
   "customers": {
@@ -427,7 +433,7 @@
     },
     "create": {
       "title": "Tạo sản phẩm",
-      "description": "Thêm sản phẩm cho chiến dịch, đổi món và nhập kho.",
+      "description": "Thêm sản phẩm cho phiên live, đổi món và nhập kho.",
       "name": "Tên",
       "listPrice": "Giá niêm yết (VND)",
       "initialStock": "Tồn ban đầu (tuỳ chọn)",
@@ -558,8 +564,8 @@
     "filters": {
       "from": "Từ ngày",
       "to": "Đến ngày",
-      "campaignOptional": "Chiến dịch (tuỳ chọn)",
-      "allCampaigns": "Tất cả chiến dịch",
+      "campaignOptional": "Phiên live (tuỳ chọn)",
+      "allCampaigns": "Tất cả phiên live",
       "apply": "Áp dụng bộ lọc"
     },
     "loadError": "Không tải được báo cáo doanh thu",
@@ -596,7 +602,7 @@
       "formula": "Tổng trả trước = Token đang giữ + Doanh thu đã ghi nhận + Tổng hoàn tiền"
     },
     "campaignBreakdown": {
-      "campaign": "Chiến dịch: {name}",
+      "campaign": "Phiên live: {name}",
       "prepaid": "Trả trước",
       "bagsSold": "Túi đã bán",
       "tokensByStatus": "Token theo trạng thái"

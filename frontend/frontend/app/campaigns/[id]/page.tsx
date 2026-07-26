@@ -77,6 +77,7 @@ export default function CampaignDetailPage({
   const [participantOpen, setParticipantOpen] = useState(false);
   const [itemOpen, setItemOpen] = useState(false);
   const [itemCustomerId, setItemCustomerId] = useState("");
+  const [poolExpanded, setPoolExpanded] = useState(false);
 
   const {
     data: campaign,
@@ -94,6 +95,15 @@ export default function CampaignDetailPage({
     setItemCustomerId(customerId);
     setItemOpen(true);
   };
+
+  const poolPreviewLimit = 3;
+  const canTogglePool = (campaign?.pool.length ?? 0) > poolPreviewLimit;
+  const visiblePool =
+    campaign == null
+      ? []
+      : canTogglePool && !poolExpanded
+        ? campaign.pool.slice(0, poolPreviewLimit)
+        : campaign.pool;
 
   return (
     <AppShell
@@ -221,56 +231,30 @@ export default function CampaignDetailPage({
                   </CardContent>
                 </Card>
               ) : (
-                <>
-                  <div className="grid gap-3 md:hidden">
-                    {campaign.pool.map((item) => (
-                      <Card key={item.id}>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base leading-snug">
-                            {item.productName}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">
-                              {tDetail("loaded")}
-                            </p>
-                            <p className="font-medium tabular-nums">
-                              {item.loadedQuantity}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">
-                              {tDetail("remaining")}
-                            </p>
-                            <p className="font-medium tabular-nums">
-                              {item.remainingQuantity}
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-
-                  <div className="fk-table-surface hidden md:block">
+                <div className="space-y-2">
+                  <div className="fk-table-surface">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>{tCommon("fields.product")}</TableHead>
-                          <TableHead>{tDetail("loaded")}</TableHead>
-                          <TableHead>{tDetail("remaining")}</TableHead>
+                          <TableHead className="w-[5.5rem] text-right">
+                            {tDetail("loaded")}
+                          </TableHead>
+                          <TableHead className="w-[5.5rem] text-right">
+                            {tDetail("remaining")}
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {campaign.pool.map((item) => (
+                        {visiblePool.map((item) => (
                           <TableRow key={item.id}>
-                            <TableCell className="font-medium">
+                            <TableCell className="max-w-0 truncate font-medium">
                               {item.productName}
                             </TableCell>
-                            <TableCell className="tabular-nums">
+                            <TableCell className="text-right tabular-nums">
                               {item.loadedQuantity}
                             </TableCell>
-                            <TableCell className="tabular-nums">
+                            <TableCell className="text-right tabular-nums">
                               {item.remainingQuantity}
                             </TableCell>
                           </TableRow>
@@ -278,7 +262,22 @@ export default function CampaignDetailPage({
                       </TableBody>
                     </Table>
                   </div>
-                </>
+                  {canTogglePool && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-muted-foreground"
+                      onClick={() => setPoolExpanded((v) => !v)}
+                    >
+                      {poolExpanded
+                        ? tDetail("showLessPool")
+                        : tDetail("showMorePool", {
+                            count: campaign.pool.length - poolPreviewLimit,
+                          })}
+                    </Button>
+                  )}
+                </div>
               )}
             </section>
 
@@ -305,7 +304,7 @@ export default function CampaignDetailPage({
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid gap-3">
+                <div className="grid gap-1">
                   {campaign.participants.map((p) => (
                     <ParticipantItemsPanel
                       key={p.id}

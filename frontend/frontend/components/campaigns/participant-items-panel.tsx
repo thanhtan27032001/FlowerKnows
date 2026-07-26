@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type Props = {
@@ -71,13 +70,11 @@ export function ParticipantItemsPanel({
     queryKey: campaignKeys.participantTokens(campaignId, participant.id),
     queryFn: () =>
       campaignApi.listParticipantTokens(campaignId, participant.id),
-    enabled: expanded,
   });
 
-  const tokens = tokensQuery.data ?? [];
   const holdingTokens = useMemo(
-    () => tokens.filter((tok) => tok.actionable),
-    [tokens]
+    () => (tokensQuery.data ?? []).filter((tok) => tok.actionable),
+    [tokensQuery.data]
   );
   const sourceCampaignLabel = t("sourceCampaign");
   const selectedTokens = useMemo(
@@ -87,6 +84,27 @@ export function ParticipantItemsPanel({
         .map((tok) => toCustomerToken(tok, participant, sourceCampaignLabel)),
     [holdingTokens, selectedIds, participant, sourceCampaignLabel]
   );
+
+  const tokens = tokensQuery.data ?? [];
+  const itemsRecorded = tokensQuery.isSuccess
+    ? tokens.length
+    : (participant.itemsRecorded ?? 0);
+
+  const itemNamesPreview = useMemo(() => {
+    const names = tokensQuery.isSuccess
+      ? (tokensQuery.data ?? []).map((tok) => tok.productName)
+      : (participant.recordedItemNames ?? []);
+    if (names.length === 0) return null;
+    const shown = names.slice(0, 3);
+    const text = shown.join(", ");
+    const hasMore = itemsRecorded > 3 || names.length > 3;
+    return hasMore ? `${text}...` : text;
+  }, [
+    tokensQuery.isSuccess,
+    tokensQuery.data,
+    participant.recordedItemNames,
+    itemsRecorded,
+  ]);
 
   const toggleToken = (tokenId: string) => {
     setSelectedIds((prev) => {
@@ -110,99 +128,110 @@ export function ParticipantItemsPanel({
   };
 
   return (
-    <Card>
-      <CardHeader className="space-y-3 pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <button
-            type="button"
-            className="min-w-0 flex-1 text-left"
-            onClick={() => setExpanded((v) => !v)}
-            aria-expanded={expanded}
-          >
-            <div className="flex items-start gap-2">
-              <ChevronDownIcon
-                className={cn(
-                  "mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform",
-                  expanded && "rotate-180"
-                )}
-              />
-              <div className="min-w-0">
-                <CardTitle className="text-base leading-snug">
-                  {participant.customerName}
-                </CardTitle>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  {participant.customerPhone || tCommon("fallback.noPhone")}
-                </p>
-              </div>
-            </div>
-          </button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="shrink-0"
-            onClick={() => setExpanded((v) => !v)}
-          >
-            {expanded ? t("hideItems") : t("viewItems")}
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 pl-6 text-sm">
-          <div>
-            <p className="text-muted-foreground">{t("bags")}</p>
-            <p className="font-medium tabular-nums">
-              {participant.totalBagsPurchased}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">{t("prepaid")}</p>
-            <p className="font-medium tabular-nums">
-              {vnd.format(participant.prepaidAmount)}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 pl-6">
-          <Link
-            href={`/customers/${participant.customerId}`}
-            className={cn(
-              "inline-flex h-7 items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium transition-colors hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <ExternalLinkIcon className="size-3.5" />
-            {t("viewProfile")}
-          </Link>
-          {canRecordItem && (
-            <Button size="sm" variant="outline" onClick={onRecordItem}>
-              {t("recordItem")}
-            </Button>
+    <div className="rounded-lg ring-1 ring-foreground/10 bg-card">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/40"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        <ChevronDownIcon
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform",
+            expanded && "rotate-180"
           )}
-        </div>
-      </CardHeader>
+        />
+
+        <span className="min-w-0 shrink-0 basis-[7rem] truncate text-sm font-semibold leading-tight sm:basis-[9rem]">
+          {participant.customerName}
+        </span>
+
+        <span className="flex min-w-0 flex-1 flex-col items-start leading-none">
+          <span className="text-[0.65rem] text-muted-foreground">
+            {t("itemNames")}
+          </span>
+          <span
+            className="mt-0.5 w-full truncate text-sm font-semibold tracking-tight"
+            title={itemNamesPreview ?? undefined}
+          >
+            {itemNamesPreview ?? t("noItems")}
+          </span>
+        </span>
+
+        <span className="flex shrink-0 items-center gap-3 sm:gap-5">
+          <span className="flex min-w-[2.75rem] flex-col items-end leading-none">
+            <span className="text-[0.65rem] text-muted-foreground">
+              {t("bags")}
+            </span>
+            <span className="mt-0.5 text-sm font-semibold tabular-nums tracking-tight">
+              {participant.totalBagsPurchased}
+            </span>
+          </span>
+          <span className="flex min-w-[3.5rem] flex-col items-end leading-none">
+            <span className="text-[0.65rem] text-muted-foreground">
+              {t("itemsRecorded")}
+            </span>
+            <span
+              className={cn(
+                "mt-0.5 text-sm font-semibold tabular-nums tracking-tight",
+                itemsRecorded >= participant.totalBagsPurchased
+                  ? "text-foreground"
+                  : "text-amber-700 dark:text-amber-400"
+              )}
+            >
+              {t("itemsProgress", {
+                recorded: itemsRecorded,
+                bags: participant.totalBagsPurchased,
+              })}
+            </span>
+          </span>
+        </span>
+      </button>
 
       {expanded && (
-        <CardContent className="space-y-3 border-t border-border/60 pt-4">
+        <div className="space-y-2 border-t border-border/60 px-3 py-2.5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+            <span>
+              {participant.customerPhone || tCommon("fallback.noPhone")}
+            </span>
+            <span className="tabular-nums">
+              {t("prepaid")}: {vnd.format(participant.prepaidAmount)}
+            </span>
+            <Link
+              href={`/customers/${participant.customerId}`}
+              className="inline-flex items-center gap-1 font-medium text-foreground/80 transition-colors hover:text-foreground"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLinkIcon className="size-3" />
+              {t("viewProfile")}
+            </Link>
+            {canRecordItem && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRecordItem();
+                }}
+              >
+                {t("recordItem")}
+              </Button>
+            )}
+          </div>
+
           {tokensQuery.isLoading && (
             <div
-              className="space-y-2"
+              className="space-y-1.5"
               aria-busy="true"
               aria-label={t("loading")}
             >
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Spinner />
                 {t("loading")}
               </div>
               {Array.from({ length: 2 }, (_, i) => (
-                <div
-                  key={i}
-                  className="space-y-2 rounded-xl border border-border/70 p-3"
-                >
-                  <Skeleton className="h-4 w-2/3" />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                  </div>
-                </div>
+                <Skeleton key={i} className="h-8 w-full rounded-md" />
               ))}
             </div>
           )}
@@ -219,12 +248,12 @@ export function ParticipantItemsPanel({
           )}
 
           {tokensQuery.isSuccess && tokens.length === 0 && (
-            <p className="text-sm text-muted-foreground">{t("empty")}</p>
+            <p className="text-xs text-muted-foreground">{t("empty")}</p>
           )}
 
           {tokens.length > 0 && (
             <>
-              <div className="space-y-2">
+              <div className="divide-y divide-border/50 rounded-md ring-1 ring-border/60">
                 {tokens.map((token) => (
                   <ParticipantTokenRow
                     key={token.id}
@@ -236,9 +265,10 @@ export function ParticipantItemsPanel({
               </div>
 
               {holdingTokens.length > 0 && isOwner && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   <Button
                     size="sm"
+                    className="h-7"
                     disabled={selectedTokens.length === 0}
                     onClick={() => setExchangeOpen(true)}
                   >
@@ -247,13 +277,19 @@ export function ParticipantItemsPanel({
                   <Button
                     size="sm"
                     variant="outline"
+                    className="h-7"
                     disabled={selectedTokens.length === 0}
                     onClick={() => setCashOutOpen(true)}
                   >
                     {t("cashOut")}
                   </Button>
                   {selectedIds.size > 0 && (
-                    <Button size="sm" variant="ghost" onClick={clearSelection}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7"
+                      onClick={clearSelection}
+                    >
                       {t("clearSelection")}
                     </Button>
                   )}
@@ -290,9 +326,9 @@ export function ParticipantItemsPanel({
               />
             </>
           ) : null}
-        </CardContent>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -307,30 +343,47 @@ function ParticipantTokenRow({
 }) {
   const t = useTranslations("campaigns.participantPanel");
 
+  const body = (
+    <>
+      {token.actionable ? (
+        <span
+          className={cn(
+            "flex size-4 shrink-0 items-center justify-center rounded border text-[0.65rem]",
+            selected
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-background text-transparent"
+          )}
+          aria-hidden
+        >
+          ✓
+        </span>
+      ) : (
+        <span className="size-4 shrink-0" aria-hidden />
+      )}
+      <span className="min-w-0 flex-1 truncate font-medium">
+        {token.productName}
+      </span>
+      <span className="hidden tabular-nums text-muted-foreground sm:inline">
+        {vnd.format(token.tokenValue)}
+      </span>
+      <span className="hidden tabular-nums text-muted-foreground md:inline">
+        {formatCostPrice(token.costBasis)}
+      </span>
+      <StatusBadge
+        type="token"
+        status={token.actionable ? "HOLDING" : token.status}
+        className="shrink-0 scale-90"
+      />
+    </>
+  );
+
   if (!token.actionable) {
     return (
-      <div className="rounded-xl border border-border/70 bg-muted/20 p-3 text-sm">
-        <div className="flex items-start justify-between gap-2">
-          <p className="font-medium leading-snug">{token.productName}</p>
-          <StatusBadge
-            type="token"
-            status={token.status}
-            className="shrink-0"
-          />
-        </div>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <div>
-            <p className="text-xs text-muted-foreground">{t("tokenValue")}</p>
-            <p className="tabular-nums">{vnd.format(token.tokenValue)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{t("costBasis")}</p>
-            <p className="tabular-nums">{formatCostPrice(token.costBasis)}</p>
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {t("issued", { date: formatDateTime(token.createdAt) })}
-        </p>
+      <div
+        className="flex items-center gap-2 bg-muted/20 px-2.5 py-1.5 text-xs"
+        title={t("issued", { date: formatDateTime(token.createdAt) })}
+      >
+        {body}
       </div>
     );
   }
@@ -340,55 +393,13 @@ function ParticipantTokenRow({
       type="button"
       onClick={onToggle}
       aria-pressed={selected}
-      className="w-full rounded-xl border border-border/80 p-3 text-left text-sm transition-colors hover:bg-muted/30"
+      title={t("issued", { date: formatDateTime(token.createdAt) })}
+      className={cn(
+        "flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-muted/40",
+        selected && "bg-primary/5"
+      )}
     >
-      <div
-        className={cn(
-          "rounded-[10px] -m-1 p-1",
-          selected && "ring-2 ring-primary/60 bg-primary/5"
-        )}
-      >
-        <div className="flex items-start gap-2">
-          <span
-            className={cn(
-              "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border text-xs",
-              selected
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-background text-transparent"
-            )}
-            aria-hidden
-          >
-            ✓
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-medium leading-snug">{token.productName}</p>
-              <StatusBadge
-                type="token"
-                status="HOLDING"
-                className="shrink-0"
-              />
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <div>
-                <p className="text-xs text-muted-foreground">{t("tokenValue")}</p>
-                <p className="font-medium tabular-nums">
-                  {vnd.format(token.tokenValue)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{t("costBasis")}</p>
-                <p className="font-medium tabular-nums">
-                  {formatCostPrice(token.costBasis)}
-                </p>
-              </div>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {t("issued", { date: formatDateTime(token.createdAt) })}
-            </p>
-          </div>
-        </div>
-      </div>
+      {body}
     </button>
   );
 }

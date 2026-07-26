@@ -51,7 +51,9 @@ public final class CampaignDtos {
             String customerName,
             String customerPhone,
             int totalBagsPurchased,
-            BigDecimal prepaidAmount
+            BigDecimal prepaidAmount,
+            int itemsRecorded,
+            List<String> recordedItemNames
     ) {
     }
 

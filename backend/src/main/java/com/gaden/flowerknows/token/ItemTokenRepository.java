@@ -2,6 +2,7 @@ package com.gaden.flowerknows.token;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -52,6 +53,23 @@ public interface ItemTokenRepository extends JpaRepository<ItemToken, UUID> {
             GROUP BY t.status
             """)
     List<Object[]> countByStatusForParticipants(Collection<UUID> participantIds);
+
+    @Query("""
+            SELECT t.sourceId, COUNT(t) FROM ItemToken t
+            WHERE t.sourceType = com.gaden.flowerknows.token.SourceType.CAMPAIGN
+              AND t.sourceId IN :participantIds
+            GROUP BY t.sourceId
+            """)
+    List<Object[]> countTokensByParticipantIds(@Param("participantIds") Collection<UUID> participantIds);
+
+    @Query("""
+            SELECT t FROM ItemToken t
+            JOIN FETCH t.product
+            WHERE t.sourceType = com.gaden.flowerknows.token.SourceType.CAMPAIGN
+              AND t.sourceId IN :participantIds
+            ORDER BY t.createdAt DESC
+            """)
+    List<ItemToken> findByParticipantIdsWithProduct(@Param("participantIds") Collection<UUID> participantIds);
 
     @Query("""
             SELECT COALESCE(SUM(t.tokenValue), 0) FROM ItemToken t

@@ -60,7 +60,7 @@ export function RecordItemForm({
 
   const [customerId, setCustomerId] = useState(defaultCustomerId);
   const [productId, setProductId] = useState("");
-  const [quantity, setQuantity] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [blockedAllRecorded, setBlockedAllRecorded] = useState(false);
@@ -84,7 +84,7 @@ export function RecordItemForm({
   const resetForm = () => {
     setCustomerId(defaultCustomerId);
     setProductId("");
-    setQuantity("");
+    setQuantity("1");
     setFieldErrors({});
     setFormError(null);
     setBlockedAllRecorded(false);

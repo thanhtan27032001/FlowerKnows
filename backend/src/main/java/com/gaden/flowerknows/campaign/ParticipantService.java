@@ -92,13 +92,24 @@ public class ParticipantService {
         }
 
         CampaignParticipant saved = participantRepository.save(participant);
+        int itemsRecorded = (int) itemTokenRepository.countBySourceTypeAndSourceId(
+                SourceType.CAMPAIGN, saved.getId()
+        );
+        List<String> recordedItemNames = itemTokenRepository
+                .findBySourceTypeAndSourceIdOrderByCreatedAtDesc(SourceType.CAMPAIGN, saved.getId())
+                .stream()
+                .limit(3)
+                .map(t -> t.getProduct().getName())
+                .toList();
         return new CampaignDtos.ParticipantSummaryResponse(
                 saved.getId(),
                 customer.getId(),
                 customer.getName(),
                 customer.getPhone(),
                 saved.getTotalBagsPurchased(),
-                saved.getPrepaidAmount()
+                saved.getPrepaidAmount(),
+                itemsRecorded,
+                recordedItemNames
         );
     }
 

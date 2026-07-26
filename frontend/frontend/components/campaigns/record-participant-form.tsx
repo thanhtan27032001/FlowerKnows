@@ -64,7 +64,7 @@ export function RecordParticipantForm({
   const [search, setSearch] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
-  const [bagsPurchased, setBagsPurchased] = useState("");
+  const [bagsPurchased, setBagsPurchased] = useState("1");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -89,7 +89,7 @@ export function RecordParticipantForm({
     setSearch("");
     setNewName("");
     setNewPhone("");
-    setBagsPurchased("");
+    setBagsPurchased("1");
     setFieldErrors({});
     setFormError(null);
   };

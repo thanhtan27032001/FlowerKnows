@@ -28,6 +28,8 @@ export type ParticipantSummary = {
   customerPhone: string;
   totalBagsPurchased: number;
   prepaidAmount: number;
+  itemsRecorded: number;
+  recordedItemNames: string[];
 };
 
 export type CampaignDetail = CampaignSummary & {

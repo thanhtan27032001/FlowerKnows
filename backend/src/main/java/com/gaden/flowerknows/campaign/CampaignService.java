@@ -6,11 +6,15 @@ import com.gaden.flowerknows.product.Product;
 import com.gaden.flowerknows.product.ProductRepository;
 import com.gaden.flowerknows.stock.StockService;
 import com.gaden.flowerknows.stock.StockTransactionType;
+import com.gaden.flowerknows.token.ItemToken;
+import com.gaden.flowerknows.token.ItemTokenRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -20,17 +24,20 @@ public class CampaignService {
     private final CampaignParticipantRepository participantRepository;
     private final ProductRepository productRepository;
     private final StockService stockService;
+    private final ItemTokenRepository itemTokenRepository;
 
     public CampaignService(
             CampaignRepository campaignRepository,
             CampaignParticipantRepository participantRepository,
             ProductRepository productRepository,
-            StockService stockService
+            StockService stockService,
+            ItemTokenRepository itemTokenRepository
     ) {
         this.campaignRepository = campaignRepository;
         this.participantRepository = participantRepository;
         this.productRepository = productRepository;
         this.stockService = stockService;
+        this.itemTokenRepository = itemTokenRepository;
     }
 
     @Transactional(readOnly = true)
@@ -180,6 +187,26 @@ public class CampaignService {
                 ))
                 .toList();
 
+        List<UUID> participantIds = campaign.getParticipants().stream()
+                .map(CampaignParticipant::getId)
+                .toList();
+        Map<UUID, Integer> itemsRecordedByParticipant = new HashMap<>();
+        Map<UUID, List<String>> itemNamesByParticipant = new HashMap<>();
+        if (!participantIds.isEmpty()) {
+            for (Object[] row : itemTokenRepository.countTokensByParticipantIds(participantIds)) {
+                itemsRecordedByParticipant.put((UUID) row[0], ((Number) row[1]).intValue());
+            }
+            for (ItemToken token : itemTokenRepository.findByParticipantIdsWithProduct(participantIds)) {
+                List<String> names = itemNamesByParticipant.computeIfAbsent(
+                        token.getSourceId(),
+                        ignored -> new ArrayList<>()
+                );
+                if (names.size() < 3) {
+                    names.add(token.getProduct().getName());
+                }
+            }
+        }
+
         List<CampaignDtos.ParticipantSummaryResponse> participants = new ArrayList<>();
         for (CampaignParticipant participant : campaign.getParticipants()) {
             participants.add(new CampaignDtos.ParticipantSummaryResponse(
@@ -188,7 +215,9 @@ public class CampaignService {
                     participant.getCustomer().getName(),
                     participant.getCustomer().getPhone(),
                     participant.getTotalBagsPurchased(),
-                    participant.getPrepaidAmount()
+                    participant.getPrepaidAmount(),
+                    itemsRecordedByParticipant.getOrDefault(participant.getId(), 0),
+                    itemNamesByParticipant.getOrDefault(participant.getId(), List.of())
             ));
         }
 

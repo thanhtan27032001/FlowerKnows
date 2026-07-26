@@ -59,7 +59,7 @@ function newPoolRow(): PoolRow {
   return {
     key: createClientId(),
     productId: "",
-    loadedQuantity: "",
+    loadedQuantity: "1",
   };
 }
 
@@ -73,8 +73,8 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
 
   const [name, setName] = useState("");
   const [eventDate, setEventDate] = useState("");
-  const [bagPrice, setBagPrice] = useState("");
-  const [totalBags, setTotalBags] = useState("");
+  const [bagPrice, setBagPrice] = useState("89000");
+  const [totalBags, setTotalBags] = useState("20");
   const [poolRows, setPoolRows] = useState<PoolRow[]>([newPoolRow()]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -104,8 +104,8 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
   const resetForm = () => {
     setName("");
     setEventDate("");
-    setBagPrice("");
-    setTotalBags("");
+    setBagPrice("89000");
+    setTotalBags("20");
     setPoolRows([newPoolRow()]);
     setFieldErrors({});
     setFormError(null);

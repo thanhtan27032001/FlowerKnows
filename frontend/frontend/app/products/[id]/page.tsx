@@ -11,6 +11,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { MovementHistory } from "@/components/products/movement-history";
 import { StockAdjustmentForm } from "@/components/products/stock-adjustment-form";
 import { StockInForm } from "@/components/products/stock-in-form";
+import { useAuth } from "@/components/providers/auth-provider";
 import { productApi, productKeys } from "@/src/lib/api/product";
 import { formatCostPrice, vnd } from "@/src/lib/format";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -61,6 +62,7 @@ export default function ProductDetailPage({
   const t = useTranslations("products");
   const tDetail = useTranslations("products.detail");
   const tCommon = useTranslations("common");
+  const { isOwner } = useAuth();
   const [stockInOpen, setStockInOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [stockInNotice, setStockInNotice] = useState<string | null>(null);
@@ -148,9 +150,14 @@ export default function ProductDetailPage({
                   <Button onClick={() => setStockInOpen(true)}>
                     {tDetail("stockIn")}
                   </Button>
-                  <Button variant="outline" onClick={() => setAdjustOpen(true)}>
-                    {tDetail("adjustStock")}
-                  </Button>
+                  {isOwner ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => setAdjustOpen(true)}
+                    >
+                      {tDetail("adjustStock")}
+                    </Button>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
@@ -184,11 +191,13 @@ export default function ProductDetailPage({
                 }
               }}
             />
-            <StockAdjustmentForm
-              open={adjustOpen}
-              onOpenChange={setAdjustOpen}
-              product={product}
-            />
+            {isOwner ? (
+              <StockAdjustmentForm
+                open={adjustOpen}
+                onOpenChange={setAdjustOpen}
+                product={product}
+              />
+            ) : null}
           </div>
         )}
       </div>

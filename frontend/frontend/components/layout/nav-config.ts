@@ -80,7 +80,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: PackageIcon,
     section: "management",
     mobile: "more",
-    roles: ["OWNER"],
   },
   {
     href: "/alerts",

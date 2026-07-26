@@ -18,7 +18,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/products")
-@PreAuthorize("hasRole('OWNER')")
 public class ProductController {
 
     private final ProductService productService;
@@ -28,32 +27,38 @@ public class ProductController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public List<ProductDtos.ProductResponse> list() {
         return productService.list();
     }
 
     @GetMapping("/name-exists")
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public Map<String, Boolean> nameExists(@RequestParam String name) {
         return Map.of("exists", productService.nameExists(name));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public ProductDtos.ProductResponse get(@PathVariable UUID id) {
         return productService.get(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public ProductDtos.ProductResponse create(@Valid @RequestBody ProductDtos.CreateProductRequest request) {
         return productService.create(request);
     }
 
     @PostMapping("/stock-in")
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public ProductDtos.StockInResponse stockIn(@Valid @RequestBody ProductDtos.StockInRequest request) {
         return productService.stockIn(request);
     }
 
     @PostMapping("/{id}/stock-adjustment")
+    @PreAuthorize("hasRole('OWNER')")
     public ProductDtos.ProductResponse adjustStock(
             @PathVariable UUID id,
             @Valid @RequestBody ProductDtos.StockAdjustmentRequest request
@@ -62,6 +67,7 @@ public class ProductController {
     }
 
     @GetMapping("/{id}/stock-transactions")
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public List<ProductDtos.StockTransactionResponse> stockTransactions(@PathVariable UUID id) {
         return productService.listStockTransactions(id);
     }

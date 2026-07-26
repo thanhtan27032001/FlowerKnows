@@ -86,7 +86,6 @@ export function defaultLandingPath(role: AccountRole): string {
 const OWNER_ONLY_PREFIXES = [
   "/",
   "/orders",
-  "/products",
   "/alerts",
   "/reports",
   "/accounts",
@@ -107,6 +106,8 @@ export function canAccessPath(role: AccountRole, pathname: string): boolean {
     pathname === "/campaigns" ||
     pathname.startsWith("/campaigns/") ||
     pathname === "/customers" ||
-    pathname.startsWith("/customers/")
+    pathname.startsWith("/customers/") ||
+    pathname === "/products" ||
+    pathname.startsWith("/products/")
   );
 }

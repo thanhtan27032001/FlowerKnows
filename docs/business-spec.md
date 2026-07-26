@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 1.8 (Adds MODULE 10 — Authentication & RBAC, US-20 Edit Customer)
+**Version:** 1.9 (Staff gains Product/Stock In access; Stock Adjustment stays Owner-only)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -645,7 +645,11 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | US-07 Cash Out | ✅ | ❌ |
 | US-08 Cancel Token (incl. overdue alerts) | ✅ | ❌ |
 | US-09 Create Order / update shipping status | ✅ | ❌ |
-| US-12–US-15 Product & Inventory (all) | ✅ | ❌ (hidden from nav entirely) |
+| US-12 Create Product | ✅ | ✅ |
+| US-13 Stock In | ✅ | ✅ |
+| US-14 Stock Adjustment | ✅ | ❌ (Owner only — inventory-affecting correction, higher risk) |
+| US-15 View Stock Movement History | ✅ | ✅ |
+| Products nav item | ✅ | ✅ (visible, but "Adjust Stock" action hidden/blocked) |
 | US-16 View participant items from Campaign page | ✅ | ✅ (read-only — same restriction as US-05) |
 | US-16 Item Exchange / Cash Out from Campaign page | ✅ | ❌ |
 | US-17 Dashboard | ✅ | ❌ (hidden from nav entirely) |
@@ -678,7 +682,7 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 1. **US-06:** The exact UI for how Staff enters/allocates `token_value` for each new token when exchanging N-N (multiple new products) — needs a concrete UI mockup to finalize.
 2. ~~The specific set of `shipping_status` values for an Order...~~ **Resolved in v1.6** — `order.shipping_status` uses `order_created` / `shipped` / `completed`, updated by Staff via the order's own status control (US-09 AC #5); `carrier_order_id` is optional, settable at creation or later.
 3. The "Low stock" warning threshold in US-10 — staff-configurable or hardcoded.
-4. **US-14 (Stock Adjustment):** Should every Staff member have permission to adjust stock, or is separate role-based access needed (e.g. only a Manager can approve decreases) — the current spec assumes all Staff have equal permissions (no RBAC yet).
+4. ~~US-14 (Stock Adjustment) RBAC...~~ **Resolved in v1.9** — Stock Adjustment is Owner-only; Staff can Create Product and Stock In but not adjust stock. See MODULE 10 Permission Matrix.
 5. **US-13 (Stock In):** Is a printed/saved "goods receipt" document needed after each stock-in, or is a system record sufficient?
 6. **US-06 (Item Exchange) + cost_basis:** When one exchange creates multiple new tokens (1→N), how should `cost_basis` be assigned to each new token? Suggested default: each new token gets the full `average_cost_price` of its own product (not split/prorated) — since `cost_basis` represents unit cost, not a share of the old tokens' value. Please confirm this matches expectations.
 7. ~~US-18 (`customer.action_status`) drift risk...~~ **Resolved in v1.6** — `action_status` (4 values) and `shipping_status` (3 values) no longer overlap in meaning; the drift risk no longer applies since they track genuinely different, non-overlapping stages (pre-order vs. post-order).

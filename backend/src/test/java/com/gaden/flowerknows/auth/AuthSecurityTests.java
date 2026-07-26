@@ -5,6 +5,7 @@ import com.gaden.flowerknows.config.SecurityConfig;
 import com.gaden.flowerknows.exchange.ExchangeController;
 import com.gaden.flowerknows.exchange.ExchangeService;
 import com.gaden.flowerknows.product.ProductController;
+import com.gaden.flowerknows.product.ProductDtos;
 import com.gaden.flowerknows.product.ProductService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,8 +17,12 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -47,10 +52,6 @@ class AuthSecurityTests {
     void staffJwtCallingOwnerOnlyEndpointReturns403() throws Exception {
         String staffToken = jwtService.generateToken("staff1", "STAFF");
 
-        mockMvc.perform(get("/api/products")
-                        .header("Authorization", "Bearer " + staffToken))
-                .andExpect(status().isForbidden());
-
         String body = """
                 {"customerId":"%s","tokenIds":["%s"],"actualRefundAmount":100}
                 """.formatted(UUID.randomUUID(), UUID.randomUUID());
@@ -59,6 +60,50 @@ class AuthSecurityTests {
                         .header("Authorization", "Bearer " + staffToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void staffCanCreateProductAndStockInButNotAdjustStock() throws Exception {
+        String staffToken = jwtService.generateToken("staff1", "STAFF");
+        UUID productId = UUID.randomUUID();
+
+        when(productService.create(any())).thenReturn(
+                new ProductDtos.ProductResponse(
+                        productId,
+                        "Rose Lipstick",
+                        BigDecimal.valueOf(250000),
+                        0,
+                        null,
+                        true
+                )
+        );
+        when(productService.stockIn(any())).thenReturn(
+                new ProductDtos.StockInResponse(List.of())
+        );
+
+        mockMvc.perform(post("/api/products")
+                        .header("Authorization", "Bearer " + staffToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Rose Lipstick","listPrice":250000,"stockQuantity":0}
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/products/stock-in")
+                        .header("Authorization", "Bearer " + staffToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"items":[{"productId":"%s","quantity":10,"costPrice":100000,"note":"batch"}]}
+                                """.formatted(productId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/products/%s/stock-adjustment".formatted(productId))
+                        .header("Authorization", "Bearer " + staffToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"direction":"INCREASE","quantity":1,"note":"count surplus"}
+                                """))
                 .andExpect(status().isForbidden());
     }
 

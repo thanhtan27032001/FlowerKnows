@@ -117,10 +117,57 @@
     "products": "Sản phẩm",
     "alerts": "Cảnh báo",
     "reports": "Báo cáo",
+    "accounts": "Quản lý tài khoản",
     "more": "Thêm",
     "sections": {
       "operations": "Vận hành",
       "management": "Quản lý"
+    }
+  },
+  "auth": {
+    "logout": "Đăng xuất",
+    "roles": {
+      "OWNER": "Owner",
+      "STAFF": "Staff"
+    },
+    "login": {
+      "title": "Đăng nhập để tiếp tục",
+      "username": "Tên đăng nhập",
+      "password": "Mật khẩu",
+      "submit": "Đăng nhập",
+      "failed": "Sai tên đăng nhập hoặc mật khẩu"
+    }
+  },
+  "accounts": {
+    "title": "Quản lý tài khoản",
+    "createButton": "Tạo tài khoản",
+    "empty": "Chưa có tài khoản nào",
+    "loadError": "Không tải được danh sách tài khoản",
+    "active": "Đang hoạt động",
+    "inactive": "Đã tắt",
+    "activate": "Bật",
+    "deactivate": "Tắt",
+    "columns": {
+      "username": "Tên đăng nhập",
+      "fullName": "Họ tên",
+      "role": "Vai trò",
+      "status": "Trạng thái",
+      "createdAt": "Ngày tạo",
+      "actions": "Thao tác"
+    },
+    "create": {
+      "title": "Tạo tài khoản",
+      "description": "Chỉ Owner mới có thể tạo tài khoản mới.",
+      "username": "Tên đăng nhập",
+      "password": "Mật khẩu",
+      "fullName": "Họ tên",
+      "role": "Vai trò",
+      "submit": "Tạo tài khoản",
+      "failed": "Không tạo được tài khoản",
+      "usernameRequired": "Vui lòng nhập tên đăng nhập",
+      "fullNameRequired": "Vui lòng nhập họ tên",
+      "passwordRequired": "Vui lòng nhập mật khẩu",
+      "passwordMin": "Mật khẩu tối thiểu 8 ký tự"
     }
   },
   "dashboard": {

@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 1.7 (Adds US-19 — status badges directly on the customer list)
+**Version:** 1.8 (Adds MODULE 10 — Authentication & RBAC, US-20 Edit Customer)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -29,6 +29,17 @@
 ## 1. Entity & Field Catalog (Naming Reference)
 
 This is the single source of truth for schema design across the whole document.
+
+### `staff_account`
+| Field | Type | Description |
+|---|---|---|
+| `id` | PK | |
+| `username` | string, unique | Login identifier |
+| `password_hash` | string | BCrypt hash — never store or log plaintext |
+| `full_name` | string | Display name |
+| `role` | enum | `owner` / `staff` |
+| `is_active` | boolean | Default `true`. An Owner can deactivate an account instead of deleting it (preserves audit history on records they created) |
+| `created_at` | datetime | |
 
 ### `customer`
 | Field | Type | Description |
@@ -264,6 +275,22 @@ This is the single source of truth for schema design across the whole document.
 | 7 | Staff taps/clicks a row | — | Navigates to that customer's full Customer Page (US-05) |
 
 **Note:** Badge colors should visually distinguish urgency — e.g. `needs_immediate_order` (action_status) and `order_created` (shipping_status, meaning not yet shipped) are the two states most likely to need Staff follow-up, and should stand out from calmer states like `undetermined` or `completed`.
+
+---
+
+### US-20: Edit Customer profile
+
+**As** Staff or Owner, **I want to** update a customer's `name`, `phone`, and `address` after they've already been created, **so that** I can correct mistakes or add missing contact details later.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Viewing a Customer Page or Customer List row | Clicks "Edit" on the customer | A form pre-filled with current `name`, `phone`, `address` is shown |
+| 2 | Fields edited, `name` still non-empty | Saves | `customer` record updates; no side effects on tokens/campaigns/orders |
+| 3 | `name` left empty | Saves | Validation error, blocks submission (name remains required) |
+
+**Access:** Both Owner and Staff can perform this (per the permission matrix in Module 10).
 
 ---
 
@@ -551,6 +578,86 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | US-07 (Cash Out) | Returns stock | `cash_out_return` |
 | US-08 (Cancel Token) | Returns stock | `token_cancel_return` |
 | US-09 (Create Order) | Deducts stock | `order_fulfillment` |
+
+---
+
+## MODULE 10 — Authentication & Access Control
+
+> There is no public self-registration. Only an `owner` can create new accounts (for either role). The system must be bootstrapped with exactly one `owner` account before anyone can log in — see US-23.
+
+### US-21: Login
+
+**As** any account holder (Owner or Staff), **I want to** log in with a username and password, **so that** I can access the system with the correct permissions for my role.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | No one is logged in | Visits any page | Redirected to `/login` |
+| 2 | Valid `username` + `password` for an `is_active = true` account | Submits login form | Receives a JWT (includes `role` claim), redirected to the default landing page for that role (Owner → Dashboard, Staff → Customer List, since Staff has no Dashboard access) |
+| 3 | Invalid credentials | Submits | Generic error "Sai tên đăng nhập hoặc mật khẩu" (do not reveal whether the username exists — standard security practice) |
+| 4 | Account `is_active = false` | Submits valid credentials | Same generic error as #3 (do not reveal the account is deactivated) |
+| 5 | Logged in | Clicks "Logout" | JWT cleared client-side, redirected to `/login` |
+
+### US-22: Owner creates a new account
+
+**As** Owner, **I want to** create new Owner or Staff accounts, **so that** new team members can access the system with the right role.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Logged in as Owner | Navigates to "Quản lý tài khoản" (Account Management — Owner-only menu item) | Sees a list of existing accounts (`username`, `full_name`, `role`, `is_active`) and a "Tạo tài khoản" button |
+| 2 | Clicks "Tạo tài khoản" | — | Form: `username` (unique, required), `password` (required, minimum length enforced), `full_name` (required), `role` (select: Owner / Staff) |
+| 3 | `username` already exists | Submits | Validation error, blocks submission |
+| 4 | Valid form | Submits | New `staff_account` created with `is_active = true`, password stored as BCrypt hash |
+| 5 | Owner wants to disable an account (e.g. staff member left) | Toggles "Active" off on an existing account row | `is_active = false` — account can no longer log in, but historical records they created remain unchanged/attributed |
+
+**This screen is Owner-only** — Staff never sees "Quản lý tài khoản" in navigation, and the backend must reject Staff attempts to call this endpoint even if attempted directly.
+
+### US-23: Bootstrap the first Owner account
+
+**As** the system operator (developer/deployer, not an in-app user), **I want to** seed exactly one Owner account when the system is deployed with an empty `staff_account` table, **so that** someone can log in for the first time and create further accounts through US-22.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | `staff_account` table is empty (fresh deployment) | Application starts | The backend automatically creates one `owner` account, reading `username`/`password`/`full_name` from environment variables (e.g. `SEED_OWNER_USERNAME`, `SEED_OWNER_PASSWORD`, `SEED_OWNER_FULL_NAME`) — **not** a hardcoded value in a migration file, since that would bake a known password into git history |
+| 2 | `staff_account` table already has ≥ 1 row | Application starts | No seeding happens — this only ever runs once, on a genuinely empty table |
+| 3 | Required seed environment variables are missing on a fresh deployment | Application starts | Logs a clear warning that no Owner account exists yet and none could be seeded (do not crash the app, but make the operator aware) |
+
+**Dev note:** Implement as a Spring `ApplicationRunner`/`CommandLineRunner` bean, not a Flyway migration — this keeps credentials out of version-controlled SQL files and lets each environment (local/staging/production) seed a different password via its own env vars.
+
+---
+
+## Permission Matrix (applies to every US above)
+
+| Module / Action | Owner | Staff |
+|---|---|---|
+| US-01 Create Campaign | ✅ | ❌ |
+| US-02 Close Campaign | ✅ | ❌ |
+| US-03 Record Campaign Participant | ✅ | ✅ |
+| US-04 Record Item (open bag) | ✅ | ✅ |
+| View Campaign list & detail | ✅ | ✅ |
+| US-05 View Customer Page (tokens holding/history) | ✅ | ✅ (read-only — no action buttons) |
+| US-06 Item Exchange | ✅ | ❌ |
+| US-07 Cash Out | ✅ | ❌ |
+| US-08 Cancel Token (incl. overdue alerts) | ✅ | ❌ |
+| US-09 Create Order / update shipping status | ✅ | ❌ |
+| US-12–US-15 Product & Inventory (all) | ✅ | ❌ (hidden from nav entirely) |
+| US-16 View participant items from Campaign page | ✅ | ✅ (read-only — same restriction as US-05) |
+| US-16 Item Exchange / Cash Out from Campaign page | ✅ | ❌ |
+| US-17 Dashboard | ✅ | ❌ (hidden from nav entirely) |
+| US-10/US-11 Reports | ✅ | ❌ (hidden from nav entirely) |
+| US-18 Update `customer.action_status` | ✅ | ✅ |
+| US-19 Customer List (view/search) | ✅ | ✅ |
+| US-20 Edit Customer profile (name/phone/address) | ✅ | ✅ |
+| Create Customer | ✅ | ✅ |
+| US-21 Login | ✅ | ✅ |
+| US-22 Create account / manage accounts | ✅ | ❌ (hidden from nav entirely) |
+
+**Critical implementation note:** Every restriction above must be enforced **on the backend** (`@PreAuthorize` or equivalent per-endpoint role check), not just hidden in the frontend UI. Hiding a button from Staff in the UI is a UX convenience only — a Staff member could otherwise call the API directly (e.g. via browser dev tools) and bypass a frontend-only restriction. Frontend hiding and backend enforcement are both required, independently.
 
 ---
 

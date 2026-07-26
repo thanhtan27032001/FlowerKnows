@@ -131,6 +131,15 @@ public class CustomerService {
     }
 
     @Transactional
+    public CustomerDtos.CustomerDetailResponse update(UUID id, CustomerDtos.UpdateCustomerRequest request) {
+        Customer customer = requireCustomer(id);
+        customer.setName(request.name().trim());
+        customer.setPhone(request.phone());
+        customer.setAddress(request.address());
+        return getById(id);
+    }
+
+    @Transactional
     public CustomerDtos.CustomerDetailResponse updateActionStatus(
             UUID id,
             CustomerDtos.UpdateActionStatusRequest request

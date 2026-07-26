@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { LogOutIcon } from "lucide-react";
 import {
   getMobileMoreItems,
   getMobilePrimaryItems,
@@ -12,6 +13,8 @@ import {
 } from "@/components/layout/nav-config";
 import { cn } from "@/lib/utils";
 import { ThemePresetList } from "@/components/layout/theme-picker";
+import { useAuth } from "@/components/providers/auth-provider";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -21,15 +24,26 @@ import {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
   const tTheme = useTranslations("theme");
+  const tAuth = useTranslations("auth");
+  const { role, session, logout } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const primaryItems = getMobilePrimaryItems();
-  const moreItems = getMobileMoreItems();
+  const primaryItems = role ? getMobilePrimaryItems(role) : [];
+  const moreItems = role ? getMobileMoreItems(role) : [];
   const moreActive = moreItems.some((item) => isNavActive(pathname, item.href));
   const MoreIcon = MORE_NAV_ICON;
+  const gridCols =
+    primaryItems.length <= 2 ? "grid-cols-3" : "grid-cols-4";
+
+  const onLogout = () => {
+    setMoreOpen(false);
+    logout();
+    router.replace("/login");
+  };
 
   return (
     <>
@@ -38,7 +52,7 @@ export function MobileBottomNav() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label={tCommon("a11y.primaryNav")}
       >
-        <ul className="grid h-16 grid-cols-4">
+        <ul className={cn("grid h-16", gridCols)}>
           {primaryItems.map((item) => {
             const Icon = item.icon;
             const active = isNavActive(pathname, item.href);
@@ -99,36 +113,58 @@ export function MobileBottomNav() {
           <SheetHeader className="pb-2">
             <SheetTitle>{t("more")}</SheetTitle>
           </SheetHeader>
-          <ul className="grid gap-1 px-2 pb-2">
-            {moreItems.map((item) => {
-              const Icon = item.icon;
-              const active = isNavActive(pathname, item.href);
+          {session ? (
+            <p className="px-5 pb-2 text-sm text-muted-foreground">
+              {session.fullName}
+              <span className="text-muted-foreground/70">
+                {" "}
+                · {tAuth(`roles.${session.role}`)}
+              </span>
+            </p>
+          ) : null}
+          {moreItems.length > 0 ? (
+            <ul className="grid gap-1 px-2 pb-2">
+              {moreItems.map((item) => {
+                const Icon = item.icon;
+                const active = isNavActive(pathname, item.href);
 
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={() => setMoreOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-muted text-foreground"
-                        : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-                    )}
-                    aria-current={active ? "page" : undefined}
-                  >
-                    <Icon className="size-5 shrink-0" aria-hidden />
-                    <span>{t(item.labelKey)}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={() => setMoreOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
+                        active
+                          ? "bg-muted text-foreground"
+                          : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                      )}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      <Icon className="size-5 shrink-0" aria-hidden />
+                      <span>{t(item.labelKey)}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
           <div className="border-t border-border/70 px-2 pt-3 pb-1">
             <p className="px-3 pb-1.5 text-xs font-medium text-muted-foreground">
               {tTheme("pickerTitle")}
             </p>
             <ThemePresetList className="px-1" />
+          </div>
+          <div className="border-t border-border/70 px-2 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full justify-start gap-2 text-muted-foreground"
+              onClick={onLogout}
+            >
+              <LogOutIcon className="size-4" />
+              {tAuth("logout")}
+            </Button>
           </div>
         </SheetContent>
       </Sheet>

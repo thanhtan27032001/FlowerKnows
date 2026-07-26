@@ -18,6 +18,7 @@ import {
 import type { CustomerToken, TokenStatus } from "@/src/lib/api/customer";
 import { formatCostPrice, formatDateTime, vnd } from "@/src/lib/format";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/providers/auth-provider";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +60,7 @@ export function ParticipantItemsPanel({
 }: Props) {
   const t = useTranslations("campaigns.participantPanel");
   const tCommon = useTranslations("common");
+  const { isOwner } = useAuth();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -233,7 +235,7 @@ export function ParticipantItemsPanel({
                 ))}
               </div>
 
-              {holdingTokens.length > 0 && (
+              {holdingTokens.length > 0 && isOwner && (
                 <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"
@@ -260,30 +262,34 @@ export function ParticipantItemsPanel({
             </>
           )}
 
-          <ItemExchangeForm
-            key={
-              exchangeOpen
-                ? `ex-${participant.id}-${[...selectedIds].join(",")}`
-                : `ex-${participant.id}-closed`
-            }
-            open={exchangeOpen}
-            onOpenChange={setExchangeOpen}
-            customerId={participant.customerId}
-            tokens={selectedTokens}
-            onSuccess={() => void refreshAfterAction()}
-          />
-          <CashOutForm
-            key={
-              cashOutOpen
-                ? `co-${participant.id}-${[...selectedIds].join(",")}`
-                : `co-${participant.id}-closed`
-            }
-            open={cashOutOpen}
-            onOpenChange={setCashOutOpen}
-            customerId={participant.customerId}
-            tokens={selectedTokens}
-            onSuccess={() => void refreshAfterAction()}
-          />
+          {isOwner ? (
+            <>
+              <ItemExchangeForm
+                key={
+                  exchangeOpen
+                    ? `ex-${participant.id}-${[...selectedIds].join(",")}`
+                    : `ex-${participant.id}-closed`
+                }
+                open={exchangeOpen}
+                onOpenChange={setExchangeOpen}
+                customerId={participant.customerId}
+                tokens={selectedTokens}
+                onSuccess={() => void refreshAfterAction()}
+              />
+              <CashOutForm
+                key={
+                  cashOutOpen
+                    ? `co-${participant.id}-${[...selectedIds].join(",")}`
+                    : `co-${participant.id}-closed`
+                }
+                open={cashOutOpen}
+                onOpenChange={setCashOutOpen}
+                customerId={participant.customerId}
+                tokens={selectedTokens}
+                onSuccess={() => void refreshAfterAction()}
+              />
+            </>
+          ) : null}
         </CardContent>
       )}
     </Card>

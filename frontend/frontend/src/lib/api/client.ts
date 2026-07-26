@@ -1,3 +1,8 @@
+import {
+  AUTH_TOKEN_KEY,
+  clearAuth,
+} from "@/src/lib/auth/session";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 if (!API_BASE_URL) {
@@ -24,7 +29,18 @@ type RequestOptions = Omit<RequestInit, "body"> & {
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("auth_token");
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+function handleUnauthorized(path: string) {
+  if (path.startsWith("/api/auth/login")) return;
+  clearAuth();
+  if (typeof window === "undefined") return;
+  if (window.location.pathname === "/login") return;
+  const next = encodeURIComponent(
+    `${window.location.pathname}${window.location.search}`
+  );
+  window.location.assign(`/login?next=${next}`);
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -55,6 +71,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const data = isJson ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
+    if (response.status === 401) {
+      handleUnauthorized(path);
+    }
+
     const message =
       (data && typeof data === "object" && "message" in data
         ? (data as { message?: string }).message

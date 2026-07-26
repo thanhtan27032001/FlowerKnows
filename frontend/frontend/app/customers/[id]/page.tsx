@@ -17,6 +17,7 @@ import { HoldingTokenCard } from "@/components/customers/holding-token-card";
 import { ItemExchangeForm } from "@/components/customers/item-exchange-form";
 import { CreateOrderForm } from "@/components/orders/create-order-form";
 import { CancelTokenDialog } from "@/components/tokens/cancel-token-dialog";
+import { useAuth } from "@/components/providers/auth-provider";
 import { useFlashIds } from "@/hooks/use-flash-ids";
 import { customerApi, customerKeys } from "@/src/lib/api/customer";
 import { vnd } from "@/src/lib/format";
@@ -67,6 +68,7 @@ export default function CustomerDetailPage({
   const t = useTranslations("customers");
   const tDetail = useTranslations("customers.detail");
   const tCommon = useTranslations("common");
+  const { isOwner } = useAuth();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [exchangeOpen, setExchangeOpen] = useState(false);
   const [cashOutOpen, setCashOutOpen] = useState(false);
@@ -258,53 +260,64 @@ export default function CustomerDetailPage({
             <CustomerTokenActionBar
               selectedCount={selectedIds.size}
               cancelEnabled={selectedIds.size === 1}
+              showActions={isOwner}
               onItemExchange={() => setExchangeOpen(true)}
               onCashOut={() => setCashOutOpen(true)}
               onCreateOrder={() => setOrderOpen(true)}
               onCancel={() => setCancelOpen(true)}
             />
 
-            <ItemExchangeForm
-              key={
-                exchangeOpen ? `ex-${[...selectedIds].join(",")}` : "ex-closed"
-              }
-              open={exchangeOpen}
-              onOpenChange={setExchangeOpen}
-              customerId={customer.id}
-              tokens={selectedTokens}
-              onSuccess={() => flashThenClear([...selectedIds])}
-            />
-            <CashOutForm
-              key={
-                cashOutOpen ? `co-${[...selectedIds].join(",")}` : "co-closed"
-              }
-              open={cashOutOpen}
-              onOpenChange={setCashOutOpen}
-              customerId={customer.id}
-              tokens={selectedTokens}
-              onSuccess={() => flashThenClear([...selectedIds])}
-            />
-            <CreateOrderForm
-              key={
-                orderOpen ? `ord-${[...selectedIds].join(",")}` : "ord-closed"
-              }
-              open={orderOpen}
-              onOpenChange={setOrderOpen}
-              customerId={customer.id}
-              tokens={selectedTokens}
-              onSuccess={() => flashThenClear([...selectedIds])}
-            />
-            {cancelToken && (
-              <CancelTokenDialog
-                open={cancelOpen}
-                onOpenChange={setCancelOpen}
-                tokenId={cancelToken.id}
-                tokenValue={cancelToken.tokenValue}
-                productName={cancelToken.productName}
-                customerId={customer.id}
-                onSuccess={() => flashThenClear([cancelToken.id])}
-              />
-            )}
+            {isOwner ? (
+              <>
+                <ItemExchangeForm
+                  key={
+                    exchangeOpen
+                      ? `ex-${[...selectedIds].join(",")}`
+                      : "ex-closed"
+                  }
+                  open={exchangeOpen}
+                  onOpenChange={setExchangeOpen}
+                  customerId={customer.id}
+                  tokens={selectedTokens}
+                  onSuccess={() => flashThenClear([...selectedIds])}
+                />
+                <CashOutForm
+                  key={
+                    cashOutOpen
+                      ? `co-${[...selectedIds].join(",")}`
+                      : "co-closed"
+                  }
+                  open={cashOutOpen}
+                  onOpenChange={setCashOutOpen}
+                  customerId={customer.id}
+                  tokens={selectedTokens}
+                  onSuccess={() => flashThenClear([...selectedIds])}
+                />
+                <CreateOrderForm
+                  key={
+                    orderOpen
+                      ? `ord-${[...selectedIds].join(",")}`
+                      : "ord-closed"
+                  }
+                  open={orderOpen}
+                  onOpenChange={setOrderOpen}
+                  customerId={customer.id}
+                  tokens={selectedTokens}
+                  onSuccess={() => flashThenClear([...selectedIds])}
+                />
+                {cancelToken && (
+                  <CancelTokenDialog
+                    open={cancelOpen}
+                    onOpenChange={setCancelOpen}
+                    tokenId={cancelToken.id}
+                    tokenValue={cancelToken.tokenValue}
+                    productName={cancelToken.productName}
+                    customerId={customer.id}
+                    onSuccess={() => flashThenClear([cancelToken.id])}
+                  />
+                )}
+              </>
+            ) : null}
           </div>
         )}
       </div>

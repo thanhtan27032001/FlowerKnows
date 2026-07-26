@@ -15,6 +15,7 @@ import { RecordParticipantForm } from "@/components/campaigns/record-participant
 import { campaignApi, campaignKeys } from "@/src/lib/api/campaign";
 import { campaignStatusLabel } from "@/src/lib/i18n-labels";
 import { formatDate, formatDateTime, vnd } from "@/src/lib/format";
+import { useAuth } from "@/components/providers/auth-provider";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,6 +72,7 @@ export default function CampaignDetailPage({
   const tDetail = useTranslations("campaigns.detail");
   const tStatus = useTranslations("common.status");
   const tCommon = useTranslations("common");
+  const { isOwner } = useAuth();
   const [closeOpen, setCloseOpen] = useState(false);
   const [participantOpen, setParticipantOpen] = useState(false);
   const [itemOpen, setItemOpen] = useState(false);
@@ -188,9 +190,14 @@ export default function CampaignDetailPage({
                     >
                       {tDetail("recordItem")}
                     </Button>
-                    <Button variant="outline" onClick={() => setCloseOpen(true)}>
-                      {tDetail("closeCampaign")}
-                    </Button>
+                    {isOwner ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => setCloseOpen(true)}
+                      >
+                        {tDetail("closeCampaign")}
+                      </Button>
+                    ) : null}
                   </div>
                 )}
 
@@ -312,12 +319,14 @@ export default function CampaignDetailPage({
               )}
             </section>
 
-            <CloseCampaignDialog
-              campaignId={campaign.id}
-              open={closeOpen}
-              onOpenChange={setCloseOpen}
-              onClosed={() => void refetch()}
-            />
+            {isOwner ? (
+              <CloseCampaignDialog
+                campaignId={campaign.id}
+                open={closeOpen}
+                onOpenChange={setCloseOpen}
+                onClosed={() => void refetch()}
+              />
+            ) : null}
             <RecordParticipantForm
               open={participantOpen}
               onOpenChange={setParticipantOpen}

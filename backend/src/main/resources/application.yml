@@ -36,3 +36,10 @@ logging:
 
 app:
   low-stock-threshold: 5
+  jwt:
+    secret: ${JWT_SECRET:change-me-flowerknows-jwt-secret-key-min-32-chars}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  seed:
+    owner-username: ${SEED_OWNER_USERNAME:}
+    owner-password: ${SEED_OWNER_PASSWORD:}
+    owner-full-name: ${SEED_OWNER_FULL_NAME:}

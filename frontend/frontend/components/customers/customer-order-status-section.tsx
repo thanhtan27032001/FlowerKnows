@@ -15,6 +15,7 @@ import {
 import { customerKeys } from "@/src/lib/api/customer";
 import { shippingStatusLabel } from "@/src/lib/i18n-labels";
 import { formatDateTime, vnd } from "@/src/lib/format";
+import { useAuth } from "@/components/providers/auth-provider";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
@@ -150,6 +151,7 @@ export function CustomerOrderStatusSection({
   orders,
 }: Props) {
   const t = useTranslations("customers.orderStatus");
+  const { isOwner } = useAuth();
   const [showAll, setShowAll] = useState(false);
   const pastOrders = orders.slice(1);
 
@@ -183,15 +185,26 @@ export function CustomerOrderStatusSection({
           </div>
         </div>
 
-        <OrderShippingControls customerId={customerId} order={latestOrder} />
+        {isOwner ? (
+          <OrderShippingControls customerId={customerId} order={latestOrder} />
+        ) : (
+          <div className="space-y-1 text-sm">
+            <p className="text-muted-foreground">{t("carrierOrderId")}</p>
+            <p className="font-medium">
+              {latestOrder.carrierOrderId || t("notSetYet")}
+            </p>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/orders?highlight=${latestOrder.id}`}
-            className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
-          >
-            {t("openInOrders")}
-          </Link>
+          {isOwner ? (
+            <Link
+              href={`/orders?highlight=${latestOrder.id}`}
+              className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+            >
+              {t("openInOrders")}
+            </Link>
+          ) : null}
           {pastOrders.length > 0 && (
             <Button
               type="button"

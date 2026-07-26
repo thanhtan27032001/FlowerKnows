@@ -1,6 +1,7 @@
 package com.gaden.flowerknows.report;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -12,6 +13,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/reports")
+@PreAuthorize("hasRole('OWNER')")
 public class ReportController {
 
     private final ReportService reportService;

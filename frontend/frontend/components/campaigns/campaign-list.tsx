@@ -9,6 +9,7 @@ import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { campaignApi, campaignKeys } from "@/src/lib/api/campaign";
 import { campaignStatusLabel } from "@/src/lib/i18n-labels";
 import { formatDate, vnd } from "@/src/lib/format";
+import { useAuth } from "@/components/providers/auth-provider";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +29,7 @@ type Props = {
 export function CampaignList({ onCreate }: Props) {
   const t = useTranslations("campaigns.list");
   const tStatus = useTranslations("common.status");
+  const { isOwner } = useAuth();
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: campaignKeys.lists(),
     queryFn: campaignApi.list,
@@ -39,9 +41,11 @@ export function CampaignList({ onCreate }: Props) {
     <div className="relative space-y-4">
       <QueryProgressBar active={isFetching && !isLoading} />
 
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={onCreate}>{t("createButton")}</Button>
-      </div>
+      {isOwner ? (
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={onCreate}>{t("createButton")}</Button>
+        </div>
+      ) : null}
 
       {isLoading && <ListSkeleton columns={5} />}
 

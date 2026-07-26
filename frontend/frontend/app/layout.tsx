@@ -1,4 +1,5 @@
 import { QueryProvider } from "@/components/providers/query-provider";
+import { AuthProvider } from "@/components/providers/auth-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
@@ -42,7 +43,9 @@ export default async function RootLayout({
       <body className="flex min-h-full flex-col font-sans">
         <ThemeProvider>
           <NextIntlClientProvider locale={locale} messages={messages}>
-            <QueryProvider>{children}</QueryProvider>
+            <AuthProvider>
+              <QueryProvider>{children}</QueryProvider>
+            </AuthProvider>
           </NextIntlClientProvider>
         </ThemeProvider>
       </body>

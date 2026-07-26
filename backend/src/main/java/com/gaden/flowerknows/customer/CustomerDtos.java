@@ -20,6 +20,13 @@ public final class CustomerDtos {
     ) {
     }
 
+    public record UpdateCustomerRequest(
+            @NotBlank(message = "name is required") String name,
+            String phone,
+            String address
+    ) {
+    }
+
     public record UpdateActionStatusRequest(
             @NotNull(message = "actionStatus is required") CustomerActionStatus actionStatus
     ) {

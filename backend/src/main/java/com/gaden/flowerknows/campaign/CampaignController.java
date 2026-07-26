@@ -2,6 +2,7 @@ package com.gaden.flowerknows.campaign;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,33 +27,39 @@ public class CampaignController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public List<CampaignDtos.CampaignSummaryResponse> list() {
         return campaignService.listCampaigns();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public CampaignDtos.CampaignDetailResponse get(@PathVariable UUID id) {
         return campaignService.getCampaign(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('OWNER')")
     public CampaignDtos.CampaignDetailResponse create(@Valid @RequestBody CampaignDtos.CreateCampaignRequest request) {
         return campaignService.createCampaign(request);
     }
 
     @GetMapping("/{id}/close-preview")
+    @PreAuthorize("hasRole('OWNER')")
     public CampaignDtos.ClosePreviewResponse closePreview(@PathVariable UUID id) {
         return campaignService.previewClose(id);
     }
 
     @PostMapping("/{id}/close")
+    @PreAuthorize("hasRole('OWNER')")
     public CampaignDtos.CampaignDetailResponse close(@PathVariable UUID id) {
         return campaignService.closeCampaign(id);
     }
 
     @PostMapping("/{id}/participants")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public CampaignDtos.ParticipantSummaryResponse addParticipant(
             @PathVariable UUID id,
             @Valid @RequestBody ParticipantService.RecordParticipantRequest request
@@ -62,6 +69,7 @@ public class CampaignController {
 
     @PostMapping("/{id}/tokens")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public List<ParticipantService.TokenRecordResponse> recordTokens(
             @PathVariable UUID id,
             @Valid @RequestBody ParticipantService.RecordItemsRequest request
@@ -70,6 +78,7 @@ public class CampaignController {
     }
 
     @GetMapping("/{id}/participants/{participantId}/tokens")
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public List<CampaignDtos.ParticipantTokenResponse> listParticipantTokens(
             @PathVariable UUID id,
             @PathVariable UUID participantId

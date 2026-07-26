@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 type Props = {
   selectedCount: number;
   cancelEnabled?: boolean;
+  /** When false, the action buttons are not rendered (Staff read-only). */
+  showActions?: boolean;
   onItemExchange: () => void;
   onCashOut: () => void;
   onCreateOrder: () => void;
@@ -16,13 +18,18 @@ type Props = {
 export function CustomerTokenActionBar({
   selectedCount,
   cancelEnabled = true,
+  showActions = true,
   onItemExchange,
   onCashOut,
   onCreateOrder,
   onCancel,
 }: Props) {
   const t = useTranslations("customers.actionBar");
-  const visible = selectedCount >= 1;
+  const visible = selectedCount >= 1 && showActions;
+
+  if (!showActions) {
+    return null;
+  }
 
   return (
     <div

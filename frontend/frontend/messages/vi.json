@@ -310,6 +310,8 @@
       "customer": "Khách hàng",
       "loading": "Đang tải…",
       "selectCustomer": "Chọn khách hàng",
+      "noResults": "Không tìm thấy khách hàng",
+      "selectedCustomer": "Đã chọn: {name} · {phone}",
       "name": "Tên",
       "phone": "Số điện thoại (tuỳ chọn)",
       "address": "Địa chỉ (tuỳ chọn)",

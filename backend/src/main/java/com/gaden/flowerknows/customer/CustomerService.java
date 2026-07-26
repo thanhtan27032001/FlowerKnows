@@ -3,6 +3,7 @@ package com.gaden.flowerknows.customer;
 import com.gaden.flowerknows.campaign.CampaignParticipant;
 import com.gaden.flowerknows.campaign.CampaignParticipantRepository;
 import com.gaden.flowerknows.common.ResourceNotFoundException;
+import com.gaden.flowerknows.common.TextSearch;
 import com.gaden.flowerknows.order.Order;
 import com.gaden.flowerknows.order.OrderRepository;
 import com.gaden.flowerknows.order.ShippingStatus;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,13 +53,16 @@ public class CustomerService {
             CustomerActionStatus actionStatus,
             ShippingStatus shippingStatus
     ) {
-        List<Customer> customers;
-        if (query == null || query.isBlank()) {
-            customers = customerRepository.findAll();
-        } else {
-            String q = query.trim();
-            customers = customerRepository.findByNameContainingIgnoreCaseOrPhoneContaining(q, q);
-        }
+        String foldedQuery = TextSearch.fold(query);
+        List<Customer> customers = customerRepository.findAll().stream()
+                .filter(c -> foldedQuery.isEmpty()
+                        || TextSearch.containsFolded(c.getName(), foldedQuery)
+                        || TextSearch.containsFolded(c.getPhone(), foldedQuery))
+                .sorted(Comparator.comparing(
+                        c -> TextSearch.fold(c.getName()),
+                        String.CASE_INSENSITIVE_ORDER
+                ))
+                .toList();
 
         Map<UUID, ShippingStatus> latestShippingByCustomer = latestShippingStatusByCustomer();
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/src/lib/api/client";
@@ -9,7 +9,11 @@ import {
   campaignKeys,
   type CampaignDetail,
 } from "@/src/lib/api/campaign";
-import { customerApi, customerKeys } from "@/src/lib/api/customer";
+import {
+  customerApi,
+  customerKeys,
+  type Customer,
+} from "@/src/lib/api/customer";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,15 +34,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useSuccessClose } from "@/hooks/use-success-close";
+
+const SUGGESTION_LIMIT = 20;
 
 type Mode = "existing" | "new";
 
@@ -61,7 +60,11 @@ export function RecordParticipantForm({
 
   const [mode, setMode] = useState<Mode>("existing");
   const [customerId, setCustomerId] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null
+  );
   const [search, setSearch] = useState("");
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newAddress, setNewAddress] = useState("");
@@ -69,14 +72,21 @@ export function RecordParticipantForm({
   const [isDraft, setIsDraft] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
+  const deferredSearch = useDeferredValue(search.trim());
 
   const bagsRemaining = campaign.totalBags - campaign.bagsSold;
 
-  const { data: customers = [], isLoading: customersLoading } = useQuery({
-    queryKey: customerKeys.search({ q: search }),
-    queryFn: () => customerApi.search({ q: search }),
+  const { data: customers = [], isFetching: customersFetching } = useQuery({
+    queryKey: customerKeys.search({ q: deferredSearch }),
+    queryFn: () => customerApi.search({ q: deferredSearch }),
     enabled: open && mode === "existing",
   });
+
+  const suggestions = useMemo(
+    () => customers.slice(0, SUGGESTION_LIMIT),
+    [customers]
+  );
 
   const existingParticipant = useMemo(() => {
     if (!customerId) return null;
@@ -85,10 +95,37 @@ export function RecordParticipantForm({
     );
   }, [campaign.participants, customerId]);
 
+  useEffect(() => {
+    if (!suggestionsOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!searchWrapRef.current?.contains(event.target as Node)) {
+        setSuggestionsOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [suggestionsOpen]);
+
+  const selectCustomer = (customer: Customer) => {
+    setCustomerId(customer.id);
+    setSelectedCustomer(customer);
+    setSearch(customer.name);
+    setSuggestionsOpen(false);
+    setFieldErrors((prev) => {
+      if (!prev.customerId) return prev;
+      const next = { ...prev };
+      delete next.customerId;
+      return next;
+    });
+    setFormError(null);
+  };
+
   const resetForm = () => {
     setMode("existing");
     setCustomerId("");
+    setSelectedCustomer(null);
     setSearch("");
+    setSuggestionsOpen(false);
     setNewName("");
     setNewPhone("");
     setNewAddress("");
@@ -202,6 +239,9 @@ export function RecordParticipantForm({
           onClick={() => {
             setMode("new");
             setCustomerId("");
+            setSelectedCustomer(null);
+            setSearch("");
+            setSuggestionsOpen(false);
             setFieldErrors({});
             setFormError(null);
           }}
@@ -212,43 +252,73 @@ export function RecordParticipantForm({
 
       {mode === "existing" ? (
         <div className="grid gap-3">
-          <div className="grid gap-2">
+          <div ref={searchWrapRef} className="grid gap-2">
             <Label htmlFor="participant-search">{t("searchCustomer")}</Label>
             <Input
               id="participant-search"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              autoComplete="off"
+              role="combobox"
+              aria-expanded={suggestionsOpen}
+              aria-controls="participant-customer-suggestions"
+              aria-autocomplete="list"
+              aria-invalid={!!fieldErrors.customerId}
               placeholder={t("nameOrPhone")}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label>{t("customer")}</Label>
-            <Select
-              value={customerId || undefined}
-              onValueChange={(value) => {
-                setCustomerId(String(value ?? ""));
+              onFocus={() => setSuggestionsOpen(true)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCustomerId("");
+                setSelectedCustomer(null);
+                setSuggestionsOpen(true);
                 setFormError(null);
               }}
-            >
-              <SelectTrigger className="w-full min-w-0">
-                <SelectValue
-                  placeholder={
-                    customersLoading ? t("loading") : t("selectCustomer")
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                    {c.phone ? ` — ${c.phone}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
+            {suggestionsOpen && (
+              <ul
+                id="participant-customer-suggestions"
+                role="listbox"
+                className="max-h-48 overflow-y-auto rounded-lg bg-popover py-1 text-sm shadow-md ring-1 ring-foreground/10"
+              >
+                {customersFetching && suggestions.length === 0 ? (
+                  <li className="px-2.5 py-2 text-muted-foreground">
+                    {t("loading")}
+                  </li>
+                ) : suggestions.length === 0 ? (
+                  <li className="px-2.5 py-2 text-muted-foreground">
+                    {t("noResults")}
+                  </li>
+                ) : (
+                  suggestions.map((customer) => (
+                    <li key={customer.id} role="option">
+                      <button
+                        type="button"
+                        className="flex w-full flex-col items-start gap-0.5 px-2.5 py-1.5 text-left transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => selectCustomer(customer)}
+                      >
+                        <span className="font-medium">{customer.name}</span>
+                        {customer.phone ? (
+                          <span className="text-xs text-muted-foreground">
+                            {customer.phone}
+                          </span>
+                        ) : null}
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            )}
             {fieldErrors.customerId && (
               <p className="text-xs text-destructive">{fieldErrors.customerId}</p>
+            )}
+            {selectedCustomer && !fieldErrors.customerId && (
+              <p className="text-xs text-muted-foreground">
+                {t("selectedCustomer", {
+                  name: selectedCustomer.name,
+                  phone:
+                    selectedCustomer.phone || tCommon("fallback.noPhone"),
+                })}
+              </p>
             )}
           </div>
 

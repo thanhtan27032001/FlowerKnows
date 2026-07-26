@@ -21,6 +21,8 @@ export type PoolItem = {
   remainingQuantity: number;
 };
 
+export type ParticipantStatus = "DRAFT" | "CONFIRMED";
+
 export type ParticipantSummary = {
   id: string;
   customerId: string;
@@ -28,6 +30,7 @@ export type ParticipantSummary = {
   customerPhone: string;
   totalBagsPurchased: number;
   prepaidAmount: number;
+  status: ParticipantStatus;
   itemsRecorded: number;
   recordedItemNames: string[];
 };
@@ -48,6 +51,20 @@ export type CreateCampaignInput = {
   bagPrice: number;
   totalBags: number;
   pool: PoolItemInput[];
+};
+
+export type UpdateCampaignInput = {
+  name: string;
+  eventDate: string;
+  totalBags: number;
+};
+
+export type UpdatePoolInput = {
+  pool: PoolItemInput[];
+};
+
+export type UpdateParticipantInput = {
+  totalBagsPurchased: number;
 };
 
 export type ReturnItem = {
@@ -114,6 +131,14 @@ export const campaignKeys = {
     [...campaignKeys.all, "participant-tokens", campaignId, participantId] as const,
 };
 
+/** Near-realtime polling for Campaign list/detail only (not app-wide). */
+export const campaignLiveQueryOptions = {
+  staleTime: 0,
+  refetchInterval: 4_000,
+  refetchIntervalInBackground: false,
+  refetchOnWindowFocus: true as const,
+};
+
 export const campaignApi = {
   list: () => apiClient.get<CampaignSummary[]>("/api/campaigns"),
 
@@ -121,6 +146,14 @@ export const campaignApi = {
 
   create: (input: CreateCampaignInput) =>
     apiClient.post<CampaignDetail>("/api/campaigns", input),
+
+  update: (id: string, input: UpdateCampaignInput) =>
+    apiClient.patch<CampaignDetail>(`/api/campaigns/${id}`, input),
+
+  updatePool: (id: string, input: UpdatePoolInput) =>
+    apiClient.put<CampaignDetail>(`/api/campaigns/${id}/pool`, input),
+
+  delete: (id: string) => apiClient.delete<void>(`/api/campaigns/${id}`),
 
   closePreview: (id: string) =>
     apiClient.get<ClosePreview>(`/api/campaigns/${id}/close-preview`),
@@ -132,6 +165,40 @@ export const campaignApi = {
     apiClient.post<ParticipantSummary>(
       `/api/campaigns/${campaignId}/participants`,
       input
+    ),
+
+  createDraftParticipant: (
+    campaignId: string,
+    input: RecordParticipantInput
+  ) =>
+    apiClient.post<ParticipantSummary>(
+      `/api/campaigns/${campaignId}/participants/draft`,
+      input
+    ),
+
+  updateParticipant: (
+    campaignId: string,
+    participantId: string,
+    input: UpdateParticipantInput
+  ) =>
+    apiClient.patch<ParticipantSummary>(
+      `/api/campaigns/${campaignId}/participants/${participantId}`,
+      input
+    ),
+
+  confirmDraftParticipant: (campaignId: string, participantId: string) =>
+    apiClient.post<ParticipantSummary>(
+      `/api/campaigns/${campaignId}/participants/${participantId}/confirm`
+    ),
+
+  deleteParticipant: (campaignId: string, participantId: string) =>
+    apiClient.delete<void>(
+      `/api/campaigns/${campaignId}/participants/${participantId}`
+    ),
+
+  deleteDraftParticipant: (campaignId: string, participantId: string) =>
+    apiClient.delete<void>(
+      `/api/campaigns/${campaignId}/participants/${participantId}/draft`
     ),
 
   recordItems: (campaignId: string, input: RecordItemsInput) =>

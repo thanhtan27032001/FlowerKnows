@@ -36,6 +36,24 @@ public final class CampaignDtos {
     ) {
     }
 
+    public record UpdateCampaignRequest(
+            @NotBlank(message = "name is required") String name,
+            @NotNull(message = "eventDate is required") LocalDate eventDate,
+            @Min(value = 1, message = "totalBags must be at least 1") int totalBags
+    ) {
+    }
+
+    public record UpdatePoolRequest(
+            @NotEmpty(message = "pool must not be empty")
+            @Valid List<PoolItemRequest> pool
+    ) {
+    }
+
+    public record UpdateParticipantRequest(
+            @Min(value = 1, message = "totalBagsPurchased must be at least 1") int totalBagsPurchased
+    ) {
+    }
+
     public record PoolItemResponse(
             UUID id,
             UUID productId,
@@ -52,6 +70,7 @@ public final class CampaignDtos {
             String customerPhone,
             int totalBagsPurchased,
             BigDecimal prepaidAmount,
+            ParticipantStatus status,
             int itemsRecorded,
             List<String> recordedItemNames
     ) {

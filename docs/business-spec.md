@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 1.9 (Staff gains Product/Stock In access; Stock Adjustment stays Owner-only)
+**Version:** 2.0 (Adds Campaign edit/delete, Participant edit, Draft Participant — US-24 to US-27, Owner-only)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -98,7 +98,8 @@ This is the single source of truth for schema design across the whole document.
 | `campaign_id` | FK → campaign | |
 | `customer_id` | FK → customer | |
 | `total_bags_purchased` | int | Cumulative if purchased multiple times |
-| `prepaid_amount` | decimal | Amount prepaid (= total_bags_purchased × bag_price) |
+| `prepaid_amount` | decimal | Amount prepaid (= total_bags_purchased × bag_price). **`0` while `status = draft`** — no money has actually been collected yet |
+| `status` | enum | `draft` / `confirmed`. Default `confirmed` (existing rows and the normal US-03 flow). See US-27 — `draft` rows do NOT count against the campaign's sold/remaining bag count, and do not appear in prepaid/revenue reconciliation until confirmed |
 
 ### `item_token` (Token — core entity of the system)
 | Field | Type | Description |
@@ -175,7 +176,7 @@ This is the single source of truth for schema design across the whole document.
 
 **Business Rules applied:** Loading the pool immediately deducts `stock_quantity` (it does not wait until bags are sold).
 
-**Dev edge case:** Do not allow editing `campaign_pool` once the campaign already has ≥ 1 `campaign_participant` (to avoid data drift). To make changes, close the old campaign and create a new one.
+**Dev edge case:** ~~Do not allow editing `campaign_pool`...~~ **Superseded by US-24 (v2.0)** — editing is now formally supported, gated on whether any item has been recorded yet (not on participant existence). See US-24.
 
 ---
 
@@ -193,6 +194,73 @@ This is the single source of truth for schema design across the whole document.
 | 4 | All `remaining_quantity` naturally reach 0 (all bags opened) | — | The system automatically sets `status = closed`, nothing is returned to stock |
 
 **Business Rules applied:** Rule #10 — actively closing returns any pool surplus to general stock.
+
+---
+
+### US-24: Edit Campaign
+
+**As** Owner, **I want to** edit an existing campaign's details, **so that** I can correct mistakes or adjust plans without having to close and recreate the whole campaign.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Any campaign, any status, any point in its lifecycle | Owner edits `name` or `event_date` | Always allowed — these are cosmetic/informational fields with no downstream effect on stock or tokens |
+| 2 | Any campaign | Owner edits `total_bags` | **Always allowed, no restriction** (per explicit decision) — see the warning below |
+| 3 | No `item_token` has ever been recorded for this campaign yet (i.e. every `campaign_pool` row's `remaining_quantity` still equals its `loaded_quantity`) | Owner edits the `campaign_pool` (add/remove a product row, or change a `loaded_quantity`) | Allowed. The system re-validates `stock_quantity` availability and re-applies the `campaign_lock` stock deduction/return delta accordingly (same mechanics as US-01 creation, just adjusting the diff instead of the full amount) |
+| 4 | At least one `item_token` has already been recorded for this campaign (any `campaign_pool` row has `remaining_quantity` < `loaded_quantity`) | Owner attempts to edit the `campaign_pool` | Blocked — "Pool sản phẩm đã bị khóa vì đã có món được ghi nhận. Không thể sửa." Only `name`, `event_date`, `total_bags` remain editable at this point |
+
+**⚠️ Known risk (accepted, not blocked):** Because `total_bags` can be freely edited but `campaign_pool` locks once items are recorded, `total_bags` can end up **not matching** the actual sum of `loaded_quantity` in the pool. This does NOT create a double-selling risk — US-04's existing validation (quantity requested must not exceed a pool row's `remaining_quantity`) still correctly prevents recording more physical items than were actually loaded. The only real consequence is a customer could be sold (via US-03) more bags than the pool can physically fulfill, discovered only when Staff tries to record their item and finds no stock left. Owner is responsible for keeping `total_bags` sensible after the pool locks.
+
+---
+
+### US-25: Delete Campaign
+
+**As** Owner, **I want to** delete a campaign that was created by mistake or never actually went anywhere, **so that** it doesn't clutter the campaign list.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Campaign has **zero** `campaign_participant` rows (including drafts — see US-27) | Owner clicks "Delete Campaign" | Confirmation dialog shown, warning that any locked pool stock will be returned |
+| 2 | Confirmed | — | Transaction: (a) for every `campaign_pool` row, **return `loaded_quantity` back to `product.stock_quantity`** and write a `stock_transaction` (`type = campaign_return`, reuse the same type as closing — this is functionally identical to a close-then-delete), (b) delete the `campaign_pool` rows, (c) delete the `campaign` row itself |
+| 3 | Campaign has **≥ 1** `campaign_participant` (confirmed or draft) | Owner attempts to delete | Blocked — "Không thể xóa campaign đã có khách tham gia. Hãy đóng campaign thay vì xóa." — deleting would destroy participant/revenue history, so this is a hard block, not just a warning |
+
+---
+
+### US-26: Edit Participant
+
+**As** Owner, **I want to** correct the number of bags a participant purchased, **so that** I can fix a data-entry mistake without going through Exchange/Cash Out.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Owner is viewing a `campaign_participant` row (confirmed or draft) | Clicks "Edit" | A form with the current `total_bags_purchased` is shown |
+| 2 | Owner enters a new value | Submits | If `status = confirmed`: `prepaid_amount` is recalculated as `new_total_bags_purchased × bag_price`. If `status = draft`: `prepaid_amount` stays `0` |
+| 3 | The new value is **less than** the number of `item_token`s already recorded for this participant (`source_id` = this `campaign_participant.id`) | Submits | Blocked — "Không thể giảm xuống dưới số túi đã khui (N túi)." — cannot retroactively shrink below what's already been physically opened |
+| 4 | The new value (for a `confirmed` participant) would make the campaign's total sold bags exceed `total_bags` | Submits | Blocked with the same "chỉ còn Y túi" error as US-03 AC #2 |
+| 5 | Edit succeeds | — | Updated `total_bags_purchased`/`prepaid_amount` reflected immediately in the campaign's participant list and any reconciliation figures |
+
+**Only `total_bags_purchased` is editable here** — the assigned `customer` on a participant row is not reassignable through this form (per the confirmed scope of this feature).
+
+---
+
+### US-27: Draft Participant (record intent before payment)
+
+**As** Owner, **I want to** record that a customer is interested in buying N bags without having collected payment yet, **so that** I have a note of the conversation and can convert it to a real participant once they actually pay.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Owner is on a campaign detail page | Clicks "Ghi nhận nháp" (Record Draft) instead of the normal "Record Participant" (US-03) | Same form as US-03 (select/create customer, enter bag count), but on submit creates a `campaign_participant` with `status = draft`, `prepaid_amount = 0` |
+| 2 | A draft participant exists | Viewing the campaign's participant list | Draft rows are visually distinguished (e.g. a "Nháp" badge) from confirmed ones |
+| 3 | Draft participants exist for a campaign | The campaign's "bags sold" / "bags remaining" count is calculated | **Drafts are excluded** — only `confirmed` participants count toward `total_bags` consumption. A draft does NOT reserve/hold stock and does NOT block other customers from buying the same bags |
+| 4 | Owner wants to record which item a draft customer received (US-04) | Attempts to record an item for a draft participant | Blocked — items can only be recorded for `confirmed` participants (a draft has no `prepaid_amount`, so there's nothing paid-for yet to hand over) |
+| 5 | The customer decides to actually pay | Owner clicks "Xác nhận" (Confirm) on the draft row | The system re-validates bags remaining (per confirmed-only counting) at THIS moment — if enough bags are still available, `status → confirmed` and `prepaid_amount = total_bags_purchased × bag_price` is set. If not enough bags remain anymore (someone else bought them in the meantime), blocked with the usual "chỉ còn Y túi" error, and Owner must adjust the quantity first (via US-26) |
+| 6 | The customer decides NOT to buy after all | Owner clicks "Hủy nháp" (Cancel Draft) on a draft row | The `campaign_participant` row is deleted outright (no stock/revenue implications ever existed for a draft, so nothing to reverse) |
+| 7 | Owner/Staff tries to delete a participant who already has recorded items | — | Blocked — "Không thể xóa người tham gia đã có món được ghi nhận." Participants with zero recorded items may be deleted while the campaign is still `open` (draft or confirmed). |
 
 ---
 
@@ -637,6 +705,13 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 |---|---|---|
 | US-01 Create Campaign | ✅ | ❌ |
 | US-02 Close Campaign | ✅ | ❌ |
+| US-24 Edit Campaign (name/date/total_bags/pool) | ✅ | ❌ |
+| US-25 Delete Campaign | ✅ | ❌ |
+| US-26 Edit Participant | ✅ | ✅ |
+| US-27 Draft Participant (create) | ✅ | ✅ |
+| US-27 Draft Participant (confirm) | ✅ | ✅ |
+| US-27 Draft Participant (cancel) | ✅ | ✅ |
+| Delete Participant (no items recorded, campaign open) | ✅ | ✅ |
 | US-03 Record Campaign Participant | ✅ | ✅ |
 | US-04 Record Item (open bag) | ✅ | ✅ |
 | View Campaign list & detail | ✅ | ✅ |

@@ -17,18 +17,20 @@ public interface CampaignParticipantRepository extends JpaRepository<CampaignPar
 
     @Query("""
             SELECT COALESCE(SUM(p.totalBagsPurchased), 0) FROM CampaignParticipant p
-            WHERE p.campaign.id = :campaignId
+            WHERE p.campaign.id = :campaignId AND p.status = com.gaden.flowerknows.campaign.ParticipantStatus.CONFIRMED
             """)
     long sumBagsPurchasedByCampaign(UUID campaignId);
 
     @Query("""
             SELECT COALESCE(SUM(p.prepaidAmount), 0) FROM CampaignParticipant p
+            WHERE p.status = com.gaden.flowerknows.campaign.ParticipantStatus.CONFIRMED
             """)
     java.math.BigDecimal sumAllPrepaidAmount();
 
     @Query("""
             SELECT COALESCE(SUM(p.prepaidAmount), 0) FROM CampaignParticipant p
             WHERE p.campaign.id = :campaignId
+              AND p.status = com.gaden.flowerknows.campaign.ParticipantStatus.CONFIRMED
             """)
     java.math.BigDecimal sumPrepaidAmountByCampaign(UUID campaignId);
 }

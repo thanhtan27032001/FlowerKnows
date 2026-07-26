@@ -83,34 +83,132 @@ public class ParticipantService {
                 .orElse(null);
 
         if (participant == null) {
-            participant = new CampaignParticipant(campaign, customer, request.bagsPurchased(), amount);
+            participant = new CampaignParticipant(
+                    campaign,
+                    customer,
+                    request.bagsPurchased(),
+                    amount,
+                    ParticipantStatus.CONFIRMED
+            );
             campaign.getParticipants().add(participant);
             // US-18 / US-03 AC #7: new campaign engagement resets pre-order workflow
             customer.setActionStatus(CustomerActionStatus.UNDETERMINED);
+        } else if (participant.getStatus() == ParticipantStatus.DRAFT) {
+            throw new BusinessException(
+                    "Customer already has a draft participation in this campaign — confirm or cancel the draft first"
+            );
         } else {
             participant.addBags(request.bagsPurchased(), amount);
         }
 
         CampaignParticipant saved = participantRepository.save(participant);
-        int itemsRecorded = (int) itemTokenRepository.countBySourceTypeAndSourceId(
-                SourceType.CAMPAIGN, saved.getId()
+        return toSummaryResponse(saved);
+    }
+
+    @Transactional
+    public CampaignDtos.ParticipantSummaryResponse createDraft(
+            UUID campaignId,
+            RecordParticipantRequest request
+    ) {
+        Campaign campaign = campaignService.requireOpenCampaign(campaignId);
+        Customer customer = resolveCustomer(request);
+
+        participantRepository.findByCampaignIdAndCustomerId(campaignId, customer.getId())
+                .ifPresent(existing -> {
+                    throw new BusinessException(
+                            "Customer is already a participant in this campaign"
+                    );
+                });
+
+        CampaignParticipant draft = new CampaignParticipant(
+                campaign,
+                customer,
+                request.bagsPurchased(),
+                BigDecimal.ZERO,
+                ParticipantStatus.DRAFT
         );
-        List<String> recordedItemNames = itemTokenRepository
-                .findBySourceTypeAndSourceIdOrderByCreatedAtDesc(SourceType.CAMPAIGN, saved.getId())
-                .stream()
-                .limit(3)
-                .map(t -> t.getProduct().getName())
-                .toList();
-        return new CampaignDtos.ParticipantSummaryResponse(
-                saved.getId(),
-                customer.getId(),
-                customer.getName(),
-                customer.getPhone(),
-                saved.getTotalBagsPurchased(),
-                saved.getPrepaidAmount(),
-                itemsRecorded,
-                recordedItemNames
+        campaign.getParticipants().add(draft);
+        customer.setActionStatus(CustomerActionStatus.UNDETERMINED);
+
+        return toSummaryResponse(participantRepository.save(draft));
+    }
+
+    @Transactional
+    public CampaignDtos.ParticipantSummaryResponse confirmDraft(UUID campaignId, UUID participantId) {
+        Campaign campaign = campaignService.requireOpenCampaign(campaignId);
+        CampaignParticipant participant = requireParticipantInCampaign(campaignId, participantId);
+
+        if (participant.getStatus() != ParticipantStatus.DRAFT) {
+            throw new IllegalStateException("Only draft participants can be confirmed");
+        }
+
+        long bagsSold = participantRepository.sumBagsPurchasedByCampaign(campaignId);
+        long remaining = campaign.getTotalBags() - bagsSold;
+        if (participant.getTotalBagsPurchased() > remaining) {
+            throw new BusinessException("Only %d bags remaining".formatted(remaining));
+        }
+
+        participant.setStatus(ParticipantStatus.CONFIRMED);
+        participant.setPrepaidAmount(
+                campaign.getBagPrice().multiply(BigDecimal.valueOf(participant.getTotalBagsPurchased()))
         );
+
+        return toSummaryResponse(participant);
+    }
+
+    @Transactional
+    public void deleteParticipant(UUID campaignId, UUID participantId) {
+        campaignService.requireOpenCampaign(campaignId);
+        CampaignParticipant participant = requireParticipantInCampaign(campaignId, participantId);
+
+        long tokensRecorded = itemTokenRepository.countBySourceTypeAndSourceId(
+                SourceType.CAMPAIGN, participant.getId()
+        );
+        if (tokensRecorded > 0) {
+            throw new IllegalStateException(
+                    "Không thể xóa người tham gia đã có món được ghi nhận."
+            );
+        }
+
+        participant.getCampaign().getParticipants().remove(participant);
+        participantRepository.delete(participant);
+    }
+
+    @Transactional
+    public CampaignDtos.ParticipantSummaryResponse updateParticipant(
+            UUID campaignId,
+            UUID participantId,
+            CampaignDtos.UpdateParticipantRequest request
+    ) {
+        Campaign campaign = campaignService.requireOpenCampaign(campaignId);
+        CampaignParticipant participant = requireParticipantInCampaign(campaignId, participantId);
+
+        long tokensRecorded = itemTokenRepository.countBySourceTypeAndSourceId(
+                SourceType.CAMPAIGN, participant.getId()
+        );
+        if (request.totalBagsPurchased() < tokensRecorded) {
+            throw new BusinessException(
+                    "Không thể giảm xuống dưới số túi đã khui (%d túi).".formatted(tokensRecorded)
+            );
+        }
+
+        if (participant.getStatus() == ParticipantStatus.CONFIRMED) {
+            long bagsSoldExcludingSelf = participantRepository.sumBagsPurchasedByCampaign(campaignId)
+                    - participant.getTotalBagsPurchased();
+            long remaining = campaign.getTotalBags() - bagsSoldExcludingSelf;
+            if (request.totalBagsPurchased() > remaining) {
+                throw new BusinessException("Only %d bags remaining".formatted(remaining));
+            }
+            participant.setTotalBagsPurchased(request.totalBagsPurchased());
+            participant.setPrepaidAmount(
+                    campaign.getBagPrice().multiply(BigDecimal.valueOf(request.totalBagsPurchased()))
+            );
+        } else {
+            participant.setTotalBagsPurchased(request.totalBagsPurchased());
+            participant.setPrepaidAmount(BigDecimal.ZERO);
+        }
+
+        return toSummaryResponse(participant);
     }
 
     @Transactional
@@ -122,6 +220,12 @@ public class ParticipantService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Customer is not a participant in this campaign"
                 ));
+
+        if (participant.getStatus() != ParticipantStatus.CONFIRMED) {
+            throw new BusinessException(
+                    "Items can only be recorded for confirmed participants"
+            );
+        }
 
         long alreadyRecorded = itemTokenRepository.countBySourceTypeAndSourceId(
                 SourceType.CAMPAIGN, participant.getId()
@@ -182,12 +286,7 @@ public class ParticipantService {
             UUID campaignId,
             UUID participantId
     ) {
-        CampaignParticipant participant = participantRepository.findById(participantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Participant not found: " + participantId));
-
-        if (!participant.getCampaign().getId().equals(campaignId)) {
-            throw new ResourceNotFoundException("Participant not found in this campaign");
-        }
+        CampaignParticipant participant = requireParticipantInCampaign(campaignId, participantId);
 
         List<ItemToken> tokens = itemTokenRepository
                 .findBySourceTypeAndSourceIdOrderByCreatedAtDesc(SourceType.CAMPAIGN, participantId);
@@ -224,6 +323,29 @@ public class ParticipantService {
                         orderByTokenId.get(token.getId())
                 ))
                 .collect(Collectors.toList());
+    }
+
+    private CampaignParticipant requireParticipantInCampaign(UUID campaignId, UUID participantId) {
+        CampaignParticipant participant = participantRepository.findById(participantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Participant not found: " + participantId));
+
+        if (!participant.getCampaign().getId().equals(campaignId)) {
+            throw new ResourceNotFoundException("Participant not found in this campaign");
+        }
+        return participant;
+    }
+
+    private CampaignDtos.ParticipantSummaryResponse toSummaryResponse(CampaignParticipant participant) {
+        int itemsRecorded = (int) itemTokenRepository.countBySourceTypeAndSourceId(
+                SourceType.CAMPAIGN, participant.getId()
+        );
+        List<String> recordedItemNames = itemTokenRepository
+                .findBySourceTypeAndSourceIdOrderByCreatedAtDesc(SourceType.CAMPAIGN, participant.getId())
+                .stream()
+                .limit(3)
+                .map(t -> t.getProduct().getName())
+                .toList();
+        return CampaignService.toParticipantSummary(participant, itemsRecorded, recordedItemNames);
     }
 
     private CampaignDtos.ParticipantTokenResponse toParticipantTokenResponse(

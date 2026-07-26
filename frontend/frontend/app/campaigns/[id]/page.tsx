@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useState } from "react";
+import { use, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
@@ -9,10 +9,12 @@ import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { AppShell } from "@/components/layout/app-shell";
 import { CloseCampaignDialog } from "@/components/campaigns/close-campaign-dialog";
+import { DeleteCampaignDialog } from "@/components/campaigns/delete-campaign-dialog";
+import { EditCampaignForm } from "@/components/campaigns/edit-campaign-form";
 import { ParticipantItemsPanel } from "@/components/campaigns/participant-items-panel";
 import { RecordItemForm } from "@/components/campaigns/record-item-form";
 import { RecordParticipantForm } from "@/components/campaigns/record-participant-form";
-import { campaignApi, campaignKeys } from "@/src/lib/api/campaign";
+import { campaignApi, campaignKeys, campaignLiveQueryOptions } from "@/src/lib/api/campaign";
 import { campaignStatusLabel } from "@/src/lib/i18n-labels";
 import { formatDate, formatDateTime, vnd } from "@/src/lib/format";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -28,6 +30,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 function CampaignDetailSkeleton() {
   const tA11y = useTranslations("common.a11y");
@@ -74,6 +81,8 @@ export default function CampaignDetailPage({
   const tCommon = useTranslations("common");
   const { isOwner } = useAuth();
   const [closeOpen, setCloseOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [participantOpen, setParticipantOpen] = useState(false);
   const [itemOpen, setItemOpen] = useState(false);
   const [itemCustomerId, setItemCustomerId] = useState("");
@@ -89,7 +98,18 @@ export default function CampaignDetailPage({
   } = useQuery({
     queryKey: campaignKeys.detail(id),
     queryFn: () => campaignApi.get(id),
+    ...campaignLiveQueryOptions,
   });
+
+  const confirmedParticipants = useMemo(
+    () =>
+      (campaign?.participants ?? []).filter(
+        (p) => (p.status ?? "CONFIRMED") === "CONFIRMED"
+      ),
+    [campaign?.participants]
+  );
+
+  const canDelete = (campaign?.participants.length ?? 0) === 0;
 
   const openRecordItem = (customerId = "") => {
     setItemCustomerId(customerId);
@@ -188,28 +208,63 @@ export default function CampaignDetailPage({
                   </div>
                 </div>
 
-                {campaign.status === "OPEN" && (
-                  <div className="flex flex-wrap gap-2">
-                    <Button onClick={() => setParticipantOpen(true)}>
-                      {tDetail("recordParticipant")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => openRecordItem()}
-                      disabled={campaign.participants.length === 0}
-                    >
-                      {tDetail("recordItem")}
-                    </Button>
-                    {isOwner ? (
+                <div className="flex flex-wrap gap-2">
+                  {campaign.status === "OPEN" && (
+                    <>
+                      <Button onClick={() => setParticipantOpen(true)}>
+                        {tDetail("recordParticipant")}
+                      </Button>
                       <Button
                         variant="outline"
-                        onClick={() => setCloseOpen(true)}
+                        onClick={() => openRecordItem()}
+                        disabled={confirmedParticipants.length === 0}
                       >
-                        {tDetail("closeCampaign")}
+                        {tDetail("recordItem")}
                       </Button>
-                    ) : null}
-                  </div>
-                )}
+                      {isOwner && (
+                        <Button
+                          variant="outline"
+                          onClick={() => setCloseOpen(true)}
+                        >
+                          {tDetail("closeCampaign")}
+                        </Button>
+                      )}
+                      {isOwner && (
+                        <>
+                          <Button
+                            variant="outline"
+                            onClick={() => setEditOpen(true)}
+                          >
+                            {tDetail("editCampaign")}
+                          </Button>
+                          {canDelete ? (
+                            <Button
+                              variant="destructive"
+                              onClick={() => setDeleteOpen(true)}
+                            >
+                              {tDetail("deleteCampaign")}
+                            </Button>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <span className="inline-flex cursor-not-allowed" />
+                                }
+                              >
+                                <Button variant="destructive" disabled>
+                                  {tDetail("deleteCampaign")}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {tDetail("deleteBlockedTooltip")}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
 
                 {campaign.status === "CLOSED" && (
                   <p className="text-sm text-muted-foreground">
@@ -308,9 +363,12 @@ export default function CampaignDetailPage({
                   {campaign.participants.map((p) => (
                     <ParticipantItemsPanel
                       key={p.id}
-                      campaignId={campaign.id}
+                      campaign={campaign}
                       participant={p}
-                      canRecordItem={campaign.status === "OPEN"}
+                      canRecordItem={
+                        campaign.status === "OPEN" &&
+                        (p.status ?? "CONFIRMED") === "CONFIRMED"
+                      }
                       onRecordItem={() => openRecordItem(p.customerId)}
                     />
                   ))}
@@ -319,14 +377,28 @@ export default function CampaignDetailPage({
             </section>
 
             {isOwner ? (
-              <CloseCampaignDialog
-                campaignId={campaign.id}
-                open={closeOpen}
-                onOpenChange={setCloseOpen}
-                onClosed={() => void refetch()}
-              />
+              <>
+                <CloseCampaignDialog
+                  campaignId={campaign.id}
+                  open={closeOpen}
+                  onOpenChange={setCloseOpen}
+                  onClosed={() => void refetch()}
+                />
+                <EditCampaignForm
+                  open={editOpen}
+                  onOpenChange={setEditOpen}
+                  campaign={campaign}
+                />
+                <DeleteCampaignDialog
+                  campaignId={campaign.id}
+                  campaignName={campaign.name}
+                  open={deleteOpen}
+                  onOpenChange={setDeleteOpen}
+                />
+              </>
             ) : null}
             <RecordParticipantForm
+              key={participantOpen ? "participant-open" : "participant-closed"}
               open={participantOpen}
               onOpenChange={setParticipantOpen}
               campaign={campaign}

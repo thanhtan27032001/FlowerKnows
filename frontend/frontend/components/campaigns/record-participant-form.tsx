@@ -65,6 +65,7 @@ export function RecordParticipantForm({
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [bagsPurchased, setBagsPurchased] = useState("1");
+  const [isDraft, setIsDraft] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -90,13 +91,22 @@ export function RecordParticipantForm({
     setNewName("");
     setNewPhone("");
     setBagsPurchased("1");
+    setIsDraft(false);
     setFieldErrors({});
     setFormError(null);
   };
 
   const mutation = useMutation({
-    mutationFn: (input: Parameters<typeof campaignApi.recordParticipant>[1]) =>
-      campaignApi.recordParticipant(campaign.id, input),
+    mutationFn: ({
+      draft,
+      input,
+    }: {
+      draft: boolean;
+      input: Parameters<typeof campaignApi.recordParticipant>[1];
+    }) =>
+      draft
+        ? campaignApi.createDraftParticipant(campaign.id, input)
+        : campaignApi.recordParticipant(campaign.id, input),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: campaignKeys.detail(campaign.id),
@@ -108,9 +118,13 @@ export function RecordParticipantForm({
         resetForm();
       });
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, variables) => {
       setFormError(
-        err instanceof ApiError ? err.message : t("failed")
+        err instanceof ApiError
+          ? err.message
+          : variables.draft
+            ? t("draftFailed")
+            : t("failed")
       );
     },
   });
@@ -126,15 +140,22 @@ export function RecordParticipantForm({
       !bagsPurchased ||
       Number.isNaN(bags) ||
       bags < 1 ||
-      !Number.isInteger(bags) ||
-      bags > bagsRemaining
+      !Number.isInteger(bags)
     ) {
+      errors.bagsPurchased = isDraft ? t("draftBagsInvalid") : t("bagsInvalid");
+    } else if (!isDraft && bags > bagsRemaining) {
       errors.bagsPurchased =
         bagsRemaining <= 0 ? t("noBagsRemaining") : t("bagsInvalid");
     }
 
     if (mode === "existing") {
       if (!customerId) errors.customerId = t("customerRequired");
+      else if (
+        isDraft &&
+        campaign.participants.some((p) => p.customerId === customerId)
+      ) {
+        errors.customerId = t("draftAlreadyParticipant");
+      }
     } else {
       if (!newName.trim()) errors.newName = t("nameRequired");
       if (!newPhone.trim()) errors.newPhone = t("phoneRequired");
@@ -143,17 +164,18 @@ export function RecordParticipantForm({
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    if (mode === "existing") {
-      mutation.mutate({ customerId, bagsPurchased: bags });
-    } else {
-      mutation.mutate({
-        newCustomer: {
-          name: newName.trim(),
-          phone: newPhone.trim(),
-        },
-        bagsPurchased: bags,
-      });
-    }
+    const input =
+      mode === "existing"
+        ? { customerId, bagsPurchased: bags }
+        : {
+            newCustomer: {
+              name: newName.trim(),
+              phone: newPhone.trim(),
+            },
+            bagsPurchased: bags,
+          };
+
+    mutation.mutate({ draft: isDraft, input });
   };
 
   const formBody = (
@@ -228,7 +250,7 @@ export function RecordParticipantForm({
             )}
           </div>
 
-          {existingParticipant && (
+          {existingParticipant && !isDraft && (
             <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
               {existingParticipant.totalBagsPurchased} · {t("bagsPurchased")}
             </p>
@@ -269,19 +291,44 @@ export function RecordParticipantForm({
           id="bags-purchased"
           type="number"
           min={1}
-          max={bagsRemaining}
+          max={isDraft ? undefined : bagsRemaining}
           inputMode="numeric"
           value={bagsPurchased}
           onChange={(e) => setBagsPurchased(e.target.value)}
           aria-invalid={!!fieldErrors.bagsPurchased}
         />
         <p className="text-xs text-muted-foreground">
-          {bagsRemaining}
+          {isDraft ? t("draftNoReserveHint") : bagsRemaining}
         </p>
         {fieldErrors.bagsPurchased && (
           <p className="text-xs text-destructive">{fieldErrors.bagsPurchased}</p>
         )}
       </div>
+
+      <label
+        htmlFor="participant-is-draft"
+        className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5"
+      >
+        <input
+          id="participant-is-draft"
+          type="checkbox"
+          className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
+          checked={isDraft}
+          onChange={(e) => {
+            setIsDraft(e.target.checked);
+            setFieldErrors({});
+            setFormError(null);
+          }}
+        />
+        <span className="min-w-0 space-y-0.5">
+          <span className="block text-sm font-medium leading-none">
+            {t("isDraft")}
+          </span>
+          <span className="block text-xs text-muted-foreground">
+            {t("isDraftHint")}
+          </span>
+        </span>
+      </label>
 
       {formError && <p className="text-sm text-destructive">{formError}</p>}
     </fieldset>
@@ -306,10 +353,10 @@ export function RecordParticipantForm({
         pending={mutation.isPending}
         success={succeeded}
         pendingLabel={tCommon("pending.saving")}
-        disabled={bagsRemaining <= 0}
+        disabled={!isDraft && bagsRemaining <= 0}
         onClick={validateAndSubmit}
       >
-        {t("submit")}
+        {isDraft ? t("submitDraft") : t("submit")}
       </PendingButton>
     </div>
   );
@@ -325,10 +372,7 @@ export function RecordParticipantForm({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={handleOpenChange}>
-        <SheetContent
-          side="bottom"
-          className="overflow-y-auto"
-        >
+        <SheetContent side="bottom" className="overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{t("title")}</SheetTitle>
             <SheetDescription>{t("description")}</SheetDescription>

@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
-import { campaignApi, campaignKeys } from "@/src/lib/api/campaign";
+import { campaignApi, campaignKeys, campaignLiveQueryOptions } from "@/src/lib/api/campaign";
 import { campaignStatusLabel } from "@/src/lib/i18n-labels";
 import { formatDate, vnd } from "@/src/lib/format";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -33,6 +33,7 @@ export function CampaignList({ onCreate }: Props) {
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: campaignKeys.lists(),
     queryFn: campaignApi.list,
+    ...campaignLiveQueryOptions,
   });
 
   const campaigns = data ?? [];

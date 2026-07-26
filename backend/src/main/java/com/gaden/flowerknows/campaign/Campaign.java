@@ -76,8 +76,16 @@ public class Campaign {
         return name;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public LocalDate getEventDate() {
         return eventDate;
+    }
+
+    public void setEventDate(LocalDate eventDate) {
+        this.eventDate = eventDate;
     }
 
     public BigDecimal getBagPrice() {
@@ -86,6 +94,10 @@ public class Campaign {
 
     public int getTotalBags() {
         return totalBags;
+    }
+
+    public void setTotalBags(int totalBags) {
+        this.totalBags = totalBags;
     }
 
     public CampaignStatus getStatus() {

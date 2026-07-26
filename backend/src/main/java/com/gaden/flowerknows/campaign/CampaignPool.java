@@ -64,6 +64,10 @@ public class CampaignPool {
         return loadedQuantity;
     }
 
+    public void setLoadedQuantity(int loadedQuantity) {
+        this.loadedQuantity = loadedQuantity;
+    }
+
     public int getRemainingQuantity() {
         return remainingQuantity;
     }

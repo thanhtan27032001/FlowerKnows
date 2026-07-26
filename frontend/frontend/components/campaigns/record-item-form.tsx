@@ -70,10 +70,18 @@ export function RecordItemForm({
     [campaign.pool]
   );
 
+  const confirmedParticipants = useMemo(
+    () =>
+      campaign.participants.filter(
+        (p) => (p.status ?? "CONFIRMED") === "CONFIRMED"
+      ),
+    [campaign.participants]
+  );
+
   const selectedParticipant = useMemo(
     () =>
-      campaign.participants.find((p) => p.customerId === customerId) ?? null,
-    [campaign.participants, customerId]
+      confirmedParticipants.find((p) => p.customerId === customerId) ?? null,
+    [confirmedParticipants, customerId]
   );
 
   const selectedProduct = useMemo(
@@ -136,7 +144,7 @@ export function RecordItemForm({
     });
   };
 
-  const noParticipants = campaign.participants.length === 0;
+  const noParticipants = confirmedParticipants.length === 0;
   const noPoolLeft = availableProducts.length === 0;
   const submitDisabled =
     blockedAllRecorded || noParticipants || noPoolLeft;
@@ -167,7 +175,7 @@ export function RecordItemForm({
                 <SelectValue placeholder={t("selectParticipant")} />
               </SelectTrigger>
               <SelectContent>
-                {campaign.participants.map((p) => (
+                {confirmedParticipants.map((p) => (
                   <SelectItem key={p.customerId} value={p.customerId}>
                     {p.customerName}
                     {p.customerPhone ? ` — ${p.customerPhone}` : ""} (

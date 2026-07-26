@@ -13,12 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class CampaignService {
+
+    private static final String POOL_LOCKED_MESSAGE =
+            "Pool sản phẩm đã bị khóa vì đã có món được ghi nhận. Không thể sửa.";
+    private static final String DELETE_BLOCKED_MESSAGE =
+            "Không thể xóa campaign đã có khách tham gia. Hãy đóng campaign thay vì xóa.";
 
     private final CampaignRepository campaignRepository;
     private final CampaignParticipantRepository participantRepository;
@@ -98,6 +106,134 @@ public class CampaignService {
         return toDetail(saved);
     }
 
+    @Transactional
+    public CampaignDtos.CampaignDetailResponse updateCampaign(UUID id, CampaignDtos.UpdateCampaignRequest request) {
+        Campaign campaign = requireOpenCampaign(id);
+        campaign.setName(request.name());
+        campaign.setEventDate(request.eventDate());
+        campaign.setTotalBags(request.totalBags());
+        campaign.getParticipants().size();
+        return toDetail(campaign);
+    }
+
+    @Transactional
+    public CampaignDtos.CampaignDetailResponse updatePool(UUID id, CampaignDtos.UpdatePoolRequest request) {
+        Campaign campaign = requireOpenCampaign(id);
+        ensurePoolEditable(campaign);
+
+        Set<UUID> seenProductIds = new HashSet<>();
+        for (CampaignDtos.PoolItemRequest item : request.pool()) {
+            if (!seenProductIds.add(item.productId())) {
+                throw new BusinessException("Duplicate product in pool: " + item.productId());
+            }
+        }
+
+        Map<UUID, CampaignPool> existingByProduct = new HashMap<>();
+        for (CampaignPool poolItem : campaign.getPoolItems()) {
+            existingByProduct.put(poolItem.getProduct().getId(), poolItem);
+        }
+
+        Map<UUID, Integer> desiredByProduct = new HashMap<>();
+        for (CampaignDtos.PoolItemRequest item : request.pool()) {
+            desiredByProduct.put(item.productId(), item.loadedQuantity());
+        }
+
+        // Return stock for removed products
+        Iterator<CampaignPool> iterator = campaign.getPoolItems().iterator();
+        while (iterator.hasNext()) {
+            CampaignPool poolItem = iterator.next();
+            UUID productId = poolItem.getProduct().getId();
+            if (!desiredByProduct.containsKey(productId)) {
+                stockService.applyStockChange(
+                        poolItem.getProduct(),
+                        poolItem.getLoadedQuantity(),
+                        StockTransactionType.CAMPAIGN_RETURN,
+                        "Returned from campaign pool edit: " + campaign.getName()
+                );
+                iterator.remove();
+            }
+        }
+
+        // Update existing / add new with stock deltas
+        for (CampaignDtos.PoolItemRequest item : request.pool()) {
+            CampaignPool existing = existingByProduct.get(item.productId());
+            if (existing != null && campaign.getPoolItems().contains(existing)) {
+                int delta = item.loadedQuantity() - existing.getLoadedQuantity();
+                if (delta > 0) {
+                    if (delta > existing.getProduct().getStockQuantity()) {
+                        throw new BusinessException(
+                                "Product %s does not have enough stock (%d available, %d requested)"
+                                        .formatted(
+                                                existing.getProduct().getName(),
+                                                existing.getProduct().getStockQuantity(),
+                                                delta
+                                        )
+                        );
+                    }
+                    stockService.applyStockChange(
+                            existing.getProduct(),
+                            -delta,
+                            StockTransactionType.CAMPAIGN_LOCK,
+                            "Additional lock for campaign pool edit: " + campaign.getName()
+                    );
+                } else if (delta < 0) {
+                    stockService.applyStockChange(
+                            existing.getProduct(),
+                            -delta,
+                            StockTransactionType.CAMPAIGN_RETURN,
+                            "Returned from campaign pool edit: " + campaign.getName()
+                    );
+                }
+                existing.setLoadedQuantity(item.loadedQuantity());
+                existing.setRemainingQuantity(item.loadedQuantity());
+            } else {
+                Product product = productRepository.findById(item.productId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + item.productId()));
+
+                if (item.loadedQuantity() > product.getStockQuantity()) {
+                    throw new BusinessException(
+                            "Product %s does not have enough stock (%d available, %d requested)"
+                                    .formatted(product.getName(), product.getStockQuantity(), item.loadedQuantity())
+                    );
+                }
+
+                CampaignPool poolItem = new CampaignPool(product, item.loadedQuantity());
+                campaign.addPoolItem(poolItem);
+
+                stockService.applyStockChange(
+                        product,
+                        -item.loadedQuantity(),
+                        StockTransactionType.CAMPAIGN_LOCK,
+                        "Locked for campaign pool edit: " + campaign.getName()
+                );
+            }
+        }
+
+        campaign.getParticipants().size();
+        return toDetail(campaign);
+    }
+
+    @Transactional
+    public void deleteCampaign(UUID id) {
+        Campaign campaign = requireOpenCampaign(id);
+
+        if (participantRepository.countByCampaignId(id) > 0) {
+            throw new IllegalStateException(DELETE_BLOCKED_MESSAGE);
+        }
+
+        // Zero participants ⇒ no items recorded. Stock is still locked while OPEN.
+        for (CampaignPool poolItem : campaign.getPoolItems()) {
+            stockService.applyStockChange(
+                    poolItem.getProduct(),
+                    poolItem.getLoadedQuantity(),
+                    StockTransactionType.CAMPAIGN_RETURN,
+                    "Returned from campaign delete: " + campaign.getName()
+            );
+        }
+
+        campaignRepository.delete(campaign);
+    }
+
     @Transactional(readOnly = true)
     public CampaignDtos.ClosePreviewResponse previewClose(UUID id) {
         Campaign campaign = requireOpenCampaign(id);
@@ -160,6 +296,14 @@ public class CampaignService {
         }
     }
 
+    private void ensurePoolEditable(Campaign campaign) {
+        boolean anyItemRecorded = campaign.getPoolItems().stream()
+                .anyMatch(p -> p.getRemainingQuantity() != p.getLoadedQuantity());
+        if (anyItemRecorded) {
+            throw new IllegalStateException(POOL_LOCKED_MESSAGE);
+        }
+    }
+
     private CampaignDtos.CampaignSummaryResponse toSummary(Campaign campaign) {
         long bagsSold = participantRepository.sumBagsPurchasedByCampaign(campaign.getId());
         return new CampaignDtos.CampaignSummaryResponse(
@@ -174,7 +318,7 @@ public class CampaignService {
         );
     }
 
-    private CampaignDtos.CampaignDetailResponse toDetail(Campaign campaign) {
+    CampaignDtos.CampaignDetailResponse toDetail(Campaign campaign) {
         long bagsSold = participantRepository.sumBagsPurchasedByCampaign(campaign.getId());
 
         List<CampaignDtos.PoolItemResponse> pool = campaign.getPoolItems().stream()
@@ -209,13 +353,8 @@ public class CampaignService {
 
         List<CampaignDtos.ParticipantSummaryResponse> participants = new ArrayList<>();
         for (CampaignParticipant participant : campaign.getParticipants()) {
-            participants.add(new CampaignDtos.ParticipantSummaryResponse(
-                    participant.getId(),
-                    participant.getCustomer().getId(),
-                    participant.getCustomer().getName(),
-                    participant.getCustomer().getPhone(),
-                    participant.getTotalBagsPurchased(),
-                    participant.getPrepaidAmount(),
+            participants.add(toParticipantSummary(
+                    participant,
                     itemsRecordedByParticipant.getOrDefault(participant.getId(), 0),
                     itemNamesByParticipant.getOrDefault(participant.getId(), List.of())
             ));
@@ -232,6 +371,24 @@ public class CampaignService {
                 campaign.getCreatedAt(),
                 pool,
                 participants
+        );
+    }
+
+    static CampaignDtos.ParticipantSummaryResponse toParticipantSummary(
+            CampaignParticipant participant,
+            int itemsRecorded,
+            List<String> recordedItemNames
+    ) {
+        return new CampaignDtos.ParticipantSummaryResponse(
+                participant.getId(),
+                participant.getCustomer().getId(),
+                participant.getCustomer().getName(),
+                participant.getCustomer().getPhone(),
+                participant.getTotalBagsPurchased(),
+                participant.getPrepaidAmount(),
+                participant.getStatus(),
+                itemsRecorded,
+                recordedItemNames
         );
     }
 }

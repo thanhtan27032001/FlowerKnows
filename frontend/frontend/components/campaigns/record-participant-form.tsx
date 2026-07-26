@@ -64,6 +64,7 @@ export function RecordParticipantForm({
   const [search, setSearch] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [newAddress, setNewAddress] = useState("");
   const [bagsPurchased, setBagsPurchased] = useState("1");
   const [isDraft, setIsDraft] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -90,6 +91,7 @@ export function RecordParticipantForm({
     setSearch("");
     setNewName("");
     setNewPhone("");
+    setNewAddress("");
     setBagsPurchased("1");
     setIsDraft(false);
     setFieldErrors({});
@@ -158,7 +160,6 @@ export function RecordParticipantForm({
       }
     } else {
       if (!newName.trim()) errors.newName = t("nameRequired");
-      if (!newPhone.trim()) errors.newPhone = t("phoneRequired");
     }
 
     setFieldErrors(errors);
@@ -170,7 +171,8 @@ export function RecordParticipantForm({
         : {
             newCustomer: {
               name: newName.trim(),
-              phone: newPhone.trim(),
+              phone: newPhone.trim() || undefined,
+              address: newAddress.trim() || undefined,
             },
             bagsPurchased: bags,
           };
@@ -276,11 +278,15 @@ export function RecordParticipantForm({
               id="new-customer-phone"
               value={newPhone}
               onChange={(e) => setNewPhone(e.target.value)}
-              aria-invalid={!!fieldErrors.newPhone}
             />
-            {fieldErrors.newPhone && (
-              <p className="text-xs text-destructive">{fieldErrors.newPhone}</p>
-            )}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="new-customer-address">{t("address")}</Label>
+            <Input
+              id="new-customer-address"
+              value={newAddress}
+              onChange={(e) => setNewAddress(e.target.value)}
+            />
           </div>
         </div>
       )}

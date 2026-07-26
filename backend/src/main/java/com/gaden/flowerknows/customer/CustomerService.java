@@ -125,7 +125,11 @@ public class CustomerService {
     @Transactional
     public CustomerDtos.CustomerResponse create(CustomerDtos.CreateCustomerRequest request) {
         Customer customer = customerRepository.save(
-                new Customer(request.name(), request.phone(), request.address())
+                new Customer(
+                        request.name().trim(),
+                        blankToNull(request.phone()),
+                        blankToNull(request.address())
+                )
         );
         return toListResponse(customer, null);
     }
@@ -134,8 +138,8 @@ public class CustomerService {
     public CustomerDtos.CustomerDetailResponse update(UUID id, CustomerDtos.UpdateCustomerRequest request) {
         Customer customer = requireCustomer(id);
         customer.setName(request.name().trim());
-        customer.setPhone(request.phone());
-        customer.setAddress(request.address());
+        customer.setPhone(blankToNull(request.phone()));
+        customer.setAddress(blankToNull(request.address()));
         return getById(id);
     }
 
@@ -152,6 +156,13 @@ public class CustomerService {
     public Customer requireCustomer(UUID id) {
         return customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found: " + id));
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     private Map<UUID, ShippingStatus> latestShippingStatusByCustomer() {

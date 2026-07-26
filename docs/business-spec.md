@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 2.0 (Adds Campaign edit/delete, Participant edit, Draft Participant — US-24 to US-27, Owner-only)
+**Version:** 2.1 (Customer: phone/address optional at creation, address is free text; confirms Staff+Owner both manage customer profile & action_status)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -45,10 +45,10 @@ This is the single source of truth for schema design across the whole document.
 | Field | Type | Description |
 |---|---|---|
 | `id` | PK | |
-| `name` | string | Customer name |
-| `phone` | string | Phone number |
-| `address` | string | Address |
-| `action_status` | enum | Staff-managed pre-order interaction status — see US-18. One of: `undetermined` / `negotiating` / `consolidating` / `needs_immediate_order`. Defaults to `undetermined`. Fully manual — Staff sets it freely. This field only covers the pre-order negotiation stage; once an Order exists, its lifecycle is tracked separately via `order.shipping_status`. |
+| `name` | string, required | Customer name — the only required field when creating a customer |
+| `phone` | string, nullable | Phone number — **optional at creation** (per v2.1); can be added/edited later via US-20 |
+| `address` | string, nullable | Free-text address (not split into structured fields like street/ward/city) — optional at creation |
+| `action_status` | enum | Staff-managed pre-order interaction status — see US-18. One of: `undetermined` / `negotiating` / `consolidating` / `needs_immediate_order`. Defaults to `undetermined`. Fully manual — both Owner and Staff can set it freely (see Permission Matrix). This field only covers the pre-order negotiation stage; once an Order exists, its lifecycle is tracked separately via `order.shipping_status`. |
 
 ### `product`
 | Field | Type | Description |
@@ -260,7 +260,7 @@ This is the single source of truth for schema design across the whole document.
 | 4 | Owner wants to record which item a draft customer received (US-04) | Attempts to record an item for a draft participant | Blocked — items can only be recorded for `confirmed` participants (a draft has no `prepaid_amount`, so there's nothing paid-for yet to hand over) |
 | 5 | The customer decides to actually pay | Owner clicks "Xác nhận" (Confirm) on the draft row | The system re-validates bags remaining (per confirmed-only counting) at THIS moment — if enough bags are still available, `status → confirmed` and `prepaid_amount = total_bags_purchased × bag_price` is set. If not enough bags remain anymore (someone else bought them in the meantime), blocked with the usual "chỉ còn Y túi" error, and Owner must adjust the quantity first (via US-26) |
 | 6 | The customer decides NOT to buy after all | Owner clicks "Hủy nháp" (Cancel Draft) on a draft row | The `campaign_participant` row is deleted outright (no stock/revenue implications ever existed for a draft, so nothing to reverse) |
-| 7 | Owner/Staff tries to delete a participant who already has recorded items | — | Blocked — "Không thể xóa người tham gia đã có món được ghi nhận." Participants with zero recorded items may be deleted while the campaign is still `open` (draft or confirmed). |
+| 7 | Owner tries to cancel a `confirmed` participant the same way | — | Not allowed — "Hủy nháp" only appears/works on `draft` rows; confirmed participants can only be adjusted via US-26 (Edit), never deleted outright |
 
 ---
 
@@ -279,7 +279,7 @@ This is the single source of truth for schema design across the whole document.
 | 3 | The `customer` does **not** yet have a `campaign_participant` in this campaign | Valid submission | A new `campaign_participant` is created: `total_bags_purchased = bags entered`, `prepaid_amount = bags × bag_price` |
 | 4 | The `customer` **already** has a `campaign_participant` in this campaign | Valid submission | **Accumulates**: `total_bags_purchased += new bags`, `prepaid_amount += new bags × bag_price` (no new row is created) |
 | 5 | Successfully recorded | — | The campaign's remaining bags decrease accordingly; the participant list updates |
-| 6 | The `customer` does not exist yet | Staff selects "Create new customer" within the form | Allows quick entry of `name` + `phone`, creates a new `customer` and uses it immediately |
+| 6 | The `customer` does not exist yet | Staff selects "Create new customer" within the form | Allows quick entry of `name` (required), `phone` and `address` (both optional), creates a new `customer` and uses it immediately |
 | 7 | Case 3 above (this is a **new** `campaign_participant` for this customer — their first time in this campaign) | The participant is created | The system also **resets `customer.action_status = undetermined`**, per US-18 — a new campaign engagement restarts the interaction workflow. This reset does NOT happen for case 4 (accumulating bags into an existing participant), since that's not a new engagement. |
 
 **Business Rules applied:** Rule #7 (accumulation). `prepaid_amount` is **not revenue** — it is an internal reconciliation figure only.
@@ -357,8 +357,9 @@ This is the single source of truth for schema design across the whole document.
 | 1 | Viewing a Customer Page or Customer List row | Clicks "Edit" on the customer | A form pre-filled with current `name`, `phone`, `address` is shown |
 | 2 | Fields edited, `name` still non-empty | Saves | `customer` record updates; no side effects on tokens/campaigns/orders |
 | 3 | `name` left empty | Saves | Validation error, blocks submission (name remains required) |
+| 4 | `phone` and/or `address` left blank | Saves | Allowed — both remain optional on edit, same as at creation (US-03 AC #6) |
 
-**Access:** Both Owner and Staff can perform this (per the permission matrix in Module 10).
+**Access:** Both Owner and Staff can perform this (per the permission matrix in Module 10). This is the same permission level as `action_status` updates (US-18) — Staff has full read/write access to a customer's core profile fields, but not to their tokens/orders (which stay Owner-only per Module 10).
 
 ---
 
@@ -707,11 +708,8 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | US-02 Close Campaign | ✅ | ❌ |
 | US-24 Edit Campaign (name/date/total_bags/pool) | ✅ | ❌ |
 | US-25 Delete Campaign | ✅ | ❌ |
-| US-26 Edit Participant | ✅ | ✅ |
-| US-27 Draft Participant (create) | ✅ | ✅ |
-| US-27 Draft Participant (confirm) | ✅ | ✅ |
-| US-27 Draft Participant (cancel) | ✅ | ✅ |
-| Delete Participant (no items recorded, campaign open) | ✅ | ✅ |
+| US-26 Edit Participant | ✅ | ❌ |
+| US-27 Draft Participant (create/confirm/cancel) | ✅ | ❌ |
 | US-03 Record Campaign Participant | ✅ | ✅ |
 | US-04 Record Item (open bag) | ✅ | ✅ |
 | View Campaign list & detail | ✅ | ✅ |

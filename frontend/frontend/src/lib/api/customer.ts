@@ -23,6 +23,12 @@ export type CreateCustomerInput = {
   address?: string;
 };
 
+export type UpdateCustomerInput = {
+  name: string;
+  phone?: string;
+  address?: string;
+};
+
 export type TokenStatus =
   | "HOLDING"
   | "EXCHANGED"
@@ -115,6 +121,13 @@ export const customerApi = {
 
   create: (input: CreateCustomerInput) =>
     apiClient.post<Customer>("/api/customers", {
+      name: input.name,
+      phone: input.phone ?? null,
+      address: input.address ?? null,
+    }),
+
+  update: (id: string, input: UpdateCustomerInput) =>
+    apiClient.patch<CustomerDetail>(`/api/customers/${id}`, {
       name: input.name,
       phone: input.phone ?? null,
       address: input.address ?? null,

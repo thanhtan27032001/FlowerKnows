@@ -134,7 +134,7 @@ export const campaignKeys = {
 /** Near-realtime polling for Campaign list/detail only (not app-wide). */
 export const campaignLiveQueryOptions = {
   staleTime: 0,
-  refetchInterval: 4_000,
+  refetchInterval: 8_000,
   refetchIntervalInBackground: false,
   refetchOnWindowFocus: true as const,
 };

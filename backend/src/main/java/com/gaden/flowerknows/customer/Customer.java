@@ -23,10 +23,12 @@ public class Customer {
     @Column(nullable = false)
     private String name;
 
-    @Column(length = 20)
+    /** Optional at creation (v2.1) — only name is required. */
+    @Column(nullable = true, length = 20)
     private String phone;
 
-    @Column(length = 500)
+    /** Free-text address, optional — not split into structured fields. */
+    @Column(nullable = true, length = 500)
     private String address;
 
     @Enumerated(EnumType.STRING)

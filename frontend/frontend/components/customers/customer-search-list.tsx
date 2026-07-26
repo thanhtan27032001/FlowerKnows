@@ -11,6 +11,7 @@ import {
   ACTION_STATUS_VALUES,
   customerApi,
   customerKeys,
+  type Customer,
   type CustomerActionStatus,
 } from "@/src/lib/api/customer";
 import { type ShippingStatus } from "@/src/lib/api/order";
@@ -51,6 +52,7 @@ type Props = {
   shippingStatus: ShippingStatus | "";
   onShippingStatusChange: (value: ShippingStatus | "") => void;
   onCreate: () => void;
+  onEdit: (customer: Customer) => void;
 };
 
 export function CustomerSearchList({
@@ -61,6 +63,7 @@ export function CustomerSearchList({
   shippingStatus,
   onShippingStatusChange,
   onCreate,
+  onEdit,
 }: Props) {
   const t = useTranslations("customers.search");
   const tStatus = useTranslations("common.status");
@@ -193,7 +196,7 @@ export function CustomerSearchList({
         </Button>
       </div>
 
-      {isLoading && <ListSkeleton columns={4} />}
+      {isLoading && <ListSkeleton columns={5} />}
 
       {isError && (
         <QueryErrorState
@@ -216,25 +219,45 @@ export function CustomerSearchList({
         <>
           <div className="grid gap-3 md:hidden">
             {customers.map((customer) => (
-              <Link key={customer.id} href={`/customers/${customer.id}`}>
-                <Card className="fk-card-shadow fk-card-shadow-hover transition-colors duration-200 hover:bg-muted/30 motion-reduce:transition-none">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base leading-snug">
-                      {customer.name}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      {customer.phone || tCommon("fallback.noPhone")}
-                    </p>
-                  </CardHeader>
-                  <CardContent className="flex flex-wrap gap-2">
+              <Card
+                key={customer.id}
+                className="fk-card-shadow fk-card-shadow-hover transition-colors duration-200 hover:bg-muted/30 motion-reduce:transition-none"
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      href={`/customers/${customer.id}`}
+                      className="min-w-0 space-y-1"
+                    >
+                      <CardTitle className="text-base leading-snug">
+                        {customer.name}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        {customer.phone || tCommon("fallback.noPhone")}
+                      </p>
+                    </Link>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onEdit(customer)}
+                    >
+                      {tCommon("actions.edit")}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-2">
+                  <Link href={`/customers/${customer.id}`}>
                     <StatusBadge type="action" status={customer.actionStatus} />
+                  </Link>
+                  <Link href={`/customers/${customer.id}`}>
                     <StatusBadge
                       type="shipping"
                       status={customer.latestShippingStatus}
                     />
-                  </CardContent>
-                </Card>
-              </Link>
+                  </Link>
+                </CardContent>
+              </Card>
             ))}
           </div>
 
@@ -246,11 +269,14 @@ export function CustomerSearchList({
                   <TableHead>{t("columns.phone")}</TableHead>
                   <TableHead>{t("columns.actionStatus")}</TableHead>
                   <TableHead>{t("columns.shippingStatus")}</TableHead>
+                  <TableHead className="w-[1%] text-right">
+                    {tCommon("actions.edit")}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {customers.map((customer) => (
-                  <TableRow key={customer.id} className="cursor-pointer">
+                  <TableRow key={customer.id}>
                     <TableCell>
                       <Link
                         href={`/customers/${customer.id}`}
@@ -273,6 +299,16 @@ export function CustomerSearchList({
                         type="shipping"
                         status={customer.latestShippingStatus}
                       />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onEdit(customer)}
+                      >
+                        {tCommon("actions.edit")}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

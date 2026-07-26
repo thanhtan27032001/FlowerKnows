@@ -12,6 +12,7 @@ import { CashOutForm } from "@/components/customers/cash-out-form";
 import { CustomerActionStatusSelect } from "@/components/customers/customer-action-status-select";
 import { CustomerOrderStatusSection } from "@/components/customers/customer-order-status-section";
 import { CustomerTokenActionBar } from "@/components/customers/customer-token-action-bar";
+import { EditCustomerForm } from "@/components/customers/edit-customer-form";
 import { HistoryTokenCard } from "@/components/customers/history-token-card";
 import { HoldingTokenCard } from "@/components/customers/holding-token-card";
 import { ItemExchangeForm } from "@/components/customers/item-exchange-form";
@@ -74,6 +75,7 @@ export default function CustomerDetailPage({
   const [cashOutOpen, setCashOutOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const { flashIds, flash } = useFlashIds();
 
   const {
@@ -144,7 +146,17 @@ export default function CustomerDetailPage({
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
                 <div className="min-w-0 space-y-2">
-                  <CardTitle className="text-xl">{customer.name}</CardTitle>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle className="text-xl">{customer.name}</CardTitle>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEditOpen(true)}
+                    >
+                      {tCommon("actions.edit")}
+                    </Button>
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     {customer.phone || tCommon("fallback.noPhone")}
                     {customer.address ? ` · ${customer.address}` : ""}
@@ -265,6 +277,12 @@ export default function CustomerDetailPage({
               onCashOut={() => setCashOutOpen(true)}
               onCreateOrder={() => setOrderOpen(true)}
               onCancel={() => setCancelOpen(true)}
+            />
+
+            <EditCustomerForm
+              open={editOpen}
+              onOpenChange={setEditOpen}
+              customer={customer}
             />
 
             {isOwner ? (

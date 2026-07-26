@@ -80,7 +80,7 @@ export function decodeRoleFromToken(token: string): AccountRole | null {
 }
 
 export function defaultLandingPath(role: AccountRole): string {
-  return role === "OWNER" ? "/" : "/customers";
+  return role === "OWNER" ? "/" : "/campaigns";
 }
 
 const OWNER_ONLY_PREFIXES = [

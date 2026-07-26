@@ -42,7 +42,7 @@ export function AppSidebar() {
     >
       <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
         <Link
-          href={isOwner ? "/" : "/customers"}
+          href={isOwner ? "/" : "/campaigns"}
           className="px-2 font-[family-name:var(--font-display)] text-base font-semibold tracking-tight text-sidebar-foreground"
         >
           {tCommon("brand")}

@@ -102,7 +102,9 @@
         "exchangeOut": "Xuất kho do đổi món (token mới)",
         "cashOutReturn": "Hoàn kho từ đổi tiền",
         "tokenCancelReturn": "Hoàn kho từ hủy token quá hạn",
-        "orderFulfillment": "Xuất kho do lên đơn"
+        "orderFulfillment": "Xuất kho do lên đơn",
+        "exchangeUndoReturn": "Hoàn kho từ hoàn tác đổi món",
+        "exchangeUndoRemove": "Xuất kho do hoàn tác đổi món"
       },
       "exchange": {
         "itemExchange": "Đổi món",
@@ -446,6 +448,18 @@
       "history": "Lịch sử",
       "historyEmpty": "Chưa có token đã xử lý."
     },
+    "exchangeHistory": {
+      "title": "Lịch sử đổi món",
+      "loading": "Đang tải lịch sử đổi món",
+      "loadError": "Không tải được lịch sử đổi món",
+      "empty": "Chưa có lần đổi món nào.",
+      "itemExchange": "Đổi món",
+      "gaveUp": "Món đã đưa",
+      "received": "Món nhận được",
+      "additionalPayment": "Thanh toán thêm",
+      "undo": "Hoàn tác đổi món",
+      "undoBlockedTooltip": "Không thể hoàn tác vì món nhận được đã bị thao tác tiếp (đổi/bán/lên đơn)."
+    },
     "tokenCard": {
       "overdue": "Quá hạn (30+ ngày)",
       "tokenValue": "Giá trị token",
@@ -730,6 +744,15 @@
     "errors": {
       "notHolding": "Token không ở trạng thái Đang giữ",
       "conflict": "Xung đột: {message}. Tải lại trang khách và chỉ thử với token Đang giữ."
+    },
+    "undoDialog": {
+      "title": "Hoàn tác đổi món?",
+      "intro": "Thao tác này sẽ đảo ngược toàn bộ lần đổi món và không thể hoàn tác lại.",
+      "willDisappear": "Món sẽ biến mất (token nhận từ đổi món):",
+      "willRestore": "Món gốc sẽ trở lại Đang giữ:",
+      "none": "—",
+      "confirm": "Hoàn tác đổi món",
+      "failed": "Không hoàn tác được đổi món"
     }
   }
 }

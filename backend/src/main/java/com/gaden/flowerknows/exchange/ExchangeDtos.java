@@ -59,4 +59,17 @@ public final class ExchangeDtos {
             List<TokenBriefResponse> tokensOut
     ) {
     }
+
+    /** Customer exchange history row — includes US-29 undo eligibility. */
+    public record ExchangeHistoryResponse(
+            UUID id,
+            UUID customerId,
+            String type,
+            Instant createdAt,
+            BigDecimal additionalPayment,
+            List<TokenBriefResponse> tokensIn,
+            List<TokenBriefResponse> tokensOut,
+            boolean undoEligible
+    ) {
+    }
 }

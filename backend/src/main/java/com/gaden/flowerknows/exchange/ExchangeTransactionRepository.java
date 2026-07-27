@@ -12,6 +12,11 @@ import java.util.UUID;
 
 public interface ExchangeTransactionRepository extends JpaRepository<ExchangeTransaction, UUID> {
 
+    List<ExchangeTransaction> findByCustomerIdAndTypeOrderByCreatedAtDesc(
+            UUID customerId,
+            ExchangeType type
+    );
+
     @Query("""
             SELECT e FROM ExchangeTransaction e
             JOIN e.tokensIn t

@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 2.3 (Adds US-28 — Delete a Recorded Item, undo US-04 mistakes, Owner-only)
+**Version:** 2.4 (Adds US-29 — full Undo of an Item Exchange, Owner-only)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -64,7 +64,7 @@ This is the single source of truth for schema design across the whole document.
 |---|---|---|
 | `id` | PK | |
 | `product_id` | FK → product | |
-| `type` | enum | `stock_in` / `stock_adjustment` / `campaign_lock` / `campaign_return` / `exchange_in` / `exchange_out` / `cash_out_return` / `token_cancel_return` / `order_fulfillment` |
+| `type` | enum | `stock_in` / `stock_adjustment` / `campaign_lock` / `campaign_return` / `exchange_in` / `exchange_out` / `cash_out_return` / `token_cancel_return` / `order_fulfillment` / `exchange_undo_return` / `exchange_undo_remove` |
 | `quantity_change` | int | Positive = stock added/returned, negative = stock removed/locked |
 | `cost_price` | decimal, nullable | **Required when `type = stock_in`** — the cost price of this specific batch. Null for all other transaction types (they don't introduce new cost, only move existing stock). |
 | `note` | string, nullable | Required for `stock_adjustment` (reason); optional for other types |
@@ -458,6 +458,27 @@ This is the single source of truth for schema design across the whole document.
 
 ---
 
+### US-29: Undo an Item Exchange
+
+**As** Owner, **I want to** fully reverse a mistaken Item Exchange, **so that** both sides of the swap return to exactly how they were before — the customer keeps their original item(s), and the exchanged-in item(s) go back to being available.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | An `exchange_transaction` (`type = item_exchange`) exists, and **every** token linked via `exchange_token_out` (the "new" tokens created by this exchange) currently has `status = holding` | Owner clicks "Hoàn tác đổi món" on this transaction (visible in the customer's exchange history) | A confirmation dialog is shown, summarizing what will be reversed: which item(s) will disappear, which original item(s) will return to holding |
+| 2 | Any token linked via `exchange_token_out` is no longer `holding` (e.g. it was itself exchanged again, cashed out, ordered, or cancelled since) | Owner attempts to undo | Blocked — "Không thể hoàn tác vì món nhận được đã bị thao tác tiếp (đổi/bán/lên đơn). " — undo requires the full chain to still be untouched |
+| 3 | Owner confirms | — | Single `@Transactional` operation: (a) **every token in `exchange_token_out`** (the new tokens) is **deleted**, and its product quantity is **added back to `product.stock_quantity`**, logging one `stock_transaction` per token (`type = exchange_undo_return`, `quantity_change = +1`), (b) **every token in `exchange_token_in`** (the original tokens given up) has its `status` restored from `exchanged` back to **`holding`** — its original `cost_basis` is untouched (it was never modified during the exchange, only its status changed), and its product quantity is **removed from `product.stock_quantity` again**, logging one `stock_transaction` per token (`type = exchange_undo_remove`, `quantity_change = -1`), (c) the `exchange_transaction` row and its `exchange_token_in`/`exchange_token_out` join rows are **deleted entirely** |
+| 4 | Undo succeeds | Staff/Owner views the Customer Page | The originally-exchanged item(s) reappear as `holding` tokens exactly as before; the item(s) received from the exchange are gone entirely (not shown in history — same reasoning as US-28: this corrects a mistake, it isn't a business event worth remembering); the exchange no longer appears in history at all, since the `exchange_transaction` record itself was deleted |
+| 5 | The original exchange had a non-zero `additional_payment` | Undo succeeds | Since the entire `exchange_transaction` row is deleted, that payment figure is automatically removed from any reconciliation/reporting that sums over `exchange_transaction` rows — no separate reversal entry needed |
+| 6 | `product.stock_quantity` would go negative for any product involved in step 3(b) (i.e. the item being "re-removed" isn't actually available in stock anymore — someone else may have taken it via a totally separate flow in the meantime) | Owner confirms the undo | Blocked with a clear "Không đủ hàng để hoàn tác (SP X cần trừ Y nhưng kho chỉ còn Z)" error — **the whole undo transaction rolls back, nothing is partially applied** |
+
+**Access:** Owner only (same reasoning as US-28 — this corrects already-recorded data).
+
+**Note:** This is a hard, destructive undo — unlike Cancel Token (US-08) or a fresh Item Exchange, nothing about this transaction is preserved for history once undone. If an audit trail of "this exchange happened and was later undone" is ever needed, that would require a separate audit-log entity outside the current scope — flag this as an open question if it matters to you.
+
+---
+
 ### US-07: Cash Out
 
 **As** Staff, **I want to** convert one or more of a customer's `item_token`s into a cash refund, **so that** I can fulfill a request when the customer does not want the item.
@@ -654,6 +675,8 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | `cash_out_return` | Returned from Cash Out |
 | `token_cancel_return` | Returned from Overdue Token Cancellation |
 | `order_fulfillment` | Removed for Order Fulfillment |
+| `exchange_undo_return` | Returned from Undoing an Item Exchange |
+| `exchange_undo_remove` | Removed from Undoing an Item Exchange |
 
 **⚠️ Important dev note — retrofit earlier modules:** The following USs (already specified earlier in this document) currently affect `stock_quantity` but were **not explicitly described as needing to write a `stock_transaction`**. During implementation, add `stock_transaction` writes to the correct DB transaction for the steps below:
 
@@ -734,6 +757,7 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | View Campaign list & detail | ✅ | ✅ |
 | US-05 View Customer Page (tokens holding/history) | ✅ | ✅ (read-only — no action buttons) |
 | US-06 Item Exchange | ✅ | ❌ |
+| US-29 Undo Item Exchange | ✅ | ❌ |
 | US-07 Cash Out | ✅ | ❌ |
 | US-08 Cancel Token (incl. overdue alerts) | ✅ | ❌ |
 | US-09 Create Order / update shipping status | ✅ | ❌ |

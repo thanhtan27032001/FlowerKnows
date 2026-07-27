@@ -34,6 +34,8 @@ const STOCK_TX_KEY: Record<string, string> = {
   CASH_OUT_RETURN: "cashOutReturn",
   TOKEN_CANCEL_RETURN: "tokenCancelReturn",
   ORDER_FULFILLMENT: "orderFulfillment",
+  EXCHANGE_UNDO_RETURN: "exchangeUndoReturn",
+  EXCHANGE_UNDO_REMOVE: "exchangeUndoRemove",
 };
 
 const CAMPAIGN_STATUS_KEY: Record<"OPEN" | "CLOSED", string> = {

@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { customerKeys, type CustomerToken } from "@/src/lib/api/customer";
 import { campaignKeys } from "@/src/lib/api/campaign";
-import { exchangeApi, exchangeErrorMessage } from "@/src/lib/api/exchange";
+import { exchangeApi, exchangeErrorMessage, exchangeKeys } from "@/src/lib/api/exchange";
 import { productApi, productKeys } from "@/src/lib/api/product";
 import { vnd } from "@/src/lib/format";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -117,6 +117,9 @@ export function ItemExchangeForm({
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: customerKeys.detail(customerId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: exchangeKeys.byCustomer(customerId),
       });
       await queryClient.invalidateQueries({ queryKey: productKeys.all });
       await queryClient.invalidateQueries({ queryKey: campaignKeys.all });

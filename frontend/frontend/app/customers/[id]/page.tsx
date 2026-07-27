@@ -15,6 +15,7 @@ import { CustomerTokenActionBar } from "@/components/customers/customer-token-ac
 import { EditCustomerForm } from "@/components/customers/edit-customer-form";
 import { HistoryTokenCard } from "@/components/customers/history-token-card";
 import { HoldingTokenCard } from "@/components/customers/holding-token-card";
+import { CustomerExchangeHistory } from "@/components/customers/customer-exchange-history";
 import { ItemExchangeForm } from "@/components/customers/item-exchange-form";
 import { CreateOrderForm } from "@/components/orders/create-order-form";
 import { CancelTokenDialog } from "@/components/tokens/cancel-token-dialog";
@@ -253,6 +254,8 @@ export default function CustomerDetailPage({
                 </div>
               )}
             </section>
+
+            <CustomerExchangeHistory customerId={customer.id} />
 
             <section className="space-y-3">
               <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">

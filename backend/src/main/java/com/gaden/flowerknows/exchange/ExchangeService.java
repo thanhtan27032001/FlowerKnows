@@ -156,6 +156,94 @@ public class ExchangeService {
         return toResponse(saved);
     }
 
+    @Transactional(readOnly = true)
+    public List<ExchangeDtos.ExchangeHistoryResponse> listCustomerItemExchanges(UUID customerId) {
+        customerService.requireCustomer(customerId);
+        return exchangeRepository
+                .findByCustomerIdAndTypeOrderByCreatedAtDesc(customerId, ExchangeType.ITEM_EXCHANGE)
+                .stream()
+                .map(this::toHistoryResponse)
+                .toList();
+    }
+
+    /**
+     * US-29: fully reverse an item exchange. Hard-deletes received tokens, restores
+     * original tokens to HOLDING, reverses stock, and deletes the exchange row.
+     */
+    @Transactional
+    public void undoItemExchange(UUID exchangeTransactionId) {
+        ExchangeTransaction tx = exchangeRepository.findById(exchangeTransactionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Exchange transaction not found: " + exchangeTransactionId
+                ));
+
+        if (tx.getType() != ExchangeType.ITEM_EXCHANGE) {
+            throw new BusinessException("Only item exchanges can be undone");
+        }
+
+        // Materialize collections inside the transaction (avoid ConcurrentModification).
+        List<ItemToken> tokensOut = new ArrayList<>(tx.getTokensOut());
+        List<ItemToken> tokensIn = new ArrayList<>(tx.getTokensIn());
+
+        for (ItemToken token : tokensOut) {
+            if (token.getStatus() != TokenStatus.HOLDING) {
+                throw new IllegalStateException(
+                        "Không thể hoàn tác vì món nhận được đã bị thao tác tiếp (đổi/bán/lên đơn). "
+                );
+            }
+        }
+
+        // Pre-check stock for step (b) so we never write partial stock rows.
+        Map<UUID, Integer> removeCounts = new HashMap<>();
+        Map<UUID, Product> productsById = new HashMap<>();
+        for (ItemToken token : tokensIn) {
+            Product product = token.getProduct();
+            productsById.put(product.getId(), product);
+            removeCounts.merge(product.getId(), 1, Integer::sum);
+        }
+        for (Map.Entry<UUID, Integer> entry : removeCounts.entrySet()) {
+            Product product = productsById.get(entry.getKey());
+            int needed = entry.getValue();
+            int available = product.getStockQuantity();
+            if (needed > available) {
+                throw new BusinessException(
+                        "Không đủ hàng để hoàn tác (SP %s cần trừ %d nhưng kho chỉ còn %d)"
+                                .formatted(product.getName(), needed, available)
+                );
+            }
+        }
+
+        // Detach join rows before deleting out-tokens (FK: exchange_token_out → item_token).
+        tx.getTokensOut().clear();
+        tx.getTokensIn().clear();
+        exchangeRepository.saveAndFlush(tx);
+
+        // (a) Delete received tokens and return each unit to stock.
+        for (ItemToken token : tokensOut) {
+            stockService.applyStockChange(
+                    token.getProduct(),
+                    1,
+                    StockTransactionType.EXCHANGE_UNDO_RETURN,
+                    "Returned from undoing item exchange (received token)"
+            );
+            itemTokenRepository.delete(token);
+        }
+
+        // (b) Restore original tokens to HOLDING and re-remove from stock.
+        for (ItemToken token : tokensIn) {
+            token.setStatus(TokenStatus.HOLDING);
+            stockService.applyStockChange(
+                    token.getProduct(),
+                    -1,
+                    StockTransactionType.EXCHANGE_UNDO_REMOVE,
+                    "Removed from undoing item exchange (original token restored)"
+            );
+        }
+
+        // (d) Delete the exchange transaction (join rows already cleared).
+        exchangeRepository.delete(tx);
+    }
+
     private List<ItemToken> loadHoldingTokens(List<UUID> tokenIds, UUID customerId) {
         List<ItemToken> tokens = itemTokenRepository.findByIdInAndCustomerId(tokenIds, customerId);
         if (tokens.size() != tokenIds.size()) {
@@ -264,6 +352,24 @@ public class ExchangeService {
                 tx.getActualRefundAmount(),
                 tx.getTokensIn().stream().map(this::toBrief).toList(),
                 tx.getTokensOut().stream().map(this::toBrief).toList()
+        );
+    }
+
+    private ExchangeDtos.ExchangeHistoryResponse toHistoryResponse(ExchangeTransaction tx) {
+        List<ExchangeDtos.TokenBriefResponse> tokensOut = tx.getTokensOut().stream()
+                .map(this::toBrief)
+                .toList();
+        boolean undoEligible = !tokensOut.isEmpty()
+                && tokensOut.stream().allMatch(t -> TokenStatus.HOLDING.name().equals(t.status()));
+        return new ExchangeDtos.ExchangeHistoryResponse(
+                tx.getId(),
+                tx.getCustomer().getId(),
+                tx.getType().name(),
+                tx.getCreatedAt(),
+                tx.getAdditionalPayment(),
+                tx.getTokensIn().stream().map(this::toBrief).toList(),
+                tokensOut,
+                undoEligible
         );
     }
 

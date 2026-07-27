@@ -39,16 +39,37 @@ export type ExchangeResponse = {
   tokensOut: TokenBrief[];
 };
 
+export type ExchangeHistoryItem = {
+  id: string;
+  customerId: string;
+  type: string;
+  createdAt: string;
+  additionalPayment: number | null;
+  tokensIn: TokenBrief[];
+  tokensOut: TokenBrief[];
+  undoEligible: boolean;
+};
+
 export const exchangeKeys = {
   all: ["exchanges"] as const,
+  byCustomer: (customerId: string) =>
+    [...exchangeKeys.all, "customer", customerId] as const,
 };
 
 export const exchangeApi = {
+  listByCustomer: (customerId: string) =>
+    apiClient.get<ExchangeHistoryItem[]>(
+      `/api/exchanges/customer/${customerId}`
+    ),
+
   itemExchange: (input: ItemExchangeInput) =>
     apiClient.post<ExchangeResponse>("/api/exchanges/item-exchange", input),
 
   cashOut: (input: CashOutInput) =>
     apiClient.post<ExchangeResponse>("/api/exchanges/cash-out", input),
+
+  undo: (exchangeTransactionId: string) =>
+    apiClient.post<void>(`/api/exchanges/${exchangeTransactionId}/undo`),
 };
 
 type Translate = (

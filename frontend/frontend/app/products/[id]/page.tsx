@@ -9,6 +9,7 @@ import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { AppShell } from "@/components/layout/app-shell";
 import { MovementHistory } from "@/components/products/movement-history";
+import { EditProductForm } from "@/components/products/edit-product-form";
 import { StockAdjustmentForm } from "@/components/products/stock-adjustment-form";
 import { StockInForm } from "@/components/products/stock-in-form";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -64,6 +65,7 @@ export default function ProductDetailPage({
   const tCommon = useTranslations("common");
   const { isOwner } = useAuth();
   const [stockInOpen, setStockInOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [stockInNotice, setStockInNotice] = useState<string | null>(null);
 
@@ -150,6 +152,9 @@ export default function ProductDetailPage({
                   <Button onClick={() => setStockInOpen(true)}>
                     {tDetail("stockIn")}
                   </Button>
+                  <Button variant="outline" onClick={() => setEditOpen(true)}>
+                    {tDetail("editProduct")}
+                  </Button>
                   {isOwner ? (
                     <Button
                       variant="outline"
@@ -190,6 +195,11 @@ export default function ProductDetailPage({
                   );
                 }
               }}
+            />
+            <EditProductForm
+              open={editOpen}
+              onOpenChange={setEditOpen}
+              product={product}
             />
             {isOwner ? (
               <StockAdjustmentForm

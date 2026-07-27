@@ -16,6 +16,11 @@ export type CreateProductInput = {
   confirmDuplicate?: boolean;
 };
 
+export type UpdateProductInput = {
+  name: string;
+  confirmDuplicate?: boolean;
+};
+
 export type StockInItemInput = {
   productId: string;
   quantity: number;
@@ -56,16 +61,25 @@ export const productApi = {
 
   get: (id: string) => apiClient.get<Product>(`/api/products/${id}`),
 
-  nameExists: (name: string) =>
-    apiClient.get<{ exists: boolean }>(
-      `/api/products/name-exists?name=${encodeURIComponent(name)}`
-    ),
+  nameExists: (name: string, excludeId?: string) => {
+    const params = new URLSearchParams({ name });
+    if (excludeId) params.set("excludeId", excludeId);
+    return apiClient.get<{ exists: boolean }>(
+      `/api/products/name-exists?${params.toString()}`
+    );
+  },
 
   create: (input: CreateProductInput) =>
     apiClient.post<Product>("/api/products", {
       name: input.name,
       listPrice: input.listPrice,
       stockQuantity: input.stockQuantity ?? 0,
+      confirmDuplicate: input.confirmDuplicate ?? false,
+    }),
+
+  update: (id: string, input: UpdateProductInput) =>
+    apiClient.patch<Product>(`/api/products/${id}`, {
+      name: input.name,
       confirmDuplicate: input.confirmDuplicate ?? false,
     }),
 

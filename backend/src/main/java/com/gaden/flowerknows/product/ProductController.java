@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,8 +35,11 @@ public class ProductController {
 
     @GetMapping("/name-exists")
     @PreAuthorize("hasAnyRole('OWNER','STAFF')")
-    public Map<String, Boolean> nameExists(@RequestParam String name) {
-        return Map.of("exists", productService.nameExists(name));
+    public Map<String, Boolean> nameExists(
+            @RequestParam String name,
+            @RequestParam(required = false) UUID excludeId
+    ) {
+        return Map.of("exists", productService.nameExists(name, excludeId));
     }
 
     @GetMapping("/{id}")
@@ -49,6 +53,15 @@ public class ProductController {
     @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public ProductDtos.ProductResponse create(@Valid @RequestBody ProductDtos.CreateProductRequest request) {
         return productService.create(request);
+    }
+
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
+    public ProductDtos.ProductResponse update(
+            @PathVariable UUID id,
+            @Valid @RequestBody ProductDtos.UpdateProductRequest request
+    ) {
+        return productService.update(id, request);
     }
 
     @PostMapping("/stock-in")

@@ -34,6 +34,15 @@ public final class ProductDtos {
         }
     }
 
+    public record UpdateProductRequest(
+            @NotBlank(message = "name is required") String name,
+            Boolean confirmDuplicate
+    ) {
+        public boolean isConfirmDuplicate() {
+            return Boolean.TRUE.equals(confirmDuplicate);
+        }
+    }
+
     public record StockInItemRequest(
             @NotNull(message = "productId is required") UUID productId,
             @Min(value = 1, message = "quantity must be at least 1") int quantity,

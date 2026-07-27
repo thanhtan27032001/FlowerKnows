@@ -515,6 +515,13 @@
       "duplicateDescription": "Đã có sản phẩm tên \"{name}\". Tạo thêm cùng tên có thể làm lệch báo cáo. Vẫn tạo, hoặc hủy và chọn sản phẩm có sẵn.",
       "createAnyway": "Vẫn tạo"
     },
+    "edit": {
+      "title": "Sửa sản phẩm",
+      "description": "Đổi tên sản phẩm. Giá niêm yết và tồn kho không đổi ở đây.",
+      "submit": "Lưu tên",
+      "saveAnyway": "Vẫn lưu",
+      "failed": "Không cập nhật được sản phẩm"
+    },
     "detail": {
       "loadError": "Không tải được sản phẩm",
       "listPrice": "Giá niêm yết",
@@ -522,6 +529,7 @@
       "avgCost": "Giá vốn trung bình",
       "lowStock": "Sắp hết",
       "stockIn": "Nhập kho",
+      "editProduct": "Sửa tên",
       "adjustStock": "Điều chỉnh tồn",
       "movementHistory": "Lịch sử chuyển kho",
       "stockInNotice": "Đã nhập kho. Giá vốn trung bình hiện là {avgCost}."

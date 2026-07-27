@@ -49,8 +49,12 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public boolean nameExists(String name) {
-        return productRepository.existsByNameIgnoreCase(name.trim());
+    public boolean nameExists(String name, UUID excludeId) {
+        String trimmed = name.trim();
+        if (excludeId == null) {
+            return productRepository.existsByNameIgnoreCase(trimmed);
+        }
+        return productRepository.existsByNameIgnoreCaseAndIdNot(trimmed, excludeId);
     }
 
     @Transactional
@@ -74,6 +78,20 @@ public class ProductService {
                     "Initial stock"
             );
         }
+        return ProductDtos.ProductResponse.from(product, lowStockThreshold);
+    }
+
+    @Transactional
+    public ProductDtos.ProductResponse update(UUID id, ProductDtos.UpdateProductRequest request) {
+        Product product = requireProduct(id);
+        String name = request.name().trim();
+        if (productRepository.existsByNameIgnoreCaseAndIdNot(name, id)
+                && !request.isConfirmDuplicate()) {
+            throw new BusinessException(
+                    "A product named \"" + name + "\" already exists. Confirm to create a duplicate, or select the existing product."
+            );
+        }
+        product.setName(name);
         return ProductDtos.ProductResponse.from(product, lowStockThreshold);
     }
 

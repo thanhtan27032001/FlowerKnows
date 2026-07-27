@@ -222,8 +222,8 @@ export function ParticipantItemsPanel({
   const canDeleteParticipant = campaignOpen && itemsRecorded === 0;
 
   return (
-    <div className="rounded-lg ring-1 ring-foreground/10 bg-card">
-      <div className="flex items-stretch gap-1">
+    <div className="min-w-0 max-w-full overflow-hidden rounded-lg bg-card ring-1 ring-foreground/10">
+      <div className="flex min-w-0 items-stretch gap-1">
         <button
           type="button"
           className="flex min-w-0 flex-1 items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/40"
@@ -260,10 +260,7 @@ export function ParticipantItemsPanel({
                 </StatusBadge>
               )}
             </span>
-            <span
-              className="block min-w-0 truncate text-sm leading-tight text-muted-foreground"
-              title={itemNamesPreview ?? undefined}
-            >
+            <span className="block min-w-0 text-xs font-normal leading-snug text-muted-foreground/80 break-words whitespace-normal">
               {isDraft ? t("draftNoItems") : (itemNamesPreview ?? t("noItems"))}
             </span>
           </span>

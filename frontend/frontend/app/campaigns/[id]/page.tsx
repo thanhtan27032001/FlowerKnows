@@ -155,7 +155,7 @@ export default function CampaignDetailPage({
         )}
 
         {campaign && (
-          <div className="space-y-5">
+          <div className="min-w-0 space-y-5">
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
                 <div>
@@ -281,7 +281,7 @@ export default function CampaignDetailPage({
               </CardContent>
             </Card>
 
-            <section className="space-y-3">
+            <section className="min-w-0 space-y-3">
               <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
                 {tDetail("poolTitle")}
               </h2>
@@ -343,7 +343,7 @@ export default function CampaignDetailPage({
               )}
             </section>
 
-            <section className="space-y-3">
+            <section className="min-w-0 space-y-3">
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
                   {tDetail("participantsTitle")}
@@ -366,7 +366,7 @@ export default function CampaignDetailPage({
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid gap-1">
+                <div className="grid min-w-0 gap-1">
                   {campaign.participants.map((p) => (
                     <ParticipantItemsPanel
                       key={p.id}

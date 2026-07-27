@@ -38,7 +38,7 @@ export function AppSidebar() {
   return (
     <Sidebar
       collapsible="none"
-      className="fk-sidebar-shell sticky top-0 hidden h-svh lg:flex"
+      className="fk-sidebar-shell sticky top-0 hidden h-svh lg:flex lg:flex-col"
     >
       <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
         <Link

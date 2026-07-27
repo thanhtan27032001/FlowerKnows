@@ -81,8 +81,9 @@ public class ParticipantService {
         CampaignParticipant participant = participantRepository
                 .findByCampaignIdAndCustomerId(campaignId, customer.getId())
                 .orElse(null);
+        boolean isNew = participant == null;
 
-        if (participant == null) {
+        if (isNew) {
             participant = new CampaignParticipant(
                     campaign,
                     customer,
@@ -102,7 +103,13 @@ public class ParticipantService {
         }
 
         CampaignParticipant saved = participantRepository.save(participant);
-        return toSummaryResponse(saved);
+        if (isNew) {
+            return toSummaryResponse(saved, 0, List.of());
+        }
+        int itemsRecorded = (int) itemTokenRepository.countBySourceTypeAndSourceId(
+                SourceType.CAMPAIGN, saved.getId()
+        );
+        return toSummaryResponse(saved, itemsRecorded, List.of());
     }
 
     @Transactional
@@ -130,7 +137,7 @@ public class ParticipantService {
         campaign.getParticipants().add(draft);
         customer.setActionStatus(CustomerActionStatus.UNDETERMINED);
 
-        return toSummaryResponse(participantRepository.save(draft));
+        return toSummaryResponse(participantRepository.save(draft), 0, List.of());
     }
 
     @Transactional
@@ -153,7 +160,7 @@ public class ParticipantService {
                 campaign.getBagPrice().multiply(BigDecimal.valueOf(participant.getTotalBagsPurchased()))
         );
 
-        return toSummaryResponse(participant);
+        return toSummaryResponse(participant, 0, List.of());
     }
 
     @Transactional

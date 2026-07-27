@@ -146,12 +146,40 @@ export function RecordParticipantForm({
       draft
         ? campaignApi.createDraftParticipant(campaign.id, input)
         : campaignApi.recordParticipant(campaign.id, input),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: campaignKeys.detail(campaign.id),
-      });
-      await queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
-      await queryClient.invalidateQueries({ queryKey: customerKeys.all });
+    onSuccess: async (summary) => {
+      queryClient.setQueryData(
+        campaignKeys.detail(campaign.id),
+        (current: CampaignDetail | undefined) => {
+          if (!current) return current;
+          const existing = current.participants.find((p) => p.id === summary.id);
+          const deltaBags =
+            summary.status === "CONFIRMED"
+              ? summary.totalBagsPurchased -
+                (existing?.status === "CONFIRMED"
+                  ? existing.totalBagsPurchased
+                  : 0)
+              : 0;
+          const nextParticipant = {
+            ...summary,
+            itemsRecorded: existing?.itemsRecorded ?? summary.itemsRecorded ?? 0,
+            recordedItemNames:
+              existing?.recordedItemNames?.length
+                ? existing.recordedItemNames
+                : (summary.recordedItemNames ?? []),
+          };
+          return {
+            ...current,
+            bagsSold: current.bagsSold + deltaBags,
+            participants: existing
+              ? current.participants.map((p) =>
+                  p.id === summary.id ? nextParticipant : p
+                )
+              : [...current.participants, nextParticipant],
+          };
+        }
+      );
+      void queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: customerKeys.all });
       await runSuccess(() => {
         onOpenChange(false);
         resetForm();

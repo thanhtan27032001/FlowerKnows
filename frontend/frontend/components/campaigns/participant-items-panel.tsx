@@ -160,12 +160,28 @@ export function ParticipantItemsPanel({
   const confirmMutation = useMutation({
     mutationFn: () =>
       campaignApi.confirmDraftParticipant(campaignId, participant.id),
-    onSuccess: async () => {
+    onSuccess: async (summary) => {
       setActionError(null);
-      await queryClient.invalidateQueries({
-        queryKey: campaignKeys.detail(campaignId),
-      });
-      await queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
+      queryClient.setQueryData(
+        campaignKeys.detail(campaignId),
+        (current: CampaignDetail | undefined) => {
+          if (!current) return current;
+          return {
+            ...current,
+            bagsSold: current.bagsSold + summary.totalBagsPurchased,
+            participants: current.participants.map((p) =>
+              p.id === summary.id
+                ? {
+                    ...summary,
+                    itemsRecorded: 0,
+                    recordedItemNames: [],
+                  }
+                : p
+            ),
+          };
+        }
+      );
+      void queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
       await runConfirmSuccess(() => undefined);
     },
     onError: (err: unknown) => {
@@ -178,10 +194,24 @@ export function ParticipantItemsPanel({
       campaignApi.deleteParticipant(campaignId, participant.id),
     onSuccess: async () => {
       setActionError(null);
-      await queryClient.invalidateQueries({
-        queryKey: campaignKeys.detail(campaignId),
-      });
-      await queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
+      queryClient.setQueryData(
+        campaignKeys.detail(campaignId),
+        (current: CampaignDetail | undefined) => {
+          if (!current) return current;
+          const deltaBags =
+            participant.status === "CONFIRMED"
+              ? participant.totalBagsPurchased
+              : 0;
+          return {
+            ...current,
+            bagsSold: Math.max(0, current.bagsSold - deltaBags),
+            participants: current.participants.filter(
+              (p) => p.id !== participant.id
+            ),
+          };
+        }
+      );
+      void queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
       await runDeleteSuccess(() => setDeleteOpen(false));
     },
     onError: (err: unknown) => {

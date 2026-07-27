@@ -153,6 +153,22 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
         </div>
 
         <div className="grid gap-2">
+          <Label htmlFor="product-stock">{t("initialStock")}</Label>
+          <Input
+            id="product-stock"
+            type="number"
+            min={0}
+            inputMode="numeric"
+            value={stockQuantity}
+            onChange={(e) => setStockQuantity(e.target.value)}
+            aria-invalid={!!fieldErrors.stockQuantity}
+          />
+          {fieldErrors.stockQuantity && (
+            <p className="text-xs text-destructive">{fieldErrors.stockQuantity}</p>
+          )}
+        </div>
+
+        <div className="grid gap-2">
           <Label htmlFor="product-price">{t("listPrice")}</Label>
           <Input
             id="product-price"
@@ -169,22 +185,6 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
           )}
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="product-stock">{t("initialStock")}</Label>
-          <Input
-            id="product-stock"
-            type="number"
-            min={0}
-            inputMode="numeric"
-            value={stockQuantity}
-            onChange={(e) => setStockQuantity(e.target.value)}
-            aria-invalid={!!fieldErrors.stockQuantity}
-          />
-          {fieldErrors.stockQuantity && (
-            <p className="text-xs text-destructive">{fieldErrors.stockQuantity}</p>
-          )}
-        </div>
-
         {formError && <p className="text-sm text-destructive">{formError}</p>}
       </fieldset>
     </form>
@@ -192,7 +192,7 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
 
   const footer = (
     <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <Button
+      {/* <Button
         type="button"
         variant="outline"
         disabled={locked}
@@ -203,7 +203,7 @@ export function CreateProductForm({ open, onOpenChange }: Props) {
         }}
       >
         {tCommon("actions.cancel")}
-      </Button>
+      </Button> */}
       <PendingButton
         type="button"
         pending={createMutation.isPending}

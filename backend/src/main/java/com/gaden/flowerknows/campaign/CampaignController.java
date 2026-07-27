@@ -85,6 +85,12 @@ public class CampaignController {
         return campaignService.closeCampaign(id);
     }
 
+    @PostMapping("/{id}/reopen")
+    @PreAuthorize("hasRole('OWNER')")
+    public CampaignDtos.CampaignDetailResponse reopen(@PathVariable UUID id) {
+        return campaignService.reopenCampaign(id);
+    }
+
     @PostMapping("/{id}/participants")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('OWNER','STAFF')")

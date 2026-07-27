@@ -271,7 +271,6 @@ public class ParticipantService {
 
         poolItem.setRemainingQuantity(poolItem.getRemainingQuantity() - request.quantity());
         List<ItemToken> saved = itemTokenRepository.saveAll(tokens);
-        campaignService.autoCloseIfPoolEmpty(campaign);
 
         return saved.stream()
                 .map(t -> new TokenRecordResponse(

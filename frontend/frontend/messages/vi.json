@@ -37,6 +37,7 @@
       "creating": "Đang tạo…",
       "confirming": "Đang xác nhận…",
       "closing": "Đang đóng…",
+      "reopening": "Đang mở lại…",
       "cancelling": "Đang hủy…",
       "deleting": "Đang xóa…"
     },
@@ -236,6 +237,7 @@
       "recordParticipant": "Ghi nhận tham gia",
       "recordItem": "Ghi nhận món",
       "closeCampaign": "Đóng phiên live",
+      "reopenCampaign": "Mở lại Campaign",
       "editCampaign": "Sửa phiên live",
       "deleteCampaign": "Xóa phiên live",
       "deleteBlockedTooltip": "Không thể xóa campaign đã có khách tham gia. Hãy đóng campaign thay vì xóa.",
@@ -355,6 +357,13 @@
       "nothingReturned": "Không có gì được hoàn về kho.",
       "confirm": "Xác nhận đóng",
       "failed": "Không đóng được phiên live"
+    },
+    "reopen": {
+      "title": "Mở lại Campaign",
+      "summary": "Các sản phẩm sau sẽ được khóa lại từ kho chung vào pool phiên live:",
+      "nothingToRelock": "Không còn sản phẩm cần khóa lại — trạng thái sẽ chuyển về đang mở.",
+      "confirm": "Xác nhận mở lại",
+      "failed": "Không mở lại được phiên live"
     },
     "participantPanel": {
       "hideItems": "Ẩn món",

@@ -162,6 +162,9 @@ export const campaignApi = {
   close: (id: string) =>
     apiClient.post<CampaignDetail>(`/api/campaigns/${id}/close`),
 
+  reopen: (id: string) =>
+    apiClient.post<CampaignDetail>(`/api/campaigns/${id}/reopen`),
+
   recordParticipant: (campaignId: string, input: RecordParticipantInput) =>
     apiClient.post<ParticipantSummary>(
       `/api/campaigns/${campaignId}/participants`,

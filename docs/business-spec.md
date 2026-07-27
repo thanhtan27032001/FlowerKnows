@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 2.4 (Adds US-29 — full Undo of an Item Exchange, Owner-only)
+**Version:** 2.5 (US-02: removed auto-close, remaining_quantity no longer zeroed on close; adds US-30 Reopen Campaign, Owner-only)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -182,22 +182,38 @@ This is the single source of truth for schema design across the whole document.
 
 ### US-02: Actively close a Campaign
 
-**As** Staff, **I want to** actively close a `campaign` that is still `open` even if bags remain unsold, **so that** I can end the sale and return unsold stock to general inventory.
+**As** Owner, **I want to** actively close a `campaign` that is still `open` even if bags remain unsold, **so that** I can end the sale and return unsold stock to general inventory.
 
 **Acceptance Criteria:**
 
 | # | Given | When | Then |
 |---|---|---|---|
-| 1 | `campaign.status = open`, at least one `campaign_pool.remaining_quantity` row > 0 | Staff clicks "Close Campaign" | The system shows a confirmation warning: "N products remain unsold and will be returned to general stock. Confirm close?" along with details of products + quantities to be returned |
-| 2 | Staff confirms closing | — | The system: (a) for every `campaign_pool` row with `remaining_quantity` > 0, **adds it back to `product.stock_quantity`**, (b) sets `remaining_quantity = 0`, (c) sets `campaign.status = closed` |
-| 3 | `campaign.status = closed` | Staff tries to add a `campaign_participant` or `item_token` to this campaign | The system blocks the action and shows "This campaign is closed, no further entries allowed" |
-| 4 | All `remaining_quantity` naturally reach 0 (all bags opened) | — | The system automatically sets `status = closed`, nothing is returned to stock |
+| 1 | `campaign.status = open`, at least one `campaign_pool.remaining_quantity` row > 0 | Owner clicks "Close Campaign" | The system shows a confirmation warning: "N products remain unsold and will be returned to general stock. Confirm close?" along with details of products + quantities to be returned |
+| 2 | Owner confirms closing | — | The system: (a) for every `campaign_pool` row with `remaining_quantity` > 0, **adds it back to `product.stock_quantity`** (writing a `stock_transaction`, `type = campaign_return`), (b) sets `campaign.status = closed`. **`remaining_quantity` is intentionally NOT reset to 0** — it is preserved exactly as-is, so Reopen (US-30) knows precisely how much to re-lock later. While `closed`, this number is purely historical bookkeeping; it does not mean that stock is still reserved (it physically returned to `product.stock_quantity` in step (a)) |
+| 3 | `campaign.status = closed` | Anyone tries to add a `campaign_participant` or `item_token`, or edit the pool, to this campaign | The system blocks the action and shows "This campaign is closed, no further entries allowed" — `campaign.status` (not `remaining_quantity`) is the actual gate |
 
 **Business Rules applied:** Rule #10 — actively closing returns any pool surplus to general stock.
 
+**⚠️ Superseded in v2.5:** Campaigns no longer auto-close when their pool naturally sells out. Closing is **always** an explicit Owner action now — see US-30 for reopening a closed campaign.
+
 ---
 
-### US-24: Edit Campaign
+### US-30: Reopen a closed Campaign
+
+**As** Owner, **I want to** reopen a campaign I closed by mistake (or want to resume selling), **so that** I don't have to recreate it from scratch.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | `campaign.status = closed` | Owner clicks "Mở lại Campaign" (Reopen) | A confirmation shows exactly how much of each product will be re-locked from `product.stock_quantity` back into this campaign's pool (using the preserved `campaign_pool.remaining_quantity` values from when it was closed) |
+| 2 | For every `campaign_pool` row with `remaining_quantity` > 0, `product.stock_quantity` has **enough** available to re-lock that amount | Owner confirms | `@Transactional`: for each such row, **deduct `remaining_quantity` from `product.stock_quantity`** (writing a `stock_transaction`, `type = campaign_lock`, `quantity_change = -remaining_quantity` — the same type used at original creation, since this is functionally identical re-locking), then set `campaign.status = open`. Normal operations (US-03, US-04) resume immediately |
+| 3 | **Any** product involved doesn't have enough `stock_quantity` available anymore (e.g. it was consumed by a different campaign or sold in the meantime) | Owner confirms | Blocked — "Không đủ hàng để mở lại (SP X cần Y nhưng kho chỉ còn Z)." **The entire reopen is all-or-nothing** — no partial re-locking across some rows but not others |
+| 4 | All `campaign_pool` rows had `remaining_quantity = 0` at close time (the campaign had genuinely sold out, nothing to return) | Owner reopens | Nothing to re-lock — `campaign.status` simply flips back to `open`. Note this does NOT unlock pool editing (US-24) if items were already recorded — that restriction is independent and still applies |
+
+**Access:** Owner only.
+
+---### US-24: Edit Campaign
 
 **As** Owner, **I want to** edit an existing campaign's details, **so that** I can correct mistakes or adjust plans without having to close and recreate the whole campaign.
 
@@ -747,6 +763,7 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 |---|---|---|
 | US-01 Create Campaign | ✅ | ❌ |
 | US-02 Close Campaign | ✅ | ❌ |
+| US-30 Reopen Campaign | ✅ | ❌ |
 | US-24 Edit Campaign (name/date/total_bags/pool) | ✅ | ❌ |
 | US-25 Delete Campaign | ✅ | ❌ |
 | US-26 Edit Participant | ✅ | ❌ |

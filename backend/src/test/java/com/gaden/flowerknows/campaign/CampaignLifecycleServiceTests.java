@@ -172,10 +172,6 @@ class CampaignLifecycleServiceTests {
                     }
                     return p;
                 });
-        when(itemTokenRepository.countBySourceTypeAndSourceId(eq(SourceType.CAMPAIGN), any()))
-                .thenReturn(0L);
-        when(itemTokenRepository.findBySourceTypeAndSourceIdOrderByCreatedAtDesc(eq(SourceType.CAMPAIGN), any()))
-                .thenReturn(List.of());
 
         // Draft for 8 bags exists in DB but confirmed sum is still 0 — buyer can still take 10.
         CampaignParticipant ignoredDraft = new CampaignParticipant(

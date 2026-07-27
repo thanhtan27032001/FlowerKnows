@@ -14,6 +14,7 @@ import { EditCampaignForm } from "@/components/campaigns/edit-campaign-form";
 import { ParticipantItemsPanel } from "@/components/campaigns/participant-items-panel";
 import { RecordItemForm } from "@/components/campaigns/record-item-form";
 import { RecordParticipantForm } from "@/components/campaigns/record-participant-form";
+import { ReopenCampaignDialog } from "@/components/campaigns/reopen-campaign-dialog";
 import { campaignApi, campaignKeys, campaignLiveQueryOptions } from "@/src/lib/api/campaign";
 import { campaignStatusLabel } from "@/src/lib/i18n-labels";
 import { formatDate, formatDateTime, vnd } from "@/src/lib/format";
@@ -81,6 +82,7 @@ export default function CampaignDetailPage({
   const tCommon = useTranslations("common");
   const { isOwner } = useAuth();
   const [closeOpen, setCloseOpen] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [participantOpen, setParticipantOpen] = useState(false);
@@ -264,6 +266,11 @@ export default function CampaignDetailPage({
                       )}
                     </>
                   )}
+                  {campaign.status === "CLOSED" && isOwner && (
+                    <Button onClick={() => setReopenOpen(true)}>
+                      {tDetail("reopenCampaign")}
+                    </Button>
+                  )}
                 </div>
 
                 {campaign.status === "CLOSED" && (
@@ -383,6 +390,13 @@ export default function CampaignDetailPage({
                   open={closeOpen}
                   onOpenChange={setCloseOpen}
                   onClosed={() => void refetch()}
+                />
+                <ReopenCampaignDialog
+                  campaignId={campaign.id}
+                  pool={campaign.pool}
+                  open={reopenOpen}
+                  onOpenChange={setReopenOpen}
+                  onReopened={() => void refetch()}
                 />
                 <EditCampaignForm
                   open={editOpen}

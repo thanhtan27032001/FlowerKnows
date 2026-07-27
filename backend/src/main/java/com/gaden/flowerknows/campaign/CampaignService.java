@@ -275,11 +275,57 @@ public class CampaignService {
                         StockTransactionType.CAMPAIGN_RETURN,
                         "Returned from campaign close: " + campaign.getName()
                 );
-                poolItem.setRemainingQuantity(0);
+                // remaining_quantity intentionally preserved for US-30 reopen.
             }
         }
 
         campaign.setStatus(CampaignStatus.CLOSED);
+        return toMutationDetail(campaign);
+    }
+
+    /**
+     * US-30: reopen a closed campaign by re-locking preserved pool remaining into stock.
+     */
+    @Transactional
+    public CampaignDtos.CampaignDetailResponse reopenCampaign(UUID id) {
+        Campaign campaign = requireCampaignWithPool(id);
+        if (campaign.getStatus() != CampaignStatus.CLOSED) {
+            throw new IllegalStateException("Only closed campaigns can be reopened");
+        }
+
+        List<String> shortages = new ArrayList<>();
+        for (CampaignPool poolItem : campaign.getPoolItems()) {
+            int remaining = poolItem.getRemainingQuantity();
+            if (remaining <= 0) {
+                continue;
+            }
+            Product product = poolItem.getProduct();
+            int available = product.getStockQuantity();
+            if (remaining > available) {
+                shortages.add(
+                        "Không đủ hàng để mở lại (SP %s cần %d nhưng kho chỉ còn %d)."
+                                .formatted(product.getName(), remaining, available)
+                );
+            }
+        }
+        if (!shortages.isEmpty()) {
+            throw new IllegalStateException(String.join(" ", shortages));
+        }
+
+        for (CampaignPool poolItem : campaign.getPoolItems()) {
+            int remaining = poolItem.getRemainingQuantity();
+            if (remaining <= 0) {
+                continue;
+            }
+            stockService.applyStockChange(
+                    poolItem.getProduct(),
+                    -remaining,
+                    StockTransactionType.CAMPAIGN_LOCK,
+                    "Re-locked for campaign reopen: " + campaign.getName()
+            );
+        }
+
+        campaign.setStatus(CampaignStatus.OPEN);
         return toMutationDetail(campaign);
     }
 
@@ -305,14 +351,6 @@ public class CampaignService {
     public Campaign requireCampaignWithPool(UUID id) {
         return campaignRepository.findByIdWithPool(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Campaign not found: " + id));
-    }
-
-    public void autoCloseIfPoolEmpty(Campaign campaign) {
-        boolean allZero = campaign.getPoolItems().stream()
-                .allMatch(p -> p.getRemainingQuantity() <= 0);
-        if (allZero && campaign.getStatus() == CampaignStatus.OPEN) {
-            campaign.setStatus(CampaignStatus.CLOSED);
-        }
     }
 
     private void ensurePoolEditable(Campaign campaign) {

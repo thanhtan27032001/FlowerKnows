@@ -77,7 +77,10 @@ export function CloseCampaignDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{t("title")}</AlertDialogTitle>
-          <AlertDialogDescription className="space-y-3 text-left">
+          <AlertDialogDescription
+            className="space-y-3 text-left"
+            render={<div />}
+          >
             {isLoading && <span>{t("loadingPreview")}</span>}
 
             {isError && (

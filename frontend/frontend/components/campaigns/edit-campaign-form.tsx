@@ -115,15 +115,16 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
       details: UpdateCampaignInput;
       pool?: PoolItemInput[];
     }) => {
-      await campaignApi.update(campaign.id, payload.details);
+      let updated = await campaignApi.update(campaign.id, payload.details);
       if (payload.pool) {
-        await campaignApi.updatePool(campaign.id, { pool: payload.pool });
+        updated = await campaignApi.updatePool(campaign.id, { pool: payload.pool });
       }
-      return campaignApi.get(campaign.id);
+      return updated;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: campaignKeys.all });
-      await queryClient.invalidateQueries({ queryKey: productKeys.all });
+    onSuccess: async (updatedCampaign) => {
+      queryClient.setQueryData(campaignKeys.detail(campaign.id), updatedCampaign);
+      void queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: productKeys.all });
       await runSuccess(() => onOpenChange(false));
     },
     onError: (err: unknown) => {

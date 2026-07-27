@@ -12,6 +12,11 @@ import java.util.UUID;
 
 public interface ItemTokenRepository extends JpaRepository<ItemToken, UUID> {
 
+    interface ParticipantItemNameRow {
+        UUID getParticipantId();
+        String getProductName();
+    }
+
     long countBySourceTypeAndSourceId(SourceType sourceType, UUID sourceId);
 
     List<ItemToken> findByIdInAndCustomerId(Collection<UUID> ids, UUID customerId);
@@ -70,6 +75,23 @@ public interface ItemTokenRepository extends JpaRepository<ItemToken, UUID> {
             ORDER BY t.createdAt DESC
             """)
     List<ItemToken> findByParticipantIdsWithProduct(@Param("participantIds") Collection<UUID> participantIds);
+
+    @Query(value = """
+            SELECT ranked.source_id AS participantId, p.name AS productName
+            FROM (
+                SELECT t.source_id, t.product_id,
+                       ROW_NUMBER() OVER (PARTITION BY t.source_id ORDER BY t.created_at DESC) AS rn
+                FROM item_token t
+                WHERE t.source_type = 'CAMPAIGN'
+                  AND t.source_id IN (:participantIds)
+            ) ranked
+            JOIN product p ON p.id = ranked.product_id
+            WHERE ranked.rn <= 3
+            ORDER BY ranked.source_id, ranked.rn
+            """, nativeQuery = true)
+    List<ParticipantItemNameRow> findTopProductNamesByParticipantIds(
+            @Param("participantIds") Collection<UUID> participantIds
+    );
 
     @Query("""
             SELECT COALESCE(SUM(t.tokenValue), 0) FROM ItemToken t

@@ -71,15 +71,39 @@ export function EditParticipantForm({
   const minBags = Math.max(1, participant.itemsRecorded);
 
   const mutation = useMutation({
-    mutationFn: (totalBagsPurchased: number) =>
-      campaignApi.updateParticipant(campaign.id, participant.id, {
-        totalBagsPurchased,
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
+    mutationFn: async (totalBagsPurchased: number) => {
+      const updatedParticipant = await campaignApi.updateParticipant(
+        campaign.id,
+        participant.id,
+        {
+          totalBagsPurchased,
+        }
+      );
+      return updatedParticipant;
+    },
+    onSuccess: async (updatedParticipant) => {
+      queryClient.setQueryData(
+        campaignKeys.detail(campaign.id),
+        (current: CampaignDetail | undefined) => {
+          if (!current) return current;
+          const deltaBags =
+            participant.status === "CONFIRMED"
+              ? updatedParticipant.totalBagsPurchased -
+                participant.totalBagsPurchased
+              : 0;
+          return {
+            ...current,
+            bagsSold: current.bagsSold + deltaBags,
+            participants: current.participants.map((p) =>
+              p.id === updatedParticipant.id ? updatedParticipant : p
+            ),
+          };
+        }
+      );
+      void queryClient.invalidateQueries({
         queryKey: campaignKeys.detail(campaign.id),
       });
-      await queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
       await runSuccess(() => onOpenChange(false));
     },
     onError: (err: unknown) => {

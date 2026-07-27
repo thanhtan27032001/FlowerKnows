@@ -6,7 +6,6 @@ import com.gaden.flowerknows.product.Product;
 import com.gaden.flowerknows.product.ProductRepository;
 import com.gaden.flowerknows.stock.StockService;
 import com.gaden.flowerknows.stock.StockTransactionType;
-import com.gaden.flowerknows.token.ItemToken;
 import com.gaden.flowerknows.token.ItemTokenRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,8 +57,6 @@ public class CampaignService {
     @Transactional(readOnly = true)
     public CampaignDtos.CampaignDetailResponse getCampaign(UUID id) {
         Campaign campaign = requireCampaignWithPool(id);
-        // Touch participants for lazy load within transaction
-        campaign.getParticipants().size();
         return toDetail(campaign);
     }
 
@@ -112,7 +109,6 @@ public class CampaignService {
         campaign.setName(request.name());
         campaign.setEventDate(request.eventDate());
         campaign.setTotalBags(request.totalBags());
-        campaign.getParticipants().size();
         return toDetail(campaign);
     }
 
@@ -209,7 +205,6 @@ public class CampaignService {
             }
         }
 
-        campaign.getParticipants().size();
         return toDetail(campaign);
     }
 
@@ -331,7 +326,9 @@ public class CampaignService {
                 ))
                 .toList();
 
-        List<UUID> participantIds = campaign.getParticipants().stream()
+        List<CampaignParticipant> participantEntities =
+                participantRepository.findByCampaignIdWithCustomer(campaign.getId());
+        List<UUID> participantIds = participantEntities.stream()
                 .map(CampaignParticipant::getId)
                 .toList();
         Map<UUID, Integer> itemsRecordedByParticipant = new HashMap<>();
@@ -340,19 +337,18 @@ public class CampaignService {
             for (Object[] row : itemTokenRepository.countTokensByParticipantIds(participantIds)) {
                 itemsRecordedByParticipant.put((UUID) row[0], ((Number) row[1]).intValue());
             }
-            for (ItemToken token : itemTokenRepository.findByParticipantIdsWithProduct(participantIds)) {
+            for (ItemTokenRepository.ParticipantItemNameRow row :
+                    itemTokenRepository.findTopProductNamesByParticipantIds(participantIds)) {
                 List<String> names = itemNamesByParticipant.computeIfAbsent(
-                        token.getSourceId(),
+                        row.getParticipantId(),
                         ignored -> new ArrayList<>()
                 );
-                if (names.size() < 3) {
-                    names.add(token.getProduct().getName());
-                }
+                names.add(row.getProductName());
             }
         }
 
         List<CampaignDtos.ParticipantSummaryResponse> participants = new ArrayList<>();
-        for (CampaignParticipant participant : campaign.getParticipants()) {
+        for (CampaignParticipant participant : participantEntities) {
             participants.add(toParticipantSummary(
                     participant,
                     itemsRecordedByParticipant.getOrDefault(participant.getId(), 0),

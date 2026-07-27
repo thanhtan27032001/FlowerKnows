@@ -13,6 +13,13 @@ public interface CampaignParticipantRepository extends JpaRepository<CampaignPar
 
     List<CampaignParticipant> findByCampaignId(UUID campaignId);
 
+    @Query("""
+            SELECT DISTINCT p FROM CampaignParticipant p
+            JOIN FETCH p.customer
+            WHERE p.campaign.id = :campaignId
+            """)
+    List<CampaignParticipant> findByCampaignIdWithCustomer(UUID campaignId);
+
     long countByCampaignId(UUID campaignId);
 
     @Query("""

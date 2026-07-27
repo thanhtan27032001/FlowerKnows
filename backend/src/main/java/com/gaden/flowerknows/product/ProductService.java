@@ -38,7 +38,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductDtos.ProductResponse> list() {
-        return productRepository.findAll().stream()
+        return productRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(p -> ProductDtos.ProductResponse.from(p, lowStockThreshold))
                 .toList();
     }

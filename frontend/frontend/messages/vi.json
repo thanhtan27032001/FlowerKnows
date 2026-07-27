@@ -530,6 +530,8 @@
       "title": "Nhập kho",
       "description": "Ghi nhận hàng nhập và cập nhật giá vốn trung bình gia quyền.",
       "product": "Sản phẩm",
+      "productPlaceholder": "Gõ tên sản phẩm…",
+      "noProducts": "Không tìm thấy sản phẩm",
       "quantityReceived": "Số lượng nhận",
       "costPrice": "Giá vốn (VND)",
       "note": "Ghi chú (tuỳ chọn)",

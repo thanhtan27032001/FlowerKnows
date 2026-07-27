@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -30,6 +31,9 @@ public class Product {
     @Column(name = "average_cost_price", precision = 12, scale = 2)
     private BigDecimal averageCostPrice;
 
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt = Instant.now();
+
     protected Product() {
     }
 
@@ -37,6 +41,7 @@ public class Product {
         this.name = name;
         this.listPrice = listPrice;
         this.stockQuantity = stockQuantity;
+        this.createdAt = Instant.now();
     }
 
     public UUID getId() {
@@ -73,5 +78,9 @@ public class Product {
 
     public void setAverageCostPrice(BigDecimal averageCostPrice) {
         this.averageCostPrice = averageCostPrice;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
     }
 }

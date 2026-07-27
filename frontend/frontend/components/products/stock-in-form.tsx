@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon, Trash2Icon } from "lucide-react";
@@ -12,6 +12,7 @@ import {
 } from "@/src/lib/api/product";
 import { reportKeys } from "@/src/lib/api/report";
 import { formatCostPrice } from "@/src/lib/format";
+import { ProductTypeahead } from "@/components/products/product-typeahead";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,19 +33,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { createClientId } from "@/lib/utils";
 
 type Row = {
   key: string;
   productId: string;
+  productName: string;
   quantity: string;
   costPrice: string;
   note: string;
@@ -58,10 +53,11 @@ type Props = {
   onSuccess?: (products: Product[]) => void;
 };
 
-function newRow(productId = ""): Row {
+function newRow(productId = "", productName = ""): Row {
   return {
     key: createClientId(),
     productId,
+    productName,
     quantity: "",
     costPrice: "",
     note: "",
@@ -79,6 +75,7 @@ export function StockInForm({
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<Row[]>([newRow(defaultProductId ?? "")]);
+  const [recentProductIds, setRecentProductIds] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [successSummary, setSuccessSummary] = useState<Product[] | null>(null);
 
@@ -88,13 +85,38 @@ export function StockInForm({
     enabled: open,
   });
 
+  /** Newest-created first from API, then bump recently picked products to the top. */
+  const orderedProducts = useMemo(() => {
+    if (recentProductIds.length === 0) return products;
+    const rank = new Map(recentProductIds.map((id, index) => [id, index]));
+    return [...products].sort((a, b) => {
+      const ra = rank.has(a.id) ? rank.get(a.id)! : Number.MAX_SAFE_INTEGER;
+      const rb = rank.has(b.id) ? rank.get(b.id)! : Number.MAX_SAFE_INTEGER;
+      if (ra !== rb) return ra - rb;
+      return 0;
+    });
+  }, [products, recentProductIds]);
+
   useEffect(() => {
-    if (open) {
-      setRows([newRow(defaultProductId ?? "")]);
-      setFormError(null);
-      setSuccessSummary(null);
-    }
+    if (!open) return;
+    setRows([newRow(defaultProductId ?? "")]);
+    setRecentProductIds(defaultProductId ? [defaultProductId] : []);
+    setFormError(null);
+    setSuccessSummary(null);
   }, [open, defaultProductId]);
+
+  useEffect(() => {
+    if (!open || !defaultProductId || products.length === 0) return;
+    const name = products.find((p) => p.id === defaultProductId)?.name;
+    if (!name) return;
+    setRows((prev) =>
+      prev.map((row, index) =>
+        index === 0 && row.productId === defaultProductId && !row.productName
+          ? { ...row, productName: name }
+          : row
+      )
+    );
+  }, [open, defaultProductId, products]);
 
   const mutation = useMutation({
     mutationFn: productApi.stockIn,
@@ -115,6 +137,21 @@ export function StockInForm({
         row.key === key ? { ...row, ...patch, error: undefined } : row
       )
     );
+  };
+
+  const selectProduct = (rowKey: string, product: Product | null) => {
+    if (!product) {
+      updateRow(rowKey, { productId: "", productName: "" });
+      return;
+    }
+    setRecentProductIds((prev) => [
+      product.id,
+      ...prev.filter((id) => id !== product.id),
+    ]);
+    updateRow(rowKey, {
+      productId: product.id,
+      productName: product.name,
+    });
   };
 
   const validateAndSubmit = () => {
@@ -221,24 +258,15 @@ export function StockInForm({
           </div>
 
           <div className="grid gap-2">
-            <Label>{t("product")}</Label>
-            <Select
-              value={row.productId || undefined}
-              onValueChange={(value) =>
-                updateRow(row.key, { productId: String(value ?? "") })
-              }
-            >
-              <SelectTrigger className="w-full min-w-0">
-                <SelectValue placeholder={tCommon("actions.selectProduct")} />
-              </SelectTrigger>
-              <SelectContent>
-                {products.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    {product.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor={`stock-in-product-${row.key}`}>{t("product")}</Label>
+            <ProductTypeahead
+              id={`stock-in-product-${row.key}`}
+              products={orderedProducts}
+              productId={row.productId}
+              placeholder={t("productPlaceholder")}
+              aria-invalid={!!row.error}
+              onSelect={(product) => selectProduct(row.key, product)}
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -328,10 +356,7 @@ export function StockInForm({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent
-          side="bottom"
-          className="overflow-y-auto"
-        >
+        <SheetContent side="bottom" className="overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{t("title")}</SheetTitle>
             <SheetDescription>{t("description")}</SheetDescription>

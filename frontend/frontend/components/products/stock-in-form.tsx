@@ -243,19 +243,6 @@ export function StockInForm({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label>{t("quantityReceived")}</Label>
-              <Input
-                type="number"
-                min={1}
-                inputMode="numeric"
-                value={row.quantity}
-                onChange={(e) =>
-                  updateRow(row.key, { quantity: e.target.value })
-                }
-                aria-invalid={!!row.error}
-              />
-            </div>
-            <div className="grid gap-2">
               <Label>{t("costPrice")}</Label>
               <Input
                 type="number"
@@ -267,6 +254,19 @@ export function StockInForm({
                   updateRow(row.key, { costPrice: e.target.value })
                 }
                 placeholder={t("noteRequired")}
+                aria-invalid={!!row.error}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>{t("quantityReceived")}</Label>
+              <Input
+                type="number"
+                min={1}
+                inputMode="numeric"
+                value={row.quantity}
+                onChange={(e) =>
+                  updateRow(row.key, { quantity: e.target.value })
+                }
                 aria-invalid={!!row.error}
               />
             </div>

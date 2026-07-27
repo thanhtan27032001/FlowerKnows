@@ -11,7 +11,8 @@ public interface CampaignRepository extends JpaRepository<Campaign, UUID> {
 
     @Query("""
             SELECT DISTINCT c FROM Campaign c
-            LEFT JOIN FETCH c.poolItems
+            LEFT JOIN FETCH c.poolItems pi
+            LEFT JOIN FETCH pi.product
             WHERE c.id = :id
             """)
     Optional<Campaign> findByIdWithPool(UUID id);

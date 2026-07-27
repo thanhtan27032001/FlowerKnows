@@ -114,17 +114,25 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
     mutationFn: async (payload: {
       details: UpdateCampaignInput;
       pool?: PoolItemInput[];
-    }) => {
-      let updated = await campaignApi.update(campaign.id, payload.details);
-      if (payload.pool) {
-        updated = await campaignApi.updatePool(campaign.id, { pool: payload.pool });
-      }
-      return updated;
-    },
-    onSuccess: async (updatedCampaign) => {
-      queryClient.setQueryData(campaignKeys.detail(campaign.id), updatedCampaign);
+    }) =>
+      campaignApi.update(campaign.id, {
+        ...payload.details,
+        ...(payload.pool ? { pool: payload.pool } : {}),
+      }),
+    onSuccess: async (updatedCampaign, variables) => {
+      queryClient.setQueryData(
+        campaignKeys.detail(campaign.id),
+        (current: CampaignDetail | undefined) => ({
+          ...updatedCampaign,
+          // Mutation response skips participant token stats; keep cached list.
+          participants: current?.participants ?? updatedCampaign.participants,
+          bagsSold: current?.bagsSold ?? updatedCampaign.bagsSold,
+        })
+      );
       void queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
-      void queryClient.invalidateQueries({ queryKey: productKeys.all });
+      if (variables.pool) {
+        void queryClient.invalidateQueries({ queryKey: productKeys.all });
+      }
       await runSuccess(() => onOpenChange(false));
     },
     onError: (err: unknown) => {

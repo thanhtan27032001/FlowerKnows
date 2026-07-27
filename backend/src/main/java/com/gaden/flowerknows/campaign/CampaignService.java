@@ -100,25 +100,40 @@ public class CampaignService {
         }
 
         Campaign saved = campaignRepository.save(campaign);
-        return toDetail(saved);
+        return toMutationDetail(saved);
     }
 
     @Transactional
     public CampaignDtos.CampaignDetailResponse updateCampaign(UUID id, CampaignDtos.UpdateCampaignRequest request) {
-        Campaign campaign = requireOpenCampaign(id);
+        // Always load pool: response includes current pool (and optional pool rewrite).
+        Campaign campaign = requireOpenCampaignWithPool(id);
+
         campaign.setName(request.name());
         campaign.setEventDate(request.eventDate());
         campaign.setTotalBags(request.totalBags());
-        return toDetail(campaign);
+
+        if (request.pool() != null) {
+            if (request.pool().isEmpty()) {
+                throw new BusinessException("pool must not be empty");
+            }
+            applyPoolUpdate(campaign, request.pool());
+        }
+
+        return toMutationDetail(campaign);
     }
 
     @Transactional
     public CampaignDtos.CampaignDetailResponse updatePool(UUID id, CampaignDtos.UpdatePoolRequest request) {
-        Campaign campaign = requireOpenCampaign(id);
+        Campaign campaign = requireOpenCampaignWithPool(id);
+        applyPoolUpdate(campaign, request.pool());
+        return toMutationDetail(campaign);
+    }
+
+    private void applyPoolUpdate(Campaign campaign, List<CampaignDtos.PoolItemRequest> pool) {
         ensurePoolEditable(campaign);
 
         Set<UUID> seenProductIds = new HashSet<>();
-        for (CampaignDtos.PoolItemRequest item : request.pool()) {
+        for (CampaignDtos.PoolItemRequest item : pool) {
             if (!seenProductIds.add(item.productId())) {
                 throw new BusinessException("Duplicate product in pool: " + item.productId());
             }
@@ -130,7 +145,7 @@ public class CampaignService {
         }
 
         Map<UUID, Integer> desiredByProduct = new HashMap<>();
-        for (CampaignDtos.PoolItemRequest item : request.pool()) {
+        for (CampaignDtos.PoolItemRequest item : pool) {
             desiredByProduct.put(item.productId(), item.loadedQuantity());
         }
 
@@ -151,7 +166,7 @@ public class CampaignService {
         }
 
         // Update existing / add new with stock deltas
-        for (CampaignDtos.PoolItemRequest item : request.pool()) {
+        for (CampaignDtos.PoolItemRequest item : pool) {
             CampaignPool existing = existingByProduct.get(item.productId());
             if (existing != null && campaign.getPoolItems().contains(existing)) {
                 int delta = item.loadedQuantity() - existing.getLoadedQuantity();
@@ -204,13 +219,11 @@ public class CampaignService {
                 );
             }
         }
-
-        return toDetail(campaign);
     }
 
     @Transactional
     public void deleteCampaign(UUID id) {
-        Campaign campaign = requireOpenCampaign(id);
+        Campaign campaign = requireOpenCampaignWithPool(id);
 
         if (participantRepository.countByCampaignId(id) > 0) {
             throw new IllegalStateException(DELETE_BLOCKED_MESSAGE);
@@ -231,7 +244,7 @@ public class CampaignService {
 
     @Transactional(readOnly = true)
     public CampaignDtos.ClosePreviewResponse previewClose(UUID id) {
-        Campaign campaign = requireOpenCampaign(id);
+        Campaign campaign = requireOpenCampaignWithPool(id);
         List<CampaignDtos.ReturnItemResponse> toReturn = campaign.getPoolItems().stream()
                 .filter(p -> p.getRemainingQuantity() > 0)
                 .map(p -> new CampaignDtos.ReturnItemResponse(
@@ -251,7 +264,7 @@ public class CampaignService {
 
     @Transactional
     public CampaignDtos.CampaignDetailResponse closeCampaign(UUID id) {
-        Campaign campaign = requireOpenCampaign(id);
+        Campaign campaign = requireOpenCampaignWithPool(id);
 
         for (CampaignPool poolItem : campaign.getPoolItems()) {
             int remaining = poolItem.getRemainingQuantity();
@@ -267,10 +280,21 @@ public class CampaignService {
         }
 
         campaign.setStatus(CampaignStatus.CLOSED);
-        return toDetail(campaign);
+        return toMutationDetail(campaign);
     }
 
+    /** Open campaign without loading pool (participant bag edits, drafts, etc.). */
     public Campaign requireOpenCampaign(UUID id) {
+        Campaign campaign = campaignRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Campaign not found: " + id));
+        if (campaign.getStatus() != CampaignStatus.OPEN) {
+            throw new IllegalStateException("This campaign is closed, no further entries allowed");
+        }
+        return campaign;
+    }
+
+    /** Open campaign with pool (+ products) loaded. */
+    public Campaign requireOpenCampaignWithPool(UUID id) {
         Campaign campaign = requireCampaignWithPool(id);
         if (campaign.getStatus() != CampaignStatus.OPEN) {
             throw new IllegalStateException("This campaign is closed, no further entries allowed");
@@ -313,7 +337,22 @@ public class CampaignService {
         );
     }
 
+    /**
+     * Full detail for GET — includes participant token counts / preview names.
+     */
     CampaignDtos.CampaignDetailResponse toDetail(Campaign campaign) {
+        return toDetail(campaign, true);
+    }
+
+    /**
+     * Mutation responses skip token aggregation. Frontend keeps cached participants
+     * (names/counts) when merging, since those fields are unchanged by header/pool edits.
+     */
+    CampaignDtos.CampaignDetailResponse toMutationDetail(Campaign campaign) {
+        return toDetail(campaign, false);
+    }
+
+    private CampaignDtos.CampaignDetailResponse toDetail(Campaign campaign, boolean includeTokenStats) {
         long bagsSold = participantRepository.sumBagsPurchasedByCampaign(campaign.getId());
 
         List<CampaignDtos.PoolItemResponse> pool = campaign.getPoolItems().stream()
@@ -325,6 +364,21 @@ public class CampaignService {
                         p.getRemainingQuantity()
                 ))
                 .toList();
+
+        if (!includeTokenStats) {
+            return new CampaignDtos.CampaignDetailResponse(
+                    campaign.getId(),
+                    campaign.getName(),
+                    campaign.getEventDate(),
+                    campaign.getBagPrice(),
+                    campaign.getTotalBags(),
+                    campaign.getStatus(),
+                    bagsSold,
+                    campaign.getCreatedAt(),
+                    pool,
+                    List.of()
+            );
+        }
 
         List<CampaignParticipant> participantEntities =
                 participantRepository.findByCampaignIdWithCustomer(campaign.getId());

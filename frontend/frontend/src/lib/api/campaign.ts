@@ -57,6 +57,7 @@ export type UpdateCampaignInput = {
   name: string;
   eventDate: string;
   totalBags: number;
+  pool?: PoolItemInput[];
 };
 
 export type UpdatePoolInput = {

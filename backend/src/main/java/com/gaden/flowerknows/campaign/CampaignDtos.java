@@ -39,7 +39,9 @@ public final class CampaignDtos {
     public record UpdateCampaignRequest(
             @NotBlank(message = "name is required") String name,
             @NotNull(message = "eventDate is required") LocalDate eventDate,
-            @Min(value = 1, message = "totalBags must be at least 1") int totalBags
+            @Min(value = 1, message = "totalBags must be at least 1") int totalBags,
+            /** When non-null, pool is replaced in the same request. */
+            @Valid List<PoolItemRequest> pool
     ) {
     }
 

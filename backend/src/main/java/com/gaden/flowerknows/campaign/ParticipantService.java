@@ -208,12 +208,12 @@ public class ParticipantService {
             participant.setPrepaidAmount(BigDecimal.ZERO);
         }
 
-        return toSummaryResponse(participant);
+        return toSummaryResponse(participant, (int) tokensRecorded, List.of());
     }
 
     @Transactional
     public List<TokenRecordResponse> recordItems(UUID campaignId, RecordItemsRequest request) {
-        Campaign campaign = campaignService.requireOpenCampaign(campaignId);
+        Campaign campaign = campaignService.requireOpenCampaignWithPool(campaignId);
 
         CampaignParticipant participant = participantRepository
                 .findByCampaignIdAndCustomerId(campaignId, request.customerId())
@@ -345,6 +345,14 @@ public class ParticipantService {
                 .limit(3)
                 .map(t -> t.getProduct().getName())
                 .toList();
+        return toSummaryResponse(participant, itemsRecorded, recordedItemNames);
+    }
+
+    private CampaignDtos.ParticipantSummaryResponse toSummaryResponse(
+            CampaignParticipant participant,
+            int itemsRecorded,
+            List<String> recordedItemNames
+    ) {
         return CampaignService.toParticipantSummary(participant, itemsRecorded, recordedItemNames);
     }
 

@@ -95,14 +95,18 @@ export function EditParticipantForm({
             ...current,
             bagsSold: current.bagsSold + deltaBags,
             participants: current.participants.map((p) =>
-              p.id === updatedParticipant.id ? updatedParticipant : p
+              p.id === updatedParticipant.id
+                ? {
+                    ...updatedParticipant,
+                    // Bag edits don't change recorded items; keep preview from cache.
+                    itemsRecorded: p.itemsRecorded,
+                    recordedItemNames: p.recordedItemNames,
+                  }
+                : p
             ),
           };
         }
       );
-      void queryClient.invalidateQueries({
-        queryKey: campaignKeys.detail(campaign.id),
-      });
       void queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
       await runSuccess(() => onOpenChange(false));
     },

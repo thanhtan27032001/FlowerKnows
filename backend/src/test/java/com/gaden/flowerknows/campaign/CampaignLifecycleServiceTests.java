@@ -133,7 +133,7 @@ class CampaignLifecycleServiceTests {
         CampaignParticipant participant = confirmedParticipant(campaign, customer, 5);
         setId(participant, participantId);
 
-        when(campaignRepository.findByIdWithPool(campaignId)).thenReturn(Optional.of(campaign));
+        when(campaignRepository.findById(campaignId)).thenReturn(Optional.of(campaign));
         when(participantRepository.findById(participantId)).thenReturn(Optional.of(participant));
         when(itemTokenRepository.countBySourceTypeAndSourceId(SourceType.CAMPAIGN, participantId))
                 .thenReturn(3L);
@@ -159,7 +159,7 @@ class CampaignLifecycleServiceTests {
         Customer draftCustomer = customer("Draft");
         Customer buyer = customer("Buyer");
 
-        when(campaignRepository.findByIdWithPool(campaignId)).thenReturn(Optional.of(campaign));
+        when(campaignRepository.findById(campaignId)).thenReturn(Optional.of(campaign));
         when(participantRepository.sumBagsPurchasedByCampaign(campaignId)).thenReturn(0L);
         when(customerService.requireCustomer(buyer.getId())).thenReturn(buyer);
         when(participantRepository.findByCampaignIdAndCustomerId(campaignId, buyer.getId()))
@@ -205,7 +205,7 @@ class CampaignLifecycleServiceTests {
         setId(draft, draftId);
         campaign.getParticipants().add(draft);
 
-        when(campaignRepository.findByIdWithPool(campaignId)).thenReturn(Optional.of(campaign));
+        when(campaignRepository.findById(campaignId)).thenReturn(Optional.of(campaign));
         when(participantRepository.findById(draftId)).thenReturn(Optional.of(draft));
         // Another confirmed sale took 5 bags after the draft was created — only 5 remain.
         when(participantRepository.sumBagsPurchasedByCampaign(campaignId)).thenReturn(5L);

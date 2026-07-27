@@ -126,16 +126,12 @@ export function ParticipantItemsPanel({
       ? (tokensQuery.data ?? []).map((tok) => tok.productName)
       : (participant.recordedItemNames ?? []);
     if (names.length === 0) return null;
-    const shown = names.slice(0, 3);
-    const text = shown.join(", ");
-    const hasMore = itemsRecorded > 3 || names.length > 3;
-    return hasMore ? `${text}...` : text;
+    return names.join(", ");
   }, [
     isDraft,
     tokensQuery.isSuccess,
     tokensQuery.data,
     participant.recordedItemNames,
-    itemsRecorded,
   ]);
 
   const toggleToken = (tokenId: string) => {
@@ -230,69 +226,46 @@ export function ParticipantItemsPanel({
       <div className="flex items-stretch gap-1">
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/40"
+          className="flex min-w-0 flex-1 items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/40"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
         >
           <ChevronDownIcon
             className={cn(
-              "size-4 shrink-0 text-muted-foreground transition-transform",
+              "mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform",
               expanded && "rotate-180"
             )}
           />
 
-          <span className="flex min-w-0 shrink-0 basis-[7rem] items-center gap-1.5 sm:basis-[9rem]">
-            <span className="truncate text-sm font-semibold leading-tight">
-              {participant.customerName}
-            </span>
-            {isDraft && (
-              <StatusBadge variant="warning" className="shrink-0">
-                {t("draftBadge")}
-              </StatusBadge>
-            )}
-          </span>
-
-          <span className="flex min-w-0 flex-1 flex-col items-start leading-none">
-            <span className="text-[0.65rem] text-muted-foreground">
-              {t("itemNames")}
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="min-w-0 truncate text-sm font-semibold leading-tight">
+                {participant.customerName}
+              </span>
+              {!isDraft && (
+                <span
+                  className={cn(
+                    "shrink-0 text-sm tabular-nums leading-tight",
+                    itemsRecorded >= participant.totalBagsPurchased
+                      ? "text-muted-foreground"
+                      : "font-medium text-amber-700 dark:text-amber-400"
+                  )}
+                >
+                  ({itemsRecorded} / {participant.totalBagsPurchased})
+                </span>
+              )}
+              {isDraft && (
+                <StatusBadge variant="warning" className="shrink-0">
+                  {t("draftBadge")}
+                </StatusBadge>
+              )}
             </span>
             <span
-              className="mt-0.5 w-full truncate text-sm font-semibold tracking-tight"
+              className="block min-w-0 truncate text-sm leading-tight text-muted-foreground"
               title={itemNamesPreview ?? undefined}
             >
               {isDraft ? t("draftNoItems") : (itemNamesPreview ?? t("noItems"))}
             </span>
-          </span>
-
-          <span className="flex shrink-0 items-center gap-3 sm:gap-5">
-            <span className="flex min-w-[2.75rem] flex-col items-end leading-none">
-              <span className="text-[0.65rem] text-muted-foreground">
-                {t("bags")}
-              </span>
-              <span className="mt-0.5 text-sm font-semibold tabular-nums tracking-tight">
-                {participant.totalBagsPurchased}
-              </span>
-            </span>
-            {!isDraft && (
-              <span className="flex min-w-[3.5rem] flex-col items-end leading-none">
-                <span className="text-[0.65rem] text-muted-foreground">
-                  {t("itemsRecorded")}
-                </span>
-                <span
-                  className={cn(
-                    "mt-0.5 text-sm font-semibold tabular-nums tracking-tight",
-                    itemsRecorded >= participant.totalBagsPurchased
-                      ? "text-foreground"
-                      : "text-amber-700 dark:text-amber-400"
-                  )}
-                >
-                  {t("itemsProgress", {
-                    recorded: itemsRecorded,
-                    bags: participant.totalBagsPurchased,
-                  })}
-                </span>
-              </span>
-            )}
           </span>
         </button>
       </div>

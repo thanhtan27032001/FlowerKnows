@@ -13,6 +13,7 @@ import {
   type UpdateCampaignInput,
 } from "@/src/lib/api/campaign";
 import { productApi, productKeys } from "@/src/lib/api/product";
+import { ProductTypeahead } from "@/components/products/product-typeahead";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,13 +34,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
@@ -339,27 +333,23 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
                     </div>
 
                     <div className="grid gap-2">
-                      <Label>{tCommon("fields.product")}</Label>
-                      <Select
-                        value={row.productId || undefined}
-                        onValueChange={(value) =>
+                      <Label htmlFor={`edit-campaign-pool-product-${row.key}`}>
+                        {tCommon("fields.product")}
+                      </Label>
+                      <ProductTypeahead
+                        id={`edit-campaign-pool-product-${row.key}`}
+                        products={products}
+                        productId={row.productId}
+                        showStock
+                        placeholder={tCreate("productSearchPlaceholder")}
+                        aria-invalid={!!row.error}
+                        onSelect={(product) =>
                           updateRow(row.key, {
-                            productId: String(value ?? ""),
+                            productId: product?.id ?? "",
                             originalLoaded: 0,
                           })
                         }
-                      >
-                        <SelectTrigger className="w-full min-w-0">
-                          <SelectValue placeholder={tCreate("selectProduct")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name} ({product.stockQuantity})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      />
                     </div>
 
                     <div className="grid gap-2">

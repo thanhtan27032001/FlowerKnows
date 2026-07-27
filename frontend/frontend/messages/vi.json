@@ -294,6 +294,7 @@
       "bagPriceInvalid": "Giá túi phải là số dương",
       "totalBagsInvalid": "Tổng số túi phải là số nguyên ≥ 1",
       "selectProduct": "Chọn một sản phẩm",
+      "productSearchPlaceholder": "Gõ tên sản phẩm…",
       "loadedQtyInvalid": "Số lượng nạp phải là số nguyên ≥ 1",
       "fixPool": "Sửa pool sản phẩm trước khi tạo",
       "duplicateProduct": "Mỗi sản phẩm chỉ được xuất hiện một lần trong pool",

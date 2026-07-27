@@ -22,6 +22,8 @@ type Props = {
   placeholder?: string;
   disabled?: boolean;
   autoFocus?: boolean;
+  /** Show stock quantity next to each suggestion (campaign pool, etc.). */
+  showStock?: boolean;
   "aria-invalid"?: boolean;
 };
 
@@ -33,6 +35,7 @@ export function ProductTypeahead({
   placeholder,
   disabled,
   autoFocus,
+  showStock = false,
   "aria-invalid": ariaInvalid,
 }: Props) {
   const t = useTranslations("products.stockIn");
@@ -162,14 +165,21 @@ export function ProductTypeahead({
                   type="button"
                   className={
                     index === highlightIndex
-                      ? "flex w-full items-center px-2.5 py-1.5 text-left bg-accent text-accent-foreground"
-                      : "flex w-full items-center px-2.5 py-1.5 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
+                      ? "flex w-full items-center justify-between gap-2 bg-accent px-2.5 py-1.5 text-left text-accent-foreground"
+                      : "flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
                   }
                   onMouseDown={(e) => e.preventDefault()}
                   onMouseEnter={() => setHighlightIndex(index)}
                   onClick={() => pick(product)}
                 >
-                  <span className="truncate font-medium">{product.name}</span>
+                  <span className="min-w-0 truncate font-medium">
+                    {product.name}
+                  </span>
+                  {showStock && (
+                    <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                      {product.stockQuantity}
+                    </span>
+                  )}
                 </button>
               </li>
             ))

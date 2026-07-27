@@ -10,6 +10,7 @@ import { Spinner } from "@/components/feedback/spinner";
 import { CashOutForm } from "@/components/customers/cash-out-form";
 import { ItemExchangeForm } from "@/components/customers/item-exchange-form";
 import { EditParticipantForm } from "@/components/campaigns/edit-participant-form";
+import { DeleteRecordedTokenDialog } from "@/components/tokens/delete-recorded-token-dialog";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -81,6 +82,7 @@ export function ParticipantItemsPanel({
   const [cashOutOpen, setCashOutOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteToken, setDeleteToken] = useState<ParticipantToken | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const { succeeded: confirmSucceeded, runSuccess: runConfirmSuccess, reset: resetConfirm } =
     useSuccessClose(250);
@@ -420,6 +422,11 @@ export function ParticipantItemsPanel({
                         token={token}
                         selected={selectedIds.has(token.id)}
                         onToggle={() => toggleToken(token.id)}
+                        onDelete={
+                          isOwner && token.actionable
+                            ? () => setDeleteToken(token)
+                            : undefined
+                        }
                       />
                     ))}
                   </div>
@@ -488,6 +495,58 @@ export function ParticipantItemsPanel({
             tokens={selectedTokens}
             onSuccess={() => void refreshAfterAction()}
           />
+          {deleteToken && (
+            <DeleteRecordedTokenDialog
+              open={!!deleteToken}
+              onOpenChange={(next) => {
+                if (!next) setDeleteToken(null);
+              }}
+              tokenId={deleteToken.id}
+              productName={deleteToken.productName}
+              customerId={participant.customerId}
+              campaignId={campaignId}
+              participantId={participant.id}
+              onSuccess={() => {
+                const removedId = deleteToken.id;
+                queryClient.setQueryData(
+                  campaignKeys.participantTokens(campaignId, participant.id),
+                  (current: ParticipantToken[] | undefined) =>
+                    (current ?? []).filter((tok) => tok.id !== removedId)
+                );
+                queryClient.setQueryData(
+                  campaignKeys.detail(campaignId),
+                  (current: CampaignDetail | undefined) => {
+                    if (!current) return current;
+                    return {
+                      ...current,
+                      pool: current.pool.map((item) =>
+                        item.productId === deleteToken.productId
+                          ? {
+                              ...item,
+                              remainingQuantity: item.remainingQuantity + 1,
+                            }
+                          : item
+                      ),
+                      participants: current.participants.map((p) =>
+                        p.id === participant.id
+                          ? {
+                              ...p,
+                              itemsRecorded: Math.max(0, p.itemsRecorded - 1),
+                            }
+                          : p
+                      ),
+                    };
+                  }
+                );
+                setSelectedIds((prev) => {
+                  const next = new Set(prev);
+                  next.delete(removedId);
+                  return next;
+                });
+                setDeleteToken(null);
+              }}
+            />
+          )}
         </>
       )}
 
@@ -554,10 +613,12 @@ function ParticipantTokenRow({
   token,
   selected,
   onToggle,
+  onDelete,
 }: {
   token: ParticipantToken;
   selected: boolean;
   onToggle: () => void;
+  onDelete?: () => void;
 }) {
   const t = useTranslations("campaigns.participantPanel");
 
@@ -607,17 +668,32 @@ function ParticipantTokenRow({
   }
 
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-pressed={selected}
-      title={t("issued", { date: formatDateTime(token.createdAt) })}
+    <div
       className={cn(
-        "flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-muted/40",
+        "flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors hover:bg-muted/40",
         selected && "bg-primary/5"
       )}
     >
-      {body}
-    </button>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-pressed={selected}
+        title={t("issued", { date: formatDateTime(token.createdAt) })}
+        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+      >
+        {body}
+      </button>
+      {onDelete && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-6 shrink-0 px-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={onDelete}
+        >
+          {t("deleteToken")}
+        </Button>
+      )}
+    </div>
   );
 }

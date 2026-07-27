@@ -32,4 +32,8 @@ export const tokenApi = {
 
   cancel: (id: string) =>
     apiClient.post<CancelTokenResponse>(`/api/tokens/${id}/cancel`),
+
+  /** US-28: hard-delete a mistaken campaign recording (Owner only). */
+  deleteRecorded: (id: string) =>
+    apiClient.delete<void>(`/api/tokens/${id}`),
 };

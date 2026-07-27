@@ -387,6 +387,7 @@
       "itemExchange": "Đổi món",
       "cashOut": "Đổi tiền",
       "clearSelection": "Bỏ chọn",
+      "deleteToken": "Xóa",
       "tokenValue": "Giá trị token",
       "costBasis": "Giá vốn",
       "issued": "Phát hành {date}",
@@ -451,7 +452,8 @@
       "costBasis": "Giá vốn",
       "daysHeld": "Số ngày giữ",
       "source": "Nguồn",
-      "issued": "Phát hành"
+      "issued": "Phát hành",
+      "delete": "Xóa"
     },
     "actionBar": {
       "selected": "{count, plural, =1 {# token đã chọn} other {# token đã chọn}}",
@@ -635,6 +637,15 @@
       "product": "Sản phẩm: {name}",
       "confirm": "Xác nhận hủy",
       "failed": "Không hủy được token"
+    }
+  },
+  "tokens": {
+    "deleteRecordedDialog": {
+      "title": "Xóa món đã ghi nhận",
+      "description": "Xóa món này sẽ hoàn lại vào pool của campaign. Không thể hoàn tác.",
+      "product": "Sản phẩm: {name}",
+      "confirm": "Xóa",
+      "failed": "Không xóa được món"
     }
   },
   "reports": {

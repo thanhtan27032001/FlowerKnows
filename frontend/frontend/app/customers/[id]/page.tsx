@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
@@ -18,9 +18,10 @@ import { HoldingTokenCard } from "@/components/customers/holding-token-card";
 import { ItemExchangeForm } from "@/components/customers/item-exchange-form";
 import { CreateOrderForm } from "@/components/orders/create-order-form";
 import { CancelTokenDialog } from "@/components/tokens/cancel-token-dialog";
+import { DeleteRecordedTokenDialog } from "@/components/tokens/delete-recorded-token-dialog";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useFlashIds } from "@/hooks/use-flash-ids";
-import { customerApi, customerKeys } from "@/src/lib/api/customer";
+import { customerApi, customerKeys, type CustomerDetail, type CustomerToken } from "@/src/lib/api/customer";
 import { vnd } from "@/src/lib/format";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
@@ -70,11 +71,13 @@ export default function CustomerDetailPage({
   const tDetail = useTranslations("customers.detail");
   const tCommon = useTranslations("common");
   const { isOwner } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [exchangeOpen, setExchangeOpen] = useState(false);
   const [cashOutOpen, setCashOutOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [deleteToken, setDeleteToken] = useState<CustomerToken | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const { flashIds, flash } = useFlashIds();
 
@@ -240,6 +243,11 @@ export default function CustomerDetailPage({
                       token={token}
                       selected={selectedIds.has(token.id)}
                       onToggle={() => toggleToken(token.id)}
+                      onDelete={
+                        isOwner && token.sourceType === "CAMPAIGN"
+                          ? () => setDeleteToken(token)
+                          : undefined
+                      }
                     />
                   ))}
                 </div>
@@ -332,6 +340,42 @@ export default function CustomerDetailPage({
                     productName={cancelToken.productName}
                     customerId={customer.id}
                     onSuccess={() => flashThenClear([cancelToken.id])}
+                  />
+                )}
+                {deleteToken && (
+                  <DeleteRecordedTokenDialog
+                    open={!!deleteToken}
+                    onOpenChange={(next) => {
+                      if (!next) setDeleteToken(null);
+                    }}
+                    tokenId={deleteToken.id}
+                    productName={deleteToken.productName}
+                    customerId={customer.id}
+                    onSuccess={() => {
+                      const removedId = deleteToken.id;
+                      queryClient.setQueryData(
+                        customerKeys.detail(customer.id),
+                        (current: CustomerDetail | undefined) => {
+                          if (!current) return current;
+                          return {
+                            ...current,
+                            holdingTokens: current.holdingTokens.filter(
+                              (tok) => tok.id !== removedId
+                            ),
+                            prepaidBalance: Math.max(
+                              0,
+                              current.prepaidBalance - deleteToken.tokenValue
+                            ),
+                          };
+                        }
+                      );
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        next.delete(removedId);
+                        return next;
+                      });
+                      setDeleteToken(null);
+                    }}
                   />
                 )}
               </>

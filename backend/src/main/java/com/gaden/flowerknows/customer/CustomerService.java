@@ -188,8 +188,10 @@ public class CustomerService {
 
     private Map<UUID, ShippingStatus> latestShippingStatusByCustomer() {
         Map<UUID, ShippingStatus> latest = new LinkedHashMap<>();
-        for (Order order : orderRepository.findAllByOrderByCreatedAtDesc()) {
-            latest.putIfAbsent(order.getCustomer().getId(), order.getShippingStatus());
+        for (Object[] row : orderRepository.findLatestShippingStatusByCustomer()) {
+            UUID customerId = (UUID) row[0];
+            ShippingStatus status = ShippingStatus.valueOf(String.valueOf(row[1]));
+            latest.put(customerId, status);
         }
         return latest;
     }

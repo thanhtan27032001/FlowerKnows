@@ -33,6 +33,18 @@ public interface ItemTokenRepository extends JpaRepository<ItemToken, UUID> {
     );
 
     @Query("""
+            SELECT t FROM ItemToken t
+            JOIN FETCH t.product
+            WHERE t.sourceType = :sourceType
+              AND t.sourceId = :sourceId
+            ORDER BY t.createdAt DESC
+            """)
+    List<ItemToken> findBySourceTypeAndSourceIdWithProduct(
+            @Param("sourceType") SourceType sourceType,
+            @Param("sourceId") UUID sourceId
+    );
+
+    @Query("""
             SELECT COALESCE(SUM(t.tokenValue), 0) FROM ItemToken t
             WHERE t.status = com.gaden.flowerknows.token.TokenStatus.HOLDING
             """)

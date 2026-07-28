@@ -296,7 +296,7 @@ public class ParticipantService {
         CampaignParticipant participant = requireParticipantInCampaign(campaignId, participantId);
 
         List<ItemToken> tokens = itemTokenRepository
-                .findBySourceTypeAndSourceIdOrderByCreatedAtDesc(SourceType.CAMPAIGN, participantId);
+                .findBySourceTypeAndSourceIdWithProduct(SourceType.CAMPAIGN, participantId);
 
         List<UUID> nonHoldingIds = tokens.stream()
                 .filter(t -> t.getStatus() != TokenStatus.HOLDING)
@@ -308,19 +308,11 @@ public class ParticipantService {
         Map<UUID, List<String>> exchangedIntoByTokenId = Map.of();
 
         if (!nonHoldingIds.isEmpty()) {
-            for (ExchangeTransaction tx : exchangeRepository.findAllByTokenInIds(nonHoldingIds)) {
-                for (ItemToken t : tx.getTokensIn()) {
-                    if (nonHoldingIds.contains(t.getId())) {
-                        exchangeByTokenId.put(t.getId(), tx);
-                    }
-                }
+            for (Object[] row : exchangeRepository.findExchangesMappedByTokenInIds(nonHoldingIds)) {
+                exchangeByTokenId.put((UUID) row[0], (ExchangeTransaction) row[1]);
             }
-            for (Order order : orderRepository.findAllByTokenIds(nonHoldingIds)) {
-                for (ItemToken t : order.getTokens()) {
-                    if (nonHoldingIds.contains(t.getId())) {
-                        orderByTokenId.put(t.getId(), order);
-                    }
-                }
+            for (Object[] row : orderRepository.findOrdersMappedByTokenIds(nonHoldingIds)) {
+                orderByTokenId.put((UUID) row[0], (Order) row[1]);
             }
 
             List<UUID> exchangedIds = tokens.stream()
@@ -342,7 +334,7 @@ public class ParticipantService {
     }
 
     private CampaignParticipant requireParticipantInCampaign(UUID campaignId, UUID participantId) {
-        CampaignParticipant participant = participantRepository.findById(participantId)
+        CampaignParticipant participant = participantRepository.findByIdWithCampaign(participantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Participant not found: " + participantId));
 
         if (!participant.getCampaign().getId().equals(campaignId)) {

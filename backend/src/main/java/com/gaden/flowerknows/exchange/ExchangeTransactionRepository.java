@@ -32,6 +32,17 @@ public interface ExchangeTransactionRepository extends JpaRepository<ExchangeTra
     List<ExchangeTransaction> findAllByTokenInIds(Collection<UUID> tokenIds);
 
     /**
+     * Maps inbound token id → exchange in one query (avoids lazy {@code tokensIn} loads).
+     * Each row is {@code [tokenInId (UUID), ExchangeTransaction]}.
+     */
+    @Query("""
+            SELECT t.id, e FROM ExchangeTransaction e
+            JOIN e.tokensIn t
+            WHERE t.id IN :tokenIds
+            """)
+    List<Object[]> findExchangesMappedByTokenInIds(Collection<UUID> tokenIds);
+
+    /**
      * Batch lookup of outbound product names for tokens that were exchanged away
      * (via {@code exchange_token_in} → same transaction's {@code exchange_token_out}).
      * Each row is {@code [tokenInId (UUID), productName (String)]}.

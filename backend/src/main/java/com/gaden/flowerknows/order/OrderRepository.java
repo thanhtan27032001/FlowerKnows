@@ -30,6 +30,28 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             """)
     List<Order> findAllByTokenIds(Collection<UUID> tokenIds);
 
+    /**
+     * Maps token id → order in one query (avoids lazy {@code tokens} collection loads).
+     * Each row is {@code [tokenId (UUID), Order]}.
+     */
+    @Query("""
+            SELECT t.id, o FROM Order o
+            JOIN o.tokens t
+            WHERE t.id IN :tokenIds
+            """)
+    List<Object[]> findOrdersMappedByTokenIds(Collection<UUID> tokenIds);
+
+    /**
+     * Latest shipping status per customer (PostgreSQL DISTINCT ON).
+     * Each row is {@code [customerId (UUID), shippingStatus (String)]}.
+     */
+    @Query(value = """
+            SELECT DISTINCT ON (customer_id) customer_id, shipping_status
+            FROM "order"
+            ORDER BY customer_id, created_at DESC
+            """, nativeQuery = true)
+    List<Object[]> findLatestShippingStatusByCustomer();
+
     @Query("""
             SELECT COALESCE(SUM(o.recognizedRevenue), 0) FROM Order o
             WHERE o.createdAt >= :from AND o.createdAt < :to

@@ -89,7 +89,8 @@ public final class CampaignDtos {
             Instant createdAt,
             Instant outcomeAt,
             UUID orderId,
-            boolean actionable
+            boolean actionable,
+            List<String> exchangedIntoProductNames
     ) {
     }
 

@@ -49,6 +49,7 @@ export type CustomerToken = {
   createdAt: string;
   daysHeld: number;
   overdue: boolean;
+  exchangedIntoProductNames?: string[];
 };
 
 export type CustomerOrderSummary = {

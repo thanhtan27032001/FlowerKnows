@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { CustomerToken } from "@/src/lib/api/customer";
 import { formatDateTime, vnd } from "@/src/lib/format";
+import { ExchangedTokenLabel } from "@/components/shared/exchanged-token-label";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -24,7 +25,14 @@ export function HistoryTokenCard({ token, highlighted = false }: Props) {
     <Card className={cn("fk-card-shadow", highlighted && "fk-token-flash")}>
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
         <CardTitle className="text-base leading-snug">
-          {token.productName}
+          {token.status === "EXCHANGED" ? (
+            <ExchangedTokenLabel
+              productName={token.productName}
+              exchangedIntoProductNames={token.exchangedIntoProductNames}
+            />
+          ) : (
+            token.productName
+          )}
         </CardTitle>
         <StatusBadge type="token" status={token.status} />
       </CardHeader>

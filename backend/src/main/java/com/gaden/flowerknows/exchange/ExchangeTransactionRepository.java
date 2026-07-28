@@ -31,6 +31,22 @@ public interface ExchangeTransactionRepository extends JpaRepository<ExchangeTra
             """)
     List<ExchangeTransaction> findAllByTokenInIds(Collection<UUID> tokenIds);
 
+    /**
+     * Batch lookup of outbound product names for tokens that were exchanged away
+     * (via {@code exchange_token_in} → same transaction's {@code exchange_token_out}).
+     * Each row is {@code [tokenInId (UUID), productName (String)]}.
+     */
+    @Query("""
+            SELECT tin.id, p.name
+            FROM ExchangeTransaction e
+            JOIN e.tokensIn tin
+            JOIN e.tokensOut tout
+            JOIN tout.product p
+            WHERE tin.id IN :tokenIds
+            ORDER BY tin.id, tout.createdAt
+            """)
+    List<Object[]> findExchangedIntoProductNameRows(Collection<UUID> tokenIds);
+
     @Query("""
             SELECT COALESCE(SUM(e.actualRefundAmount), 0) FROM ExchangeTransaction e
             WHERE e.type = com.gaden.flowerknows.exchange.ExchangeType.CASH_OUT

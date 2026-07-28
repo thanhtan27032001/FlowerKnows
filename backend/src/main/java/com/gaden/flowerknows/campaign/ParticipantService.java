@@ -8,6 +8,7 @@ import com.gaden.flowerknows.customer.CustomerDtos;
 import com.gaden.flowerknows.customer.CustomerService;
 import com.gaden.flowerknows.exchange.ExchangeTransaction;
 import com.gaden.flowerknows.exchange.ExchangeTransactionRepository;
+import com.gaden.flowerknows.exchange.ExchangedIntoProductNames;
 import com.gaden.flowerknows.order.Order;
 import com.gaden.flowerknows.order.OrderRepository;
 import com.gaden.flowerknows.product.Product;
@@ -304,6 +305,7 @@ public class ParticipantService {
 
         Map<UUID, ExchangeTransaction> exchangeByTokenId = new HashMap<>();
         Map<UUID, Order> orderByTokenId = new HashMap<>();
+        Map<UUID, List<String>> exchangedIntoByTokenId = Map.of();
 
         if (!nonHoldingIds.isEmpty()) {
             for (ExchangeTransaction tx : exchangeRepository.findAllByTokenInIds(nonHoldingIds)) {
@@ -320,13 +322,21 @@ public class ParticipantService {
                     }
                 }
             }
+
+            List<UUID> exchangedIds = tokens.stream()
+                    .filter(t -> t.getStatus() == TokenStatus.EXCHANGED)
+                    .map(ItemToken::getId)
+                    .toList();
+            exchangedIntoByTokenId = ExchangedIntoProductNames.load(exchangeRepository, exchangedIds);
         }
 
+        Map<UUID, List<String>> exchangedIntoNames = exchangedIntoByTokenId;
         return tokens.stream()
                 .map(token -> toParticipantTokenResponse(
                         token,
                         exchangeByTokenId.get(token.getId()),
-                        orderByTokenId.get(token.getId())
+                        orderByTokenId.get(token.getId()),
+                        ExchangedIntoProductNames.forToken(exchangedIntoNames, token.getId())
                 ))
                 .collect(Collectors.toList());
     }
@@ -365,7 +375,8 @@ public class ParticipantService {
     private CampaignDtos.ParticipantTokenResponse toParticipantTokenResponse(
             ItemToken token,
             ExchangeTransaction exchange,
-            Order order
+            Order order,
+            List<String> exchangedIntoProductNames
     ) {
         boolean actionable = token.getStatus() == TokenStatus.HOLDING;
         Instant outcomeAt = null;
@@ -414,7 +425,10 @@ public class ParticipantService {
                 token.getCreatedAt(),
                 outcomeAt,
                 orderId,
-                actionable
+                actionable,
+                token.getStatus() == TokenStatus.EXCHANGED
+                        ? exchangedIntoProductNames
+                        : List.of()
         );
     }
 

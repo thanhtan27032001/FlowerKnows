@@ -194,7 +194,7 @@ public class ProductService {
             case EXCHANGE_OUT -> "Removed for Item Exchange (new token)";
             case CASH_OUT_RETURN -> "Returned from Cash Out";
             case TOKEN_CANCEL_RETURN -> "Returned from Overdue Token Cancellation";
-            case ORDER_FULFILLMENT -> "Removed for Order Fulfillment";
+            case ORDER_FULFILLMENT -> "Removed for Order Fulfillment (deprecated)";
             case EXCHANGE_UNDO_RETURN -> "Returned from Undoing Item Exchange";
             case EXCHANGE_UNDO_REMOVE -> "Removed from Undoing Item Exchange";
         };

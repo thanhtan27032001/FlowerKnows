@@ -4,6 +4,8 @@ import com.gaden.flowerknows.campaign.CampaignParticipant;
 import com.gaden.flowerknows.campaign.CampaignParticipantRepository;
 import com.gaden.flowerknows.common.ResourceNotFoundException;
 import com.gaden.flowerknows.common.TextSearch;
+import com.gaden.flowerknows.exchange.ExchangeTransactionRepository;
+import com.gaden.flowerknows.exchange.ExchangedIntoProductNames;
 import com.gaden.flowerknows.order.Order;
 import com.gaden.flowerknows.order.OrderRepository;
 import com.gaden.flowerknows.order.ShippingStatus;
@@ -34,17 +36,20 @@ public class CustomerService {
     private final ItemTokenRepository itemTokenRepository;
     private final CampaignParticipantRepository participantRepository;
     private final OrderRepository orderRepository;
+    private final ExchangeTransactionRepository exchangeRepository;
 
     public CustomerService(
             CustomerRepository customerRepository,
             ItemTokenRepository itemTokenRepository,
             CampaignParticipantRepository participantRepository,
-            OrderRepository orderRepository
+            OrderRepository orderRepository,
+            ExchangeTransactionRepository exchangeRepository
     ) {
         this.customerRepository = customerRepository;
         this.itemTokenRepository = itemTokenRepository;
         this.participantRepository = participantRepository;
         this.orderRepository = orderRepository;
+        this.exchangeRepository = exchangeRepository;
     }
 
     @Transactional(readOnly = true)
@@ -89,11 +94,22 @@ public class CustomerService {
 
         Map<UUID, String> campaignNames = resolveCampaignSourceLabels(holding, history);
 
+        List<UUID> exchangedIds = history.stream()
+                .filter(t -> t.getStatus() == TokenStatus.EXCHANGED)
+                .map(ItemToken::getId)
+                .toList();
+        Map<UUID, List<String>> exchangedIntoByTokenId =
+                ExchangedIntoProductNames.load(exchangeRepository, exchangedIds);
+
         List<CustomerDtos.TokenCardResponse> holdingCards = holding.stream()
-                .map(t -> toTokenCard(t, campaignNames))
+                .map(t -> toTokenCard(t, campaignNames, List.of()))
                 .toList();
         List<CustomerDtos.TokenCardResponse> historyCards = history.stream()
-                .map(t -> toTokenCard(t, campaignNames))
+                .map(t -> toTokenCard(
+                        t,
+                        campaignNames,
+                        ExchangedIntoProductNames.forToken(exchangedIntoByTokenId, t.getId())
+                ))
                 .toList();
 
         BigDecimal prepaidBalance = holding.stream()
@@ -229,7 +245,8 @@ public class CustomerService {
 
     private CustomerDtos.TokenCardResponse toTokenCard(
             ItemToken token,
-            Map<UUID, String> campaignNames
+            Map<UUID, String> campaignNames,
+            List<String> exchangedIntoProductNames
     ) {
         long daysHeld = ChronoUnit.DAYS.between(token.getCreatedAt(), Instant.now());
         String sourceLabel = switch (token.getSourceType()) {
@@ -249,7 +266,10 @@ public class CustomerService {
                 sourceLabel,
                 token.getCreatedAt(),
                 daysHeld,
-                daysHeld >= TokenService.OVERDUE_DAYS
+                daysHeld >= TokenService.OVERDUE_DAYS,
+                token.getStatus() == TokenStatus.EXCHANGED
+                        ? exchangedIntoProductNames
+                        : List.of()
         );
     }
 }

@@ -33,6 +33,7 @@ import { formatCostPrice, formatDateTime, vnd } from "@/src/lib/format";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ExchangedTokenLabel } from "@/components/shared/exchanged-token-label";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -609,8 +610,20 @@ function ParticipantTokenRow({
       ) : (
         <span className="size-4 shrink-0" aria-hidden />
       )}
-      <span className="min-w-0 flex-1 truncate font-medium">
-        {token.productName}
+      <span
+        className={cn(
+          "min-w-0 flex-1",
+          token.status === "EXCHANGED" ? "break-words" : "truncate"
+        )}
+      >
+        {token.status === "EXCHANGED" ? (
+          <ExchangedTokenLabel
+            productName={token.productName}
+            exchangedIntoProductNames={token.exchangedIntoProductNames}
+          />
+        ) : (
+          <span className="font-medium">{token.productName}</span>
+        )}
       </span>
       <span className="hidden tabular-nums text-muted-foreground sm:inline">
         {vnd.format(token.tokenValue)}

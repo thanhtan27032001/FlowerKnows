@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 2.5 (US-02: removed auto-close, remaining_quantity no longer zeroed on close; adds US-30 Reopen Campaign, Owner-only)
+**Version:** 2.7 (BUGFIX: Order creation no longer double-deducts stock_quantity — removed the redundant deduction in US-09; stock was already deducted at campaign_lock or exchange_out time)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -351,8 +351,9 @@ This is the single source of truth for schema design across the whole document.
 |---|---|---|---|
 | 1 | Staff is on a `campaign` detail page, viewing the participant list | Expands a participant row (or clicks "View items") | Shows every `item_token` where `source_type = campaign` and `source_id` = this `campaign_participant.id`, each with: `product`, `token_value`, `cost_basis`, and **current `status`** (`holding`/`exchanged`/`cashed_out`/`ordered`/`cancelled`) — including tokens that are no longer `holding`, so Staff can see "this item was already exchanged/ordered" rather than assuming it's still held |
 | 2 | A token in this list has `status = holding` | Staff selects it | The same "Item Exchange" / "Cash Out" actions from US-06/US-07 become available, reusing the exact same dialogs/components and API calls as the Customer Page — no separate logic, no separate endpoint |
-| 3 | A token in this list has `status` other than `holding` | Staff views it | The token is shown read-only (no action buttons), with a small label indicating what happened to it (e.g. "Exchanged on [date]", "Included in order #X") |
-| 4 | Staff performs an Item Exchange from this screen | Exchange is confirmed | The old token (still tagged `source_type = campaign`, this participant) updates to `status = exchanged`; the newly generated token is tagged `source_type = exchange` per the existing rule — it will now appear in the customer's full history on the Customer Page, but NOT in this campaign's participant view (since its `source_id` no longer points to this `campaign_participant`) |
+| 3 | A token in this list has `status = exchanged` | Staff views it | Displayed as **`<new item name(s)>` (~~`<old item name>`~~)** — the old product name is struck through, followed by the name(s) of the new item(s) it became. The new item name(s) are looked up via the `exchange_transaction` this token belongs to (through `exchange_token_in`), listing every product in that same transaction's `exchange_token_out` (comma-separated if the exchange was 1→N). Read-only, no action buttons. Example from the shop's own naming: `Vial uni hồng (Bảng mắt gấu)` with "Bảng mắt gấu" struck through |
+| 3b | A token in this list has `status` = `cashed_out` / `ordered` / `cancelled` | Staff views it | Shown read-only with a small label indicating what happened (e.g. "Đã đổi tiền", "Đã lên đơn #X", "Đã hủy") — no strikethrough treatment, since these aren't a "became something else" transformation the way an exchange is |
+| 4 | Staff performs an Item Exchange from this screen | Exchange is confirmed | The old token (still tagged `source_type = campaign`, this participant) updates to `status = exchanged`; the newly generated token is tagged `source_type = exchange` per the existing rule — as its own row, it will now appear in the customer's full history on the Customer Page, but NOT as a separate row in this campaign's participant view (since its `source_id` no longer points to this `campaign_participant`). **However**, per AC #3 above, its product name still appears inline next to the old token here (`<new> (~~old~~)`), so Staff never loses the traceability even without switching screens |
 | 5 | Staff wants the customer's full cross-campaign picture (not just this campaign) | Clicks through to "View full customer profile" from the participant row | Navigates to the Customer Page (US-05), which shows all holding/history tokens regardless of source campaign |
 
 **Note:** This US does not introduce new backend endpoints — it reuses `GET /api/customers/{id}` (filtered client-side to this campaign's tokens) or a dedicated filtered query `GET /api/campaigns/{id}/participants/{participantId}/tokens`, plus the existing exchange endpoints from US-06/US-07. This is primarily a UI/UX consolidation, not a new business rule.
@@ -406,7 +407,7 @@ This is the single source of truth for schema design across the whole document.
 
 | # | Given | When | Then |
 |---|---|---|---|
-| 1 | Staff searches for a `customer` (by `name`/`phone`) | Selects the customer | The "Customer Page" is shown with: (a) a list of `item_token`s with `status = holding` — each row: `product`, `token_value`, `created_at`, source (which campaign / or from an exchange), days held; (b) history of processed tokens (`exchanged`/`cashed_out`/`ordered`/`cancelled`); (c) the current total `prepaid_balance` (= sum of `token_value` for `holding` tokens) |
+| 1 | Staff searches for a `customer` (by `name`/`phone`) | Selects the customer | The "Customer Page" is shown with: (a) a list of `item_token`s with `status = holding` — each row: `product`, `token_value`, `created_at`, source (which campaign / or from an exchange), days held; (b) history of processed tokens (`exchanged`/`cashed_out`/`ordered`/`cancelled`) — an `exchanged` token displays using the same `<new item name(s)>` (~~`<old item name>`~~) format defined in US-16 AC #3, for consistency across both screens; (c) the current total `prepaid_balance` (= sum of `token_value` for `holding` tokens) |
 | 2 | A token has been held for > 30 days | The list is shown | That row is **highlighted with a warning**, labeled "Overdue (30+ days)" |
 | 3 | The customer has no tokens yet | Customer is selected | An empty state is shown: "This customer has no items currently held" |
 | 4 | The `holding` token list is shown | Staff selects one or more tokens | An action bar appears: "Item Exchange", "Cash Out", "Create Order", "Cancel Token" — only active when ≥ 1 token is selected |
@@ -546,7 +547,7 @@ This is the single source of truth for schema design across the whole document.
 |---|---|---|---|
 | 1 | Staff is on the Customer Page, the customer has ≥ 1 `holding` token | Selects one or more tokens, clicks "Create Order" | A confirmation form is shown: the list of selected tokens (product, token_value, cost_basis, source campaign/date), **expected `recognized_revenue` = sum of the selected token_values**, **expected `total_cost` = sum of `cost_basis`** (treated as 0 for any token with a null `cost_basis`), **expected `gross_margin` = revenue − cost**, and an **optional `carrier_order_id` field** (Staff may leave it blank and fill it in later once known) |
 | 2 | The customer has tokens from 3 different campaigns, Staff only selects tokens from 2 campaigns | Clicks "Create Order" | The system merges only the selected tokens into the order; the remaining tokens **stay `status = holding`**, and continue to appear on the Customer Page for a future consolidated order |
-| 3 | Staff confirms creation | — | Transaction: (a) create the `order` with `recognized_revenue` = sum of token values, **`total_cost` = sum of token cost_basis, `gross_margin` = recognized_revenue − total_cost**, `shipping_status = order_created`, `carrier_order_id` = whatever Staff entered (or null), (b) create the linking `order_token` rows, (c) all selected tokens → `status = ordered`, (d) **deduct `product.stock_quantity`** accordingly (the only true stock-outflow point in the whole system) |
+| 3 | Staff confirms creation | — | Transaction: (a) create the `order` with `recognized_revenue` = sum of token values, **`total_cost` = sum of token cost_basis, `gross_margin` = recognized_revenue − total_cost**, `shipping_status = order_created`, `carrier_order_id` = whatever Staff entered (or null), (b) create the linking `order_token` rows, (c) all selected tokens → `status = ordered`. **`product.stock_quantity` is NOT touched here** — see the v2.7 bugfix note below |
 | 4 | The order has been created | Staff views the customer's order list | The order is shown with all included tokens, `recognized_revenue`, `total_cost`, `gross_margin`, `shipping_status` (starts as `order_created`), `carrier_order_id` (or "Not set yet") |
 | 5 | The order has been created and the goods have actually been shipped | Staff updates the status | Allows transitioning `shipping_status`: `order_created` → `shipped` → `completed`, and allows adding/editing `carrier_order_id` at this point if it wasn't set at creation — **does not affect tokens/stock/revenue again** (already finalized at order creation). This is fully separate from `customer.action_status` (US-18), which only covers the pre-order stage and is not touched by these transitions. |
 | 6 | A token is already `status = ordered` | Staff tries to select it for Exchange/Cash Out/Cancel | Not allowed, not shown in the selectable list (per Rule #9 — only applies to `holding` tokens) |
@@ -555,6 +556,8 @@ This is the single source of truth for schema design across the whole document.
 **Business Rules applied:** Rule #5 (revenue recognition point), #8, #9.
 
 **This is the most technically important US** because it directly solves the "order consolidation" problem — the token query depends only on `customer_id` + `status = holding`, never on `campaign_id`.
+
+**⚠️ v2.7 bugfix — double-deduction:** Earlier versions of this spec (through v2.6) had Order creation deduct `product.stock_quantity` as "the only true stock-outflow point in the whole system." This was **wrong** and caused stock to be deducted twice: once at `campaign_lock` (US-01, when a product enters a campaign's pool) or at `exchange_out` (US-06, when a product is given out via Item Exchange), and then a *second* time here at Order creation. By the time any token reaches Create Order, its underlying stock has **already** left `stock_quantity` through one of those two earlier events — Create Order is purely a billing/consolidation/shipping event from this point on, with zero additional stock impact. **Do not re-add a stock deduction here.**
 
 ---
 
@@ -690,7 +693,7 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | `exchange_out` | Removed for Item Exchange (new token) |
 | `cash_out_return` | Returned from Cash Out |
 | `token_cancel_return` | Returned from Overdue Token Cancellation |
-| `order_fulfillment` | Removed for Order Fulfillment |
+| `order_fulfillment` | ~~Removed for Order Fulfillment~~ — **DEPRECATED as of v2.7, no longer generated** (kept in the enum only so historical rows from before the bugfix still display correctly; see the v2.7 bugfix note under US-09) |
 | `exchange_undo_return` | Returned from Undoing an Item Exchange |
 | `exchange_undo_remove` | Removed from Undoing an Item Exchange |
 
@@ -703,7 +706,7 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | US-06 (Item Exchange) | Adds stock (old token) / Deducts stock (new token) | `exchange_in` / `exchange_out` |
 | US-07 (Cash Out) | Returns stock | `cash_out_return` |
 | US-08 (Cancel Token) | Returns stock | `token_cancel_return` |
-| US-09 (Create Order) | Deducts stock | `order_fulfillment` |
+| US-09 (Create Order) | ~~Deducts stock~~ **No stock effect (fixed in v2.7)** — do NOT write any `stock_transaction` here anymore |
 
 ---
 

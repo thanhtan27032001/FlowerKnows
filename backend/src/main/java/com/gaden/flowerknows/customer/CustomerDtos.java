@@ -55,7 +55,8 @@ public final class CustomerDtos {
             String sourceLabel,
             Instant createdAt,
             long daysHeld,
-            boolean overdue
+            boolean overdue,
+            List<String> exchangedIntoProductNames
     ) {
     }
 

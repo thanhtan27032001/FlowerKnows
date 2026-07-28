@@ -20,7 +20,6 @@ import com.gaden.flowerknows.token.ItemTokenRepository;
 import com.gaden.flowerknows.token.SourceType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -108,12 +107,10 @@ class CostTrackingServiceTests {
 
     @Test
     void orderCreationComputesTotalCostAndGrossMarginIncludingNullCostBasis() {
-        StockService stockService = new StockService(stockTransactionRepository);
         OrderService orderService = new OrderService(
                 orderRepository,
                 itemTokenRepository,
-                customerService,
-                stockService
+                customerService
         );
 
         UUID customerId = UUID.randomUUID();
@@ -125,13 +122,13 @@ class CostTrackingServiceTests {
         Product p2 = new Product("B", BigDecimal.valueOf(200), 10);
         setId(p1, UUID.randomUUID());
         setId(p2, UUID.randomUUID());
+        int p1Before = p1.getStockQuantity();
+        int p2Before = p2.getStockQuantity();
 
         ItemToken t1 = new ItemToken(p1, customer, BigDecimal.valueOf(100), BigDecimal.valueOf(30), SourceType.CAMPAIGN, UUID.randomUUID());
         ItemToken t2 = new ItemToken(p2, customer, BigDecimal.valueOf(200), null, SourceType.CAMPAIGN, UUID.randomUUID());
 
         when(itemTokenRepository.findByIdInAndCustomerId(any(), eq(customerId))).thenReturn(List.of(t1, t2));
-        when(stockTransactionRepository.save(any(StockTransaction.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         OrderDtos.OrderResponse response = orderService.createOrder(
@@ -143,8 +140,10 @@ class CostTrackingServiceTests {
         assertEquals(BigDecimal.valueOf(270), response.grossMargin());
         assertTrue(response.tokens().stream().anyMatch(t -> t.costBasis() == null));
 
-        ArgumentCaptor<StockTransaction> captor = ArgumentCaptor.forClass(StockTransaction.class);
-        verify(stockTransactionRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        // v2.7: create order must not touch stock or write ORDER_FULFILLMENT rows
+        assertEquals(p1Before, p1.getStockQuantity());
+        assertEquals(p2Before, p2.getStockQuantity());
+        verify(stockTransactionRepository, never()).save(any(StockTransaction.class));
     }
 
     private static void setId(Object entity, UUID id) {

@@ -4,9 +4,6 @@ import com.gaden.flowerknows.common.BusinessException;
 import com.gaden.flowerknows.common.ResourceNotFoundException;
 import com.gaden.flowerknows.customer.Customer;
 import com.gaden.flowerknows.customer.CustomerService;
-import com.gaden.flowerknows.product.Product;
-import com.gaden.flowerknows.stock.StockService;
-import com.gaden.flowerknows.stock.StockTransactionType;
 import com.gaden.flowerknows.token.ItemToken;
 import com.gaden.flowerknows.token.ItemTokenRepository;
 import com.gaden.flowerknows.token.TokenStatus;
@@ -14,9 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -25,20 +20,23 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ItemTokenRepository itemTokenRepository;
     private final CustomerService customerService;
-    private final StockService stockService;
 
     public OrderService(
             OrderRepository orderRepository,
             ItemTokenRepository itemTokenRepository,
-            CustomerService customerService,
-            StockService stockService
+            CustomerService customerService
     ) {
         this.orderRepository = orderRepository;
         this.itemTokenRepository = itemTokenRepository;
         this.customerService = customerService;
-        this.stockService = stockService;
     }
 
+    /**
+     * US-09 / v2.7: create order from holding tokens.
+     * Does <strong>not</strong> touch {@code product.stock_quantity} or write
+     * {@code stock_transaction} — stock was already deducted at campaign_lock
+     * or exchange_out when the token was created.
+     */
     @Transactional
     public OrderDtos.OrderResponse createOrder(OrderDtos.CreateOrderRequest request) {
         Customer customer = customerService.requireCustomer(request.customerId());
@@ -61,24 +59,8 @@ public class OrderService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal grossMargin = revenue.subtract(totalCost);
 
-        Map<UUID, Integer> fulfillCounts = new HashMap<>();
         for (ItemToken token : tokens) {
-            fulfillCounts.merge(token.getProduct().getId(), 1, Integer::sum);
             token.setStatus(TokenStatus.ORDERED);
-        }
-
-        for (Map.Entry<UUID, Integer> entry : fulfillCounts.entrySet()) {
-            Product product = tokens.stream()
-                    .map(ItemToken::getProduct)
-                    .filter(p -> p.getId().equals(entry.getKey()))
-                    .findFirst()
-                    .orElseThrow();
-            stockService.applyStockChange(
-                    product,
-                    -entry.getValue(),
-                    StockTransactionType.ORDER_FULFILLMENT,
-                    "Removed for order fulfillment"
-            );
         }
 
         Order order = new Order(customer, revenue, totalCost, grossMargin, request.carrierOrderId());

@@ -120,6 +120,7 @@ export type ParticipantToken = {
   outcomeAt: string | null;
   orderId: string | null;
   actionable: boolean;
+  exchangedIntoProductNames: string[];
 };
 
 export const campaignKeys = {

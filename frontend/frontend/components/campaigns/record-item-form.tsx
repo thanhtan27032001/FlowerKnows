@@ -149,6 +149,14 @@ export function RecordItemForm({
   const submitDisabled =
     blockedAllRecorded || noParticipants || noPoolLeft;
 
+  const selectedParticipantLabel = selectedParticipant
+    ? `${selectedParticipant.customerName}${selectedParticipant.customerPhone ? ` — ${selectedParticipant.customerPhone}` : ""} (${selectedParticipant.totalBagsPurchased})`
+    : "";
+
+  const selectedProductLabel = selectedProduct
+    ? `${selectedProduct.productName} (${selectedProduct.remainingQuantity})`
+    : "";
+
   const formBody = (
     <fieldset disabled={locked} className="min-w-0 space-y-4">
       {noParticipants ? (
@@ -172,7 +180,7 @@ export function RecordItemForm({
               }}
             >
               <SelectTrigger className="w-full min-w-0">
-                <SelectValue placeholder={t("selectParticipant")} />
+                <SelectValue placeholder={t("selectParticipant")}>{selectedParticipantLabel}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {confirmedParticipants.map((p) => (
@@ -204,7 +212,7 @@ export function RecordItemForm({
               }}
             >
               <SelectTrigger className="w-full min-w-0">
-                <SelectValue placeholder={t("selectProduct")} />
+                <SelectValue placeholder={t("selectProduct")}>{selectedProductLabel}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {availableProducts.map((p) => (

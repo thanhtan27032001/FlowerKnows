@@ -268,7 +268,7 @@ export function ItemExchangeForm({
                   }
                 >
                   <SelectTrigger className="w-full min-w-0">
-                    <SelectValue placeholder={t("selectProduct")} />
+                    <SelectValue placeholder={t("selectProduct")}>{selected ? `${selected.name} (${selected.stockQuantity})` : ""}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {inStockProducts.map((product) => (

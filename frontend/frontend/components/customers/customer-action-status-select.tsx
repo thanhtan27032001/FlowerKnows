@@ -62,7 +62,7 @@ export function CustomerActionStatusSelect({ customerId, value }: Props) {
             className="h-8 w-auto min-w-[10.5rem] border-primary/30 bg-primary/5 font-medium"
             aria-label={t("aria")}
           >
-            <SelectValue />
+            <SelectValue>{actionStatusLabel(tStatus, value)}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {ACTION_STATUS_VALUES.map((status) => (

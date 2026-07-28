@@ -138,7 +138,12 @@ export default function ReportsPage() {
                 }}
               >
                 <SelectTrigger className="w-full min-w-0">
-                  <SelectValue placeholder={t("filters.allCampaigns")} />
+                  <SelectValue placeholder={t("filters.allCampaigns")}>
+                    {campaignId
+                      ? (campaignsQuery.data ?? []).find((c) => c.id === campaignId)
+                          ?.name ?? campaignId
+                      : t("filters.allCampaigns")}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">

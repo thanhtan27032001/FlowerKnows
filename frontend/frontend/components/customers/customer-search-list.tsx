@@ -113,7 +113,11 @@ export function CustomerSearchList({
             className="w-full sm:w-[200px]"
             aria-label={t("actionStatus")}
           >
-            <SelectValue placeholder={t("actionStatus")} />
+            <SelectValue placeholder={t("actionStatus")}>
+              {actionStatus
+                ? actionStatusLabel(tStatus, actionStatus)
+                : t("allActionStatuses")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">{t("allActionStatuses")}</SelectItem>
@@ -138,7 +142,11 @@ export function CustomerSearchList({
             className="w-full sm:w-[200px]"
             aria-label={t("shippingStatus")}
           >
-            <SelectValue placeholder={t("shippingStatus")} />
+            <SelectValue placeholder={t("shippingStatus")}>
+              {shippingStatus
+                ? shippingStatusLabel(tStatus, shippingStatus)
+                : t("allShippingStatuses")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">{t("allShippingStatuses")}</SelectItem>

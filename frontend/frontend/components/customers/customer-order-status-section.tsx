@@ -96,7 +96,7 @@ function OrderShippingControls({
             disabled={locked || status === "COMPLETED"}
           >
             <SelectTrigger className="h-8 w-full">
-              <SelectValue />
+              <SelectValue>{shippingStatusLabel(tStatus, status)}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {options.map((s) => (

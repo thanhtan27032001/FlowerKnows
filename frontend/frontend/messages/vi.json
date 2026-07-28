@@ -476,6 +476,8 @@
       "daysHeld": "Số ngày giữ",
       "source": "Nguồn",
       "issued": "Phát hành",
+      "showDetails": "Xem chi tiết",
+      "hideDetails": "Ẩn chi tiết",
       "delete": "Xóa"
     },
     "actionBar": {

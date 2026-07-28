@@ -163,7 +163,7 @@ function CreateAccountDialog({
               onValueChange={(value) => setRole(value as AccountRole)}
             >
               <SelectTrigger className="w-full">
-                <SelectValue />
+                <SelectValue>{tAuth(`roles.${role}`)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="OWNER">{tAuth("roles.OWNER")}</SelectItem>

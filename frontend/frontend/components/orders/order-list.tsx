@@ -80,7 +80,9 @@ function OrderStatusSelect({ order }: { order: Order }) {
           disabled={mutation.isPending || order.shippingStatus === "COMPLETED"}
         >
           <SelectTrigger className="h-8 w-[150px]">
-            <SelectValue />
+            <SelectValue>
+              {shippingStatusLabel(tStatus, order.shippingStatus)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {options.map((status) => (

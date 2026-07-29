@@ -87,10 +87,11 @@ public class CustomerService {
     public CustomerDtos.CustomerDetailResponse getById(UUID id) {
         Customer customer = requireCustomer(id);
 
+        // JOIN FETCH product to avoid N+1 on token.getProduct()
         List<ItemToken> holding = itemTokenRepository
-                .findByCustomerIdAndStatusOrderByCreatedAtDesc(id, TokenStatus.HOLDING);
+                .findByCustomerIdAndStatusWithProduct(id, TokenStatus.HOLDING);
         List<ItemToken> history = itemTokenRepository
-                .findByCustomerIdAndStatusNotOrderByCreatedAtDesc(id, TokenStatus.HOLDING);
+                .findByCustomerIdAndStatusNotWithProduct(id, TokenStatus.HOLDING);
 
         Map<UUID, String> campaignNames = resolveCampaignSourceLabels(holding, history);
 
@@ -118,10 +119,11 @@ public class CustomerService {
 
         int overdueHoldingCount = (int) holdingCards.stream().filter(CustomerDtos.TokenCardResponse::overdue).count();
 
+        // Batch-load orders with token count to avoid N+1 on order.getTokens().size()
         List<CustomerDtos.CustomerOrderSummaryResponse> orders = orderRepository
-                .findByCustomerIdOrderByCreatedAtDesc(id)
+                .findByCustomerIdWithTokenCount(id)
                 .stream()
-                .map(this::toOrderSummary)
+                .map(row -> toOrderSummary((Order) row[0], ((Number) row[1]).intValue()))
                 .toList();
 
         CustomerDtos.CustomerOrderSummaryResponse latestOrder =
@@ -211,8 +213,7 @@ public class CustomerService {
         );
     }
 
-    private CustomerDtos.CustomerOrderSummaryResponse toOrderSummary(Order order) {
-        order.getTokens().size();
+    private CustomerDtos.CustomerOrderSummaryResponse toOrderSummary(Order order, int tokenCount) {
         return new CustomerDtos.CustomerOrderSummaryResponse(
                 order.getId(),
                 order.getCreatedAt(),
@@ -221,7 +222,7 @@ public class CustomerService {
                 order.getGrossMargin(),
                 order.getShippingStatus().name(),
                 order.getCarrierOrderId(),
-                order.getTokens().size()
+                tokenCount
         );
     }
 
@@ -238,8 +239,9 @@ public class CustomerService {
             return Map.of();
         }
 
+        // JOIN FETCH campaign to avoid N+1 on participant.getCampaign().getName()
         Map<UUID, String> labels = new HashMap<>();
-        for (CampaignParticipant participant : participantRepository.findAllById(participantIds)) {
+        for (CampaignParticipant participant : participantRepository.findAllByIdWithCampaign(participantIds)) {
             labels.put(participant.getId(), participant.getCampaign().getName());
         }
         return labels;

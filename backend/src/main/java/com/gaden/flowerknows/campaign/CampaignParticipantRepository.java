@@ -2,7 +2,9 @@ package com.gaden.flowerknows.campaign;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,6 +28,13 @@ public interface CampaignParticipantRepository extends JpaRepository<CampaignPar
             WHERE p.id = :id
             """)
     Optional<CampaignParticipant> findByIdWithCampaign(UUID id);
+
+    @Query("""
+            SELECT p FROM CampaignParticipant p
+            JOIN FETCH p.campaign
+            WHERE p.id IN :ids
+            """)
+    List<CampaignParticipant> findAllByIdWithCampaign(@Param("ids") Collection<UUID> ids);
 
     long countByCampaignId(UUID campaignId);
 

@@ -25,6 +25,28 @@ public interface ItemTokenRepository extends JpaRepository<ItemToken, UUID> {
 
     List<ItemToken> findByCustomerIdAndStatusNotOrderByCreatedAtDesc(UUID customerId, TokenStatus status);
 
+    @Query("""
+            SELECT t FROM ItemToken t
+            JOIN FETCH t.product
+            WHERE t.customer.id = :customerId AND t.status = :status
+            ORDER BY t.createdAt DESC
+            """)
+    List<ItemToken> findByCustomerIdAndStatusWithProduct(
+            @Param("customerId") UUID customerId,
+            @Param("status") TokenStatus status
+    );
+
+    @Query("""
+            SELECT t FROM ItemToken t
+            JOIN FETCH t.product
+            WHERE t.customer.id = :customerId AND t.status <> :status
+            ORDER BY t.createdAt DESC
+            """)
+    List<ItemToken> findByCustomerIdAndStatusNotWithProduct(
+            @Param("customerId") UUID customerId,
+            @Param("status") TokenStatus status
+    );
+
     List<ItemToken> findByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(TokenStatus status, Instant cutoff);
 
     List<ItemToken> findBySourceTypeAndSourceIdOrderByCreatedAtDesc(

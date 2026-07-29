@@ -2,6 +2,7 @@ package com.gaden.flowerknows.order;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,6 +14,19 @@ import java.util.UUID;
 public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     List<Order> findByCustomerIdOrderByCreatedAtDesc(UUID customerId);
+
+    /**
+     * Load orders with eager token count in one query (avoids N+1 lazy {@code order.getTokens().size()}).
+     * Each row is {@code [Order, tokenCount (Long)]}.
+     */
+    @Query("""
+            SELECT o, COUNT(t) FROM Order o
+            LEFT JOIN o.tokens t
+            WHERE o.customer.id = :customerId
+            GROUP BY o
+            ORDER BY o.createdAt DESC
+            """)
+    List<Object[]> findByCustomerIdWithTokenCount(@Param("customerId") UUID customerId);
 
     List<Order> findAllByOrderByCreatedAtDesc();
 

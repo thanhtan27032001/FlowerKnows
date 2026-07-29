@@ -32,11 +32,14 @@ export function CustomerActionStatusSelect({ customerId, value }: Props) {
   const mutation = useMutation({
     mutationFn: (actionStatus: CustomerActionStatus) =>
       customerApi.updateActionStatus(customerId, actionStatus),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: customerKeys.detail(customerId),
+    onSuccess: (updatedCustomer) => {
+      // Merge the response directly into cache — avoids a second GET round-trip
+      queryClient.setQueryData(customerKeys.detail(customerId), updatedCustomer);
+      // Mark the customer list as stale (lazy refetch on next visit)
+      queryClient.invalidateQueries({
+        queryKey: customerKeys.all,
+        refetchType: "none",
       });
-      await queryClient.invalidateQueries({ queryKey: customerKeys.all });
     },
   });
 

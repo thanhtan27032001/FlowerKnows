@@ -69,13 +69,14 @@ export function EditCustomerForm({ open, onOpenChange, customer }: Props) {
       if (!customer) throw new Error("No customer");
       return customerApi.update(customer.id, input);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: customerKeys.all });
+    onSuccess: async (updatedCustomer) => {
       if (customer) {
-        await queryClient.invalidateQueries({
-          queryKey: customerKeys.detail(customer.id),
-        });
+        queryClient.setQueryData(customerKeys.detail(customer.id), updatedCustomer);
       }
+      queryClient.invalidateQueries({
+        queryKey: customerKeys.all,
+        refetchType: "none",
+      });
       await runSuccess(() => {
         onOpenChange(false);
       });

@@ -90,10 +90,14 @@ export type RecordParticipantInput = {
   bagsPurchased: number;
 };
 
-export type RecordItemsInput = {
-  customerId: string;
+export type RecordItemLine = {
   productId: string;
   quantity: number;
+};
+
+export type RecordItemsInput = {
+  customerId: string;
+  lines: RecordItemLine[];
 };
 
 export type TokenRecord = {

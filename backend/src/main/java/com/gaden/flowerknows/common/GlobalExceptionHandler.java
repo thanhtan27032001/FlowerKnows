@@ -9,6 +9,10 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.gaden.flowerknows.campaign.ParticipantService;
+
+import java.time.Instant;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -20,10 +24,29 @@ public class GlobalExceptionHandler {
                 .body(ApiError.of("NOT_FOUND", ex.getMessage()));
     }
 
+    @ExceptionHandler(ParticipantService.BatchLineException.class)
+    public ResponseEntity<BatchLineApiError> handleBatchLine(ParticipantService.BatchLineException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new BatchLineApiError(
+                        "BATCH_LINE_VALIDATION",
+                        ex.getMessage(),
+                        Instant.now(),
+                        ex.getLineErrors()
+                ));
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiError> handleBusiness(BusinessException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiError.of("BUSINESS_RULE_VIOLATION", ex.getMessage()));
+    }
+
+    public record BatchLineApiError(
+            String error,
+            String message,
+            Instant timestamp,
+            List<ParticipantService.LineError> lineErrors
+    ) {
     }
 
     @ExceptionHandler(UnauthorizedException.class)

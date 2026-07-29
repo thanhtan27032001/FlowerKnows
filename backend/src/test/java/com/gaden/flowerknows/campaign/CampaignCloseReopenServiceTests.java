@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -174,7 +175,10 @@ class CampaignCloseReopenServiceTests {
 
         participantService.recordItems(
                 campaignId,
-                new ParticipantService.RecordItemsRequest(customer.getId(), product.getId(), 1)
+                new ParticipantService.RecordItemsRequest(
+                        customer.getId(),
+                        List.of(new ParticipantService.RecordItemLine(product.getId(), 1))
+                )
         );
 
         assertEquals(0, campaign.getPoolItems().getFirst().getRemainingQuantity());

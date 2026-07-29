@@ -18,6 +18,7 @@ import com.gaden.flowerknows.token.SourceType;
 import com.gaden.flowerknows.token.TokenStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -235,42 +236,60 @@ public class ParticipantService {
             );
         }
 
+        int totalQuantity = request.lines().stream().mapToInt(RecordItemLine::quantity).sum();
+
         long alreadyRecorded = itemTokenRepository.countBySourceTypeAndSourceId(
                 SourceType.CAMPAIGN, participant.getId()
         );
         int remainingBags = participant.getTotalBagsPurchased() - (int) alreadyRecorded;
-        if (request.quantity() > remainingBags) {
+        if (totalQuantity > remainingBags) {
             throw new BusinessException(
-                    "The customer has already recorded all purchased bags (%d/%d)"
-                            .formatted(alreadyRecorded, participant.getTotalBagsPurchased())
+                    "The customer has already purchased %d bags; this would record %d, exceeding by %d"
+                            .formatted(participant.getTotalBagsPurchased(),
+                                    alreadyRecorded + totalQuantity,
+                                    totalQuantity - remainingBags)
             );
         }
 
-        CampaignPool poolItem = campaign.getPoolItems().stream()
-                .filter(p -> p.getProduct().getId().equals(request.productId()))
-                .findFirst()
-                .orElseThrow(() -> new BusinessException("Product is not in this campaign pool"));
+        // Validate each line against its pool — collect all failures before rejecting
+        Map<UUID, CampaignPool> poolByProductId = campaign.getPoolItems().stream()
+                .collect(Collectors.toMap(p -> p.getProduct().getId(), p -> p));
 
-        if (request.quantity() > poolItem.getRemainingQuantity()) {
-            throw new BusinessException(
-                    "Only %d of this product remaining in the pool".formatted(poolItem.getRemainingQuantity())
-            );
+        List<LineError> lineErrors = new ArrayList<>();
+        for (int i = 0; i < request.lines().size(); i++) {
+            RecordItemLine line = request.lines().get(i);
+            CampaignPool poolItem = poolByProductId.get(line.productId());
+            if (poolItem == null) {
+                lineErrors.add(new LineError(i, line.productId(),
+                        "Product is not in this campaign pool"));
+            } else if (line.quantity() > poolItem.getRemainingQuantity()) {
+                lineErrors.add(new LineError(i, line.productId(),
+                        "Only %d of this product remaining in the pool"
+                                .formatted(poolItem.getRemainingQuantity())));
+            }
+        }
+        if (!lineErrors.isEmpty()) {
+            throw new BatchLineException("One or more lines exceed pool availability", lineErrors);
         }
 
-        Product product = poolItem.getProduct();
+        // All validations passed — generate tokens and decrement pools
         List<ItemToken> tokens = new ArrayList<>();
-        for (int i = 0; i < request.quantity(); i++) {
-            tokens.add(new ItemToken(
-                    product,
-                    participant.getCustomer(),
-                    campaign.getBagPrice(),
-                    product.getAverageCostPrice(),
-                    SourceType.CAMPAIGN,
-                    participant.getId()
-            ));
+        for (RecordItemLine line : request.lines()) {
+            CampaignPool poolItem = poolByProductId.get(line.productId());
+            Product product = poolItem.getProduct();
+            for (int i = 0; i < line.quantity(); i++) {
+                tokens.add(new ItemToken(
+                        product,
+                        participant.getCustomer(),
+                        campaign.getBagPrice(),
+                        product.getAverageCostPrice(),
+                        SourceType.CAMPAIGN,
+                        participant.getId()
+                ));
+            }
+            poolItem.setRemainingQuantity(poolItem.getRemainingQuantity() - line.quantity());
         }
 
-        poolItem.setRemainingQuantity(poolItem.getRemainingQuantity() - request.quantity());
         List<ItemToken> saved = itemTokenRepository.saveAll(tokens);
 
         return saved.stream()
@@ -447,11 +466,33 @@ public class ParticipantService {
     ) {
     }
 
-    public record RecordItemsRequest(
-            @NotNull(message = "customerId is required") UUID customerId,
+    public record RecordItemLine(
             @NotNull(message = "productId is required") UUID productId,
             @Min(value = 1, message = "quantity must be at least 1") int quantity
     ) {
+    }
+
+    public record RecordItemsRequest(
+            @NotNull(message = "customerId is required") UUID customerId,
+            @NotEmpty(message = "lines must not be empty")
+            @Valid List<RecordItemLine> lines
+    ) {
+    }
+
+    public record LineError(int lineIndex, UUID productId, String message) {
+    }
+
+    public static class BatchLineException extends BusinessException {
+        private final List<LineError> lineErrors;
+
+        public BatchLineException(String message, List<LineError> lineErrors) {
+            super(message);
+            this.lineErrors = lineErrors;
+        }
+
+        public List<LineError> getLineErrors() {
+            return lineErrors;
+        }
     }
 
     public record TokenRecordResponse(

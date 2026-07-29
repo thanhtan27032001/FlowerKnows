@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 2.7 (BUGFIX: Order creation no longer double-deducts stock_quantity — removed the redundant deduction in US-09; stock was already deducted at campaign_lock or exchange_out time)
+**Version:** 2.8 (US-04: Record Item now supports multi-row batch submission, same pattern as Stock In)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -304,19 +304,20 @@ This is the single source of truth for schema design across the whole document.
 
 ## MODULE 3 — Item Token Recording (Opening Bags)
 
-### US-04: Record the product a customer received from a blind bag
+### US-04: Record the product(s) a customer received from blind bags
 
-**As** Staff, **I want to** record which specific `product` a customer received when opening a bag, **so that** the system generates an `item_token` representing temporary ownership.
+**As** Staff, **I want to** record one or more products a customer received when opening bags — potentially different products across multiple rows — in a single submission, **so that** the system generates the corresponding `item_token`s without me having to submit separately for each different product.
 
 **Acceptance Criteria:**
 
 | # | Given | When | Then |
 |---|---|---|---|
-| 1 | A `customer` has a `campaign_participant` with N bags purchased, not all opened yet | Staff goes to the customer's page within that campaign and clicks "Record item" | A form is shown to select a `product` (only products with `remaining_quantity` > 0 in the pool are listed), and enter the quantity of bags recorded for that product |
-| 2 | Staff selects product A, enters quantity = 2 | Clicks submit | The system generates **2 separate `item_token` records**, each: `product_id = A`, `customer_id`, `token_value = bag_price`, **`cost_basis = product.average_cost_price` at this moment (snapshot, may be null if the product has never been stocked in with a cost price)**, `status = holding`, `source_type = campaign`, `source_id = campaign_participant.id` |
-| 3 | Total tokens generated for this customer = `total_bags_purchased` | Staff attempts to record more | The system shows "The customer has already recorded all purchased bags (N/N)" and blocks the action |
-| 4 | Quantity recorded for one product > that product's `remaining_quantity` | Clicks submit | The system shows an error and blocks submission |
-| 5 | Successfully recorded | — | `campaign_pool.remaining_quantity` decreases accordingly; the new token appears on the "Customer Page" with `status = holding` |
+| 1 | A `customer` has a `campaign_participant` with N bags purchased, not all opened yet | Staff goes to the customer's page within that campaign and clicks "Record item" | A **multi-row** form is shown: each row has a `product` select (only products with `remaining_quantity` > 0 in the pool are listed) + a quantity field. Staff can add/remove rows to record several different products in one go (e.g. 2× Product A + 1× Product B), matching the same multi-row pattern as Stock In (US-13) |
+| 2 | Staff fills in multiple rows (e.g. product A × 2, product B × 1) | Clicks submit | **Single `@Transactional` operation**: for every row, the system generates one `item_token` per unit of quantity — each: `product_id` (per row), `customer_id`, `token_value = bag_price`, `cost_basis = product.average_cost_price` at this moment (snapshot, may be null if the product has never been stocked in with a cost price), `status = holding`, `source_type = campaign`, `source_id = campaign_participant.id` |
+| 3 | The **sum of quantities across all rows** would make total tokens generated for this customer exceed `total_bags_purchased` | Clicks submit | Blocked entirely (no rows applied) — "The customer has already purchased N bags; this would record M, exceeding by X." Same "N/N already recorded" block as before if all bags are already accounted for |
+| 4 | Any single row's quantity exceeds that row's product's `remaining_quantity` in the pool | Clicks submit | Blocked entirely — **the whole batch is rejected, not just the offending row** (atomic, same all-or-nothing pattern as Stock In), with an inline error on the specific row(s) at fault so Staff can fix just those without re-entering everything |
+| 5 | Successfully recorded | — | `campaign_pool.remaining_quantity` decreases per row accordingly; all new tokens appear on the "Customer Page" with `status = holding` |
+| 6 | Staff only wants to record a single product (the common case) | — | The form still works with just one row — multi-row is additive capability, not a requirement to always use multiple rows |
 
 **Business Rules applied:** Recording items does NOT affect `product.stock_quantity` (the goods remain physically at the shop).
 

@@ -259,8 +259,7 @@ class CampaignLifecycleServiceTests {
                         campaignId,
                         new ParticipantService.RecordItemsRequest(
                                 customer.getId(),
-                                product.getId(),
-                                1
+                                List.of(new ParticipantService.RecordItemLine(product.getId(), 1))
                         )
                 )
         );

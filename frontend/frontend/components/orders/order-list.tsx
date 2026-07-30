@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDownIcon } from "lucide-react";
 import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
@@ -18,7 +19,7 @@ import {
 import { customerKeys } from "@/src/lib/api/customer";
 import { formatCostPrice, formatDateTime, vnd, vndCost } from "@/src/lib/format";
 import { shippingStatusLabel } from "@/src/lib/i18n-labels";
-import { StatusBadge } from "@/components/shared/status-badge";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -27,14 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 type Props = {
   highlightId?: string | null;
@@ -92,18 +85,143 @@ function OrderStatusSelect({ order }: { order: Order }) {
             ))}
           </SelectContent>
         </Select>
-        {mutation.isPending && <Spinner className="size-3.5 text-muted-foreground" />}
+        {mutation.isPending && (
+          <Spinner className="size-3.5 text-muted-foreground" />
+        )}
       </div>
-      {localError && (
-        <p className="text-xs text-destructive">{localError}</p>
-      )}
+      {localError && <p className="text-xs text-destructive">{localError}</p>}
     </div>
+  );
+}
+
+function OrderCard({
+  order,
+  highlighted,
+}: {
+  order: Order;
+  highlighted: boolean;
+}) {
+  const t = useTranslations("orders.list");
+  const tCommon = useTranslations("common");
+  const [expanded, setExpanded] = useState(highlighted);
+
+  return (
+    <Card
+      className={cn(
+        "gap-0",
+        highlighted
+          ? "fk-card-shadow fk-card-shadow-hover ring-2 ring-primary/50"
+          : "fk-card-shadow fk-card-shadow-hover"
+      )}
+    >
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={() => setExpanded((prev) => !prev)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setExpanded((prev) => !prev);
+          }
+        }}
+        className="w-full cursor-pointer text-left"
+      >
+        <CardHeader className={cn(expanded ? "pb-3" : "pb-0")}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <ChevronDownIcon
+                className={cn(
+                  "size-4 shrink-0 text-muted-foreground transition-transform",
+                  expanded && "rotate-180"
+                )}
+              />
+              <div className="min-w-0">
+                <CardTitle className="text-base leading-snug">
+                  <Link
+                    href={`/customers/${order.customerId}`}
+                    className="hover:underline"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    {order.customerName}
+                  </Link>
+                </CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formatDateTime(order.createdAt)} ·{" "}
+                  {t("itemsCount", { count: order.tokens.length })}
+                </p>
+              </div>
+            </div>
+            <div
+              className="shrink-0"
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+            >
+              <OrderStatusSelect order={order} />
+            </div>
+          </div>
+        </CardHeader>
+      </div>
+
+      <CardContent
+        className={cn("space-y-3 pt-0 text-sm", !expanded && "hidden")}
+      >
+        <div className="space-y-3 border-t border-border/60 pt-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div>
+              <p className="text-muted-foreground">{t("revenue")}</p>
+              <p className="font-medium tabular-nums">
+                {vnd.format(order.recognizedRevenue)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">{t("totalCost")}</p>
+              <p className="font-medium tabular-nums">
+                {vndCost.format(order.totalCost)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">{t("grossMargin")}</p>
+              <p
+                className={cn(
+                  "font-medium tabular-nums",
+                  order.grossMargin < 0 && "text-destructive"
+                )}
+              >
+                {vndCost.format(order.grossMargin)}
+              </p>
+            </div>
+          </div>
+          <div>
+            <p className="text-muted-foreground">{t("carrierOrderId")}</p>
+            <p className="font-medium">
+              {order.carrierOrderId || t("notSetYet")}
+            </p>
+          </div>
+          <ul className="space-y-1.5 text-muted-foreground">
+            {order.tokens.map((token) => (
+              <li key={token.id} className="min-w-0">
+                <p className="truncate text-foreground">{token.productName}</p>
+                <p className="mt-0.5 truncate text-xs tabular-nums">
+                  {t("costLabel", {
+                    cost: formatCostPrice(
+                      token.costBasis,
+                      tCommon("format.notSet")
+                    ),
+                    price: vnd.format(token.tokenValue),
+                  })}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
 export function OrderList({ highlightId }: Props) {
   const t = useTranslations("orders.list");
-  const tCommon = useTranslations("common");
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: orderKeys.lists(),
     queryFn: () => orderApi.list(),
@@ -115,7 +233,7 @@ export function OrderList({ highlightId }: Props) {
     <div className="relative space-y-4">
       <QueryProgressBar active={isFetching && !isLoading} />
 
-      {isLoading && <ListSkeleton columns={8} />}
+      {isLoading && <ListSkeleton cardsOnly />}
 
       {isError && (
         <QueryErrorState
@@ -135,152 +253,15 @@ export function OrderList({ highlightId }: Props) {
       )}
 
       {!isLoading && !isError && orders.length > 0 && (
-        <>
-          <div className="grid gap-3 md:hidden">
-            {orders.map((order) => (
-              <Card
-                key={order.id}
-                className={
-                  highlightId === order.id
-                    ? "fk-card-shadow fk-card-shadow-hover ring-2 ring-primary/50"
-                    : "fk-card-shadow fk-card-shadow-hover"
-                }
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <CardTitle className="text-base leading-snug">
-                        <Link
-                          href={`/customers/${order.customerId}`}
-                          className="hover:underline"
-                        >
-                          {order.customerName}
-                        </Link>
-                      </CardTitle>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDateTime(order.createdAt)} ·{" "}
-                        {t("itemsCount", { count: order.tokens.length })}
-                      </p>
-                    </div>
-                    <StatusBadge
-                      type="shipping"
-                      status={order.shippingStatus}
-                    />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    <div>
-                      <p className="text-muted-foreground">{t("revenue")}</p>
-                      <p className="font-medium tabular-nums">
-                        {vnd.format(order.recognizedRevenue)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">{t("totalCost")}</p>
-                      <p className="font-medium tabular-nums">
-                        {vndCost.format(order.totalCost)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">{t("grossMargin")}</p>
-                      <p className="font-medium tabular-nums">
-                        {vndCost.format(order.grossMargin)}
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">{t("carrierOrderId")}</p>
-                    <p className="font-medium">
-                      {order.carrierOrderId || t("notSetYet")}
-                    </p>
-                  </div>
-                  <ul className="space-y-1.5 text-muted-foreground">
-                    {order.tokens.map((token) => (
-                      <li key={token.id} className="flex justify-between gap-2">
-                        <span className="min-w-0 truncate">
-                          {token.productName}
-                          <span className="mt-0.5 block text-xs">
-                            {t("costLabel", {
-                              cost: formatCostPrice(
-                                token.costBasis,
-                                tCommon("format.notSet")
-                              ),
-                            })}
-                          </span>
-                        </span>
-                        <span className="shrink-0 tabular-nums text-foreground">
-                          {vnd.format(token.tokenValue)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div>
-                    <p className="mb-1.5 text-muted-foreground">
-                      {t("shippingStatus")}
-                    </p>
-                    <OrderStatusSelect order={order} />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <div className="fk-table-surface hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("customer")}</TableHead>
-                  <TableHead>{t("created")}</TableHead>
-                  <TableHead>{t("items")}</TableHead>
-                  <TableHead>{t("revenue")}</TableHead>
-                  <TableHead>{t("totalCost")}</TableHead>
-                  <TableHead>{t("grossMargin")}</TableHead>
-                  <TableHead>{t("carrierId")}</TableHead>
-                  <TableHead>{t("shipping")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orders.map((order) => (
-                  <TableRow
-                    key={order.id}
-                    className={
-                      highlightId === order.id ? "bg-primary/5" : undefined
-                    }
-                  >
-                    <TableCell>
-                      <Link
-                        href={`/customers/${order.customerId}`}
-                        className="font-medium hover:underline"
-                      >
-                        {order.customerName}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{formatDateTime(order.createdAt)}</TableCell>
-                    <TableCell className="tabular-nums">
-                      {order.tokens.length}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {vnd.format(order.recognizedRevenue)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {vndCost.format(order.totalCost)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {vndCost.format(order.grossMargin)}
-                    </TableCell>
-                    <TableCell className="max-w-[140px] truncate text-muted-foreground">
-                      {order.carrierOrderId || t("notSetYet")}
-                    </TableCell>
-                    <TableCell>
-                      <OrderStatusSelect order={order} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </>
+        <div className="grid gap-3">
+          {orders.map((order) => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              highlighted={highlightId === order.id}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

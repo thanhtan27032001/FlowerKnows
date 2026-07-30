@@ -629,7 +629,7 @@
       "carrierId": "Mã vận đơn",
       "shipping": "Giao hàng",
       "itemsCount": "{count, plural, =1 {# món} other {# món}}",
-      "costLabel": "Giá vốn {cost}"
+      "costLabel": "Giá vốn/bán: {cost}/{price}"
     },
     "create": {
       "title": "Tạo đơn",

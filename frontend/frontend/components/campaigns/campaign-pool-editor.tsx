@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import type { Product } from "@/src/lib/api/product";
+import { formatCostPrice } from "@/src/lib/format";
 import { ProductTypeahead } from "@/components/products/product-typeahead";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,11 @@ type Props = {
   title?: string | null;
   quantityLabel?: string;
   productSearchPlaceholder?: string;
+  /**
+   * `cards` — stacked fields for create/edit dialogs.
+   * `list` — campaign participant-style white cards (suggest page).
+   */
+  variant?: "cards" | "list";
 };
 
 export function CampaignPoolEditor({
@@ -62,9 +68,11 @@ export function CampaignPoolEditor({
   title,
   quantityLabel,
   productSearchPlaceholder,
+  variant = "cards",
 }: Props) {
   const t = useTranslations("campaigns.create");
   const tCommon = useTranslations("common");
+  const tStockIn = useTranslations("products.stockIn");
 
   const poolSum = useMemo(
     () =>
@@ -94,39 +102,152 @@ export function CampaignPoolEditor({
   const canRemove = !requireAtLeastOne || rows.length > 1;
   const showTitle = title !== null;
   const resolvedTitle = title === undefined ? t("productPool") : title;
+  const qtyLabel = quantityLabel ?? t("loadedQuantity");
+  const searchPlaceholder =
+    productSearchPlaceholder ?? t("productSearchPlaceholder");
+
+  const header = showTitle || totalBags !== undefined ? (
+    <div className="flex flex-wrap items-end justify-between gap-2">
+      <div>
+        {showTitle && resolvedTitle ? (
+          <Label className="text-sm font-medium">{resolvedTitle}</Label>
+        ) : null}
+        {totalBags !== undefined ? (
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            <span
+              className={
+                quantitiesMatch
+                  ? "font-medium text-foreground"
+                  : "font-medium text-destructive"
+              }
+            >
+              {poolSum}
+            </span>
+            {totalBags ? ` / ${totalBags}` : ""}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  ) : null;
+
+  const addButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-7"
+      disabled={disabled}
+      onClick={() => onChange([...rows, newCampaignPoolRow()])}
+    >
+      <PlusIcon />
+      {tCommon("actions.addProduct")}
+    </Button>
+  );
+
+  if (variant === "list") {
+    return (
+      <div className="space-y-3">
+        {header}
+
+        {rows.length === 0 ? (
+          <div className="rounded-lg bg-card px-3 py-6 text-center text-sm text-muted-foreground ring-1 ring-foreground/10">
+            {t("emptyPoolHint")}
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {rows.map((row) => {
+              const selected = products.find((p) => p.id === row.productId);
+              return (
+                <li
+                  key={row.key}
+                  className="min-w-0 overflow-hidden rounded-lg bg-card ring-1 ring-foreground/10"
+                >
+                  <div className="space-y-1.5 px-3 py-2">
+                    <ProductTypeahead
+                      id={`campaign-pool-product-${row.key}`}
+                      products={products}
+                      productId={row.productId}
+                      showStock
+                      showAverageCost
+                      disabled={disabled}
+                      placeholder={searchPlaceholder}
+                      aria-invalid={!!row.error}
+                      onSelect={(product) =>
+                        updateRow(row.key, {
+                          productId: product?.id ?? "",
+                        })
+                      }
+                    />
+                    <p className="text-xs leading-snug text-muted-foreground/80">
+                      {selected
+                        ? `${tStockIn("stock")} ${selected.stockQuantity} · ${tStockIn("avgCost")} ${formatCostPrice(selected.averageCostPrice, tCommon("format.notSet"))}`
+                        : t("selectProduct")}
+                    </p>
+                    {row.error ? (
+                      <p className="text-xs text-destructive">{row.error}</p>
+                    ) : null}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 border-t border-border/40 px-3 py-1.5">
+                    <Label
+                      htmlFor={`campaign-pool-qty-${row.key}`}
+                      className="text-xs text-muted-foreground"
+                    >
+                      {qtyLabel}
+                    </Label>
+                    <Input
+                      id={`campaign-pool-qty-${row.key}`}
+                      type="number"
+                      min={1}
+                      inputMode="numeric"
+                      className="h-7 w-20"
+                      value={row.loadedQuantity}
+                      disabled={disabled}
+                      onChange={(e) =>
+                        updateRow(row.key, {
+                          loadedQuantity: e.target.value,
+                        })
+                      }
+                      aria-invalid={!!row.error}
+                    />
+                    <span className="flex-1" />
+                    {canRemove ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7"
+                        disabled={disabled}
+                        onClick={() =>
+                          onChange(rows.filter((r) => r.key !== row.key))
+                        }
+                      >
+                        <Trash2Icon className="size-3.5" />
+                        {tCommon("actions.removeRow")}
+                      </Button>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {addButton}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
-      {showTitle || totalBags !== undefined ? (
-        <div className="flex items-end justify-between gap-2">
-          <div>
-            {showTitle && resolvedTitle ? (
-              <Label>{resolvedTitle}</Label>
-            ) : null}
-            {totalBags !== undefined ? (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                <span
-                  className={
-                    quantitiesMatch
-                      ? "font-medium text-foreground"
-                      : "font-medium text-destructive"
-                  }
-                >
-                  {poolSum}
-                </span>
-                {totalBags ? ` / ${totalBags}` : ""}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+      {header}
 
       {rows.map((row, index) => {
         const selected = products.find((p) => p.id === row.productId);
         return (
           <div
             key={row.key}
-            className="grid gap-3 rounded-xl border border-border/80 bg-muted/20 p-3"
+            className="grid gap-3 rounded-xl border border-border/80 bg-card p-3 ring-1 ring-foreground/10"
           >
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-medium text-muted-foreground">
@@ -157,10 +278,9 @@ export function CampaignPoolEditor({
                 products={products}
                 productId={row.productId}
                 showStock
+                showAverageCost
                 disabled={disabled}
-                placeholder={
-                  productSearchPlaceholder ?? t("productSearchPlaceholder")
-                }
+                placeholder={searchPlaceholder}
                 aria-invalid={!!row.error}
                 onSelect={(product) =>
                   updateRow(row.key, {
@@ -168,10 +288,21 @@ export function CampaignPoolEditor({
                   })
                 }
               />
+              {selected ? (
+                <p className="text-xs text-muted-foreground">
+                  {tStockIn("stock")} {selected.stockQuantity}
+                  {" · "}
+                  {tStockIn("avgCost")}{" "}
+                  {formatCostPrice(
+                    selected.averageCostPrice,
+                    tCommon("format.notSet")
+                  )}
+                </p>
+              ) : null}
             </div>
 
             <div className="grid gap-2">
-              <Label>{quantityLabel ?? t("loadedQuantity")}</Label>
+              <Label>{qtyLabel}</Label>
               <Input
                 type="number"
                 min={1}
@@ -183,11 +314,6 @@ export function CampaignPoolEditor({
                 }
                 aria-invalid={!!row.error}
               />
-              {selected ? (
-                <p className="text-xs text-muted-foreground">
-                  {selected.stockQuantity}
-                </p>
-              ) : null}
             </div>
 
             {row.error ? (
@@ -197,15 +323,7 @@ export function CampaignPoolEditor({
         );
       })}
 
-      <Button
-        type="button"
-        variant="outline"
-        disabled={disabled}
-        onClick={() => onChange([...rows, newCampaignPoolRow()])}
-      >
-        <PlusIcon />
-        {tCommon("actions.addProduct")}
-      </Button>
+      {addButton}
     </div>
   );
 }

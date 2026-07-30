@@ -304,6 +304,7 @@
       "fixPool": "Sửa pool sản phẩm trước khi tạo",
       "duplicateProduct": "Mỗi sản phẩm chỉ được xuất hiện một lần trong pool",
       "quantitiesMismatch": "Tổng số lượng nạp phải bằng tổng số túi",
+      "emptyPoolHint": "Chưa có sản phẩm — thêm dòng hoặc chạy gợi ý.",
       "failed": "Không tạo được phiên live"
     },
     "suggest": {
@@ -323,11 +324,20 @@
       "suggesting": "Đang gợi ý…",
       "failed": "Không tạo được gợi ý pool",
       "resultTitle": "Kết quả gợi ý",
-      "deviation": "Lệch {amount} so với ngân sách",
+      "deviation": "Lệch {amount}",
       "totalSuggestedCost": "Tổng chi phí gợi ý: {amount}",
       "withinTolerance": "Trong dung sai",
       "outsideTolerance": "Ngoài dung sai — chỉnh tay hoặc chấp nhận lệch",
+      "outsideToleranceShort": "Ngoài dung sai",
       "editedPoolSum": "Tổng số lượng đã chỉnh: {sum} / {totalBags}",
+      "metricBudget": "Ngân sách",
+      "metricSuggestedCost": "Chi phí gợi ý",
+      "metricFill": "Số túi đã chọn",
+      "metricTolerance": "Dung sai ±{amount}",
+      "fillComplete": "Đã đủ số túi",
+      "fillIncomplete": "Chưa đủ số túi — thêm sản phẩm",
+      "noWarnings": "Không có cảnh báo tồn kho / giá vốn",
+      "createHint": "Bạn vẫn cần nhập tên và ngày sự kiện ở bước tạo.",
       "createFromSuggestion": "Tạo Campaign từ gợi ý này"
     },
     "recordParticipant": {

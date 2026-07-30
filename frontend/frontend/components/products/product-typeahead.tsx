@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useTranslations } from "next-intl";
 import type { Product } from "@/src/lib/api/product";
+import { formatCostPrice } from "@/src/lib/format";
 import { containsFolded, foldText } from "@/src/lib/text-search";
 import { Input } from "@/components/ui/input";
 
@@ -24,6 +25,8 @@ type Props = {
   autoFocus?: boolean;
   /** Show stock quantity next to each suggestion (campaign pool, etc.). */
   showStock?: boolean;
+  /** Show average cost price next to each suggestion. */
+  showAverageCost?: boolean;
   "aria-invalid"?: boolean;
 };
 
@@ -36,9 +39,11 @@ export function ProductTypeahead({
   disabled,
   autoFocus,
   showStock = false,
+  showAverageCost = false,
   "aria-invalid": ariaInvalid,
 }: Props) {
   const t = useTranslations("products.stockIn");
+  const tCommon = useTranslations("common");
   const selected = products.find((p) => p.id === productId) ?? null;
   const [query, setQuery] = useState(selected?.name ?? "");
   const [open, setOpen] = useState(false);
@@ -175,9 +180,22 @@ export function ProductTypeahead({
                   <span className="min-w-0 truncate font-medium">
                     {product.name}
                   </span>
-                  {showStock && (
-                    <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
-                      {product.stockQuantity}
+                  {(showStock || showAverageCost) && (
+                    <span className="shrink-0 text-right tabular-nums text-xs text-muted-foreground">
+                      {showStock ? (
+                        <span className="block">
+                          {t("stock")} {product.stockQuantity}
+                        </span>
+                      ) : null}
+                      {showAverageCost ? (
+                        <span className="block">
+                          {t("avgCost")}{" "}
+                          {formatCostPrice(
+                            product.averageCostPrice,
+                            tCommon("format.notSet")
+                          )}
+                        </span>
+                      ) : null}
                     </span>
                   )}
                 </button>

@@ -350,6 +350,7 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
                         products={products}
                         productId={row.productId}
                         showStock
+                        showAverageCost
                         placeholder={tCreate("productSearchPlaceholder")}
                         aria-invalid={!!row.error}
                         onSelect={(product) =>

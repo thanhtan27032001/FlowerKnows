@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 3.0 (Adds US-31 — Campaign Pool Suggestion planning tool, Owner-only)
+**Version:** 3.2 (US-31: auto-filled products now capped at quantity=1 each — need N distinct products to fill N bags, not fewer products at higher quantity; wishlist quantities unaffected)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -91,6 +91,8 @@ This is the single source of truth for schema design across the whole document.
 | `loaded_quantity` | int | Initial quantity loaded |
 | `remaining_quantity` | int | Quantity remaining in the pool |
 
+**Constraint:** `UNIQUE (campaign_id, product_id)` — a product can only appear as **one row** per campaign's pool (multiple units of the same product are represented via `loaded_quantity`, never via duplicate rows). See US-01 AC #7.
+
 ### `campaign_participant` (Customer participating in a Campaign)
 | Field | Type | Description |
 |---|---|---|
@@ -173,6 +175,7 @@ This is the single source of truth for schema design across the whole document.
 | 4 | The form is valid | Clicks "Create Campaign" | The system: (a) creates the `campaign` with `status = open`, (b) creates the corresponding `campaign_pool` rows with `remaining_quantity = loaded_quantity`, (c) **deducts `product.stock_quantity`** by `loaded_quantity`, (d) shows a success message |
 | 5 | The campaign has been created | Staff views its details | Shows: basic info, `campaign_pool` list (product — loaded_quantity — remaining_quantity), `campaign_participant` list, total bags sold / `total_bags` |
 | 6 | — | Staff enters `total_bags` ≠ the sum of `loaded_quantity` selected | The system shows an error and requires the quantities to match before submission |
+| 7 | Staff attempts to add the same `product` as a second row in the pool (already selected in another row) | — | Not allowed — **each product may appear at most once per `campaign_pool`** (enforced by a `UNIQUE (campaign_id, product_id)` DB constraint as the source of truth). The UI should prevent selecting an already-used product in another row (disable it in the picker); if a duplicate somehow reaches the backend, it's rejected with a clear error rather than silently merged |
 
 **Business Rules applied:** Loading the pool immediately deducts `stock_quantity` (it does not wait until bags are sold).
 
@@ -301,17 +304,17 @@ This is the single source of truth for schema design across the whole document.
 | 1 | Owner fills in the inputs above | Submits | The system computes a suggested pool: a list of `{ product, quantity }` rows |
 | 2 | Wishlist items are specified | Computing the suggestion | Every wishlist product appears in the result with **at least** its requested quantity (all `product_id`+`quantity` pairs guaranteed included) |
 | 3 | Sum of quantities in the wishlist already **exceeds** `total_bags` | Owner submits | Blocked immediately with a clear error — "Wishlist yêu cầu X túi nhưng tổng chỉ có N túi" — no suggestion is computed |
-| 4 | Filling in the remaining bags (`total_bags` − wishlist quantity) | Computing the suggestion | The system selects **additional distinct products** (never repeating a product already used — each product appears in **at most one row**, combining wishlist + auto-filled) — using each product's **`average_cost_price`** as its cost basis — such that: (a) total quantity across all rows = `total_bags` exactly, (b) total cost lands as close as possible to `expected_total_cost`, ideally within `± cost_tolerance` |
+| 4 | Filling in the remaining bags (`total_bags` − wishlist quantity) | Computing the suggestion | The system selects **additional distinct products, each with `quantity = 1` only** (never repeating a product already used — every auto-filled row is a different product, and never overlaps a wishlist product either) — using each product's **`average_cost_price`** as its cost basis — such that: (a) the **count** of auto-filled rows = remaining bags needed exactly (i.e. `total_bags` − wishlist quantity), (b) total cost across the whole pool (wishlist + auto-filled) lands as close as possible to `expected_total_cost`, ideally within `± cost_tolerance`. **This quantity=1 rule applies only to the auto-filled portion** — wishlist items keep whatever quantity Owner specified for them (per AC #2), which may be > 1 |
 | 5 | A candidate product has `average_cost_price = null` (never stocked in yet — no known cost) | Computing the suggestion | That product is **excluded** from auto-fill candidates (its cost is unknown, so it can't be reliably budgeted) — UNLESS it's explicitly in the wishlist, in which case it's still included per AC #2, but its cost contributes `0` to the budget calculation and a warning is shown: "SP X chưa có giá vốn, không tính vào tổng chi phí ước tính" |
 | 6 | A valid combination is found within tolerance | — | Result shown: the full pool list, `total_suggested_cost`, and confirmation it's within tolerance |
 | 7 | **No combination fits within the tolerance** (e.g. not enough product variety, or available stock too limited) | — | The system still returns its **closest attempt** (minimizing the gap to `expected_total_cost`) — never a hard failure with nothing to show. Clearly displays the actual deviation (e.g. "Lệch +45.000đ so với ngân sách") so Owner knows to adjust manually |
-| 8 | Total available `stock_quantity` across all viable candidate products is less than what's needed to reach `total_bags` | — | A distinct warning is shown: "Không đủ tồn kho trong toàn hệ thống để lấp đầy N túi" — the suggestion fills as much as physically possible and stops |
+| 8 | The number of **distinct candidate products available** (with `stock_quantity` ≥ 1 and known cost) is fewer than the remaining bags needed | — | The system can't produce a full-size suggestion (since each auto-filled product can only contribute 1 unit) — fills as many distinct products as it can, then shows a distinct warning: "Chỉ tìm được X/Y sản phẩm khác nhau còn hàng — không đủ để lấp đầy N túi theo quy tắc mỗi sản phẩm 1 lần" so Owner knows they need more product variety in stock, not just more quantity of existing products |
 | 9 | A suggestion is shown | Owner reviews it | The list is **fully editable** — add/remove rows, change quantities — before proceeding, exactly like manually composing a pool |
 | 10 | Owner is satisfied with the (possibly edited) list | Clicks "Tạo Campaign từ gợi ý này" | Pre-fills the existing **Create Campaign** form (US-01) with `total_bags`, `bag_price`, and the pool rows — Owner still provides `name`/`event_date` and goes through the normal US-01 creation flow and validation (this feature does not bypass or duplicate US-01's own logic, it only pre-fills the form) |
 
 **Access:** Owner only.
 
-**Note on algorithm approach:** This is a heuristic "best-effort" suggestion tool, not a guaranteed-optimal solver — for a shop-scale product catalog, a greedy/local-search approach (e.g. start from wishlist, then repeatedly add the product that best narrows the remaining budget-per-remaining-bag ratio) is sufficient and far simpler to implement/maintain than an exact optimization algorithm. Perfect optimality is not required since Owner can always edit the result (AC #9).
+**Note on algorithm approach:** This is a heuristic "best-effort" suggestion tool, not a guaranteed-optimal solver. With the auto-fill quantity fixed at 1 per product, the problem becomes "pick exactly K distinct products (K = remaining bags needed) whose total `average_cost_price` best approximates the remaining budget" — a fixed-count subset-sum approximation. For a shop-scale catalog, a greedy/local-search approach (e.g. sort candidates, iteratively swap in/out products to narrow the gap toward the target) is sufficient and far simpler to implement/maintain than an exact optimization algorithm. Perfect optimality is not required since Owner can always edit the result (AC #9).
 
 ---
 

@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -334,6 +335,7 @@ public class CampaignService {
 
     /**
      * US-31: pure planning suggestion — no DB writes.
+     * Wishlist keeps Owner-specified quantities; every auto-filled product contributes exactly 1 unit.
      */
     @Transactional(readOnly = true)
     public CampaignDtos.SuggestPoolResponse suggestPool(CampaignDtos.SuggestPoolRequest request) {
@@ -352,7 +354,6 @@ public class CampaignService {
         LinkedHashMap<UUID, Integer> quantities = new LinkedHashMap<>();
         Map<UUID, Product> productsById = new HashMap<>();
         BigDecimal runningCost = BigDecimal.ZERO;
-        int bagsFilled = 0;
 
         Set<UUID> wishlistProductIds = new HashSet<>();
         for (CampaignDtos.WishlistItemRequest item : wishlist) {
@@ -373,55 +374,33 @@ public class CampaignService {
                 );
             }
             runningCost = runningCost.add(unitCost.multiply(BigDecimal.valueOf(item.quantity())));
-            bagsFilled += item.quantity();
         }
 
+        int remainingNeeded = request.totalBags() - wishlistQty;
         List<Product> candidates = productRepository
                 .findByStockQuantityGreaterThanAndAverageCostPriceIsNotNull(0)
                 .stream()
                 .filter(p -> !wishlistProductIds.contains(p.getId()))
+                .sorted(Comparator.comparing(Product::getAverageCostPrice)
+                        .thenComparing(Product::getName))
                 .toList();
 
-        int candidateStock = candidates.stream().mapToInt(Product::getStockQuantity).sum();
-        if (wishlistQty + candidateStock < request.totalBags()) {
+        if (remainingNeeded > 0 && candidates.size() < remainingNeeded) {
             warnings.add(
-                    "Không đủ tồn kho trong toàn hệ thống để lấp đầy %d túi"
-                            .formatted(request.totalBags())
+                    "Chỉ tìm được %d/%d sản phẩm khác nhau còn hàng — không đủ để lấp đầy %d túi theo quy tắc mỗi sản phẩm 1 lần"
+                            .formatted(candidates.size(), remainingNeeded, request.totalBags())
             );
         }
 
-        Map<UUID, Integer> candidateAllocated = new HashMap<>();
-        while (bagsFilled < request.totalBags()) {
-            int remainingBags = request.totalBags() - bagsFilled;
+        int pickCount = Math.min(remainingNeeded, candidates.size());
+        if (pickCount > 0) {
             BigDecimal remainingBudget = request.expectedTotalCost().subtract(runningCost);
-            BigDecimal targetUnitCost = remainingBudget.divide(
-                    BigDecimal.valueOf(remainingBags),
-                    10,
-                    RoundingMode.HALF_UP
-            );
-
-            Product best = null;
-            BigDecimal bestDistance = null;
-            for (Product candidate : candidates) {
-                int used = candidateAllocated.getOrDefault(candidate.getId(), 0);
-                if (used >= candidate.getStockQuantity()) {
-                    continue;
-                }
-                BigDecimal distance = candidate.getAverageCostPrice().subtract(targetUnitCost).abs();
-                if (best == null || distance.compareTo(bestDistance) < 0) {
-                    best = candidate;
-                    bestDistance = distance;
-                }
+            List<Product> selected = selectAutofillProducts(candidates, pickCount, remainingBudget);
+            for (Product product : selected) {
+                quantities.put(product.getId(), 1);
+                productsById.put(product.getId(), product);
+                runningCost = runningCost.add(product.getAverageCostPrice());
             }
-            if (best == null) {
-                break;
-            }
-
-            candidateAllocated.merge(best.getId(), 1, Integer::sum);
-            quantities.merge(best.getId(), 1, Integer::sum);
-            productsById.putIfAbsent(best.getId(), best);
-            runningCost = runningCost.add(best.getAverageCostPrice());
-            bagsFilled++;
         }
 
         List<CampaignDtos.SuggestedPoolItemResponse> suggestedPool = new ArrayList<>();
@@ -450,6 +429,68 @@ public class CampaignService {
                 withinTolerance,
                 List.copyOf(warnings)
         );
+    }
+
+    /**
+     * Pick exactly {@code pickCount} distinct candidates (qty=1 each) whose costs
+     * best approximate {@code remainingBudget}: greedy nearest-fit, then local swaps.
+     */
+    private static List<Product> selectAutofillProducts(
+            List<Product> candidatesSorted,
+            int pickCount,
+            BigDecimal remainingBudget
+    ) {
+        List<Product> available = new ArrayList<>(candidatesSorted);
+        List<Product> selected = new ArrayList<>(pickCount);
+        BigDecimal selectedCost = BigDecimal.ZERO;
+
+        for (int slotsLeft = pickCount; slotsLeft > 0; slotsLeft--) {
+            BigDecimal slotsBudget = remainingBudget.subtract(selectedCost);
+            BigDecimal targetUnit = slotsBudget.divide(
+                    BigDecimal.valueOf(slotsLeft),
+                    10,
+                    RoundingMode.HALF_UP
+            );
+
+            int bestIndex = 0;
+            BigDecimal bestDistance = available.getFirst().getAverageCostPrice().subtract(targetUnit).abs();
+            for (int i = 1; i < available.size(); i++) {
+                BigDecimal distance = available.get(i).getAverageCostPrice().subtract(targetUnit).abs();
+                if (distance.compareTo(bestDistance) < 0) {
+                    bestDistance = distance;
+                    bestIndex = i;
+                }
+            }
+
+            Product chosen = available.remove(bestIndex);
+            selected.add(chosen);
+            selectedCost = selectedCost.add(chosen.getAverageCostPrice());
+        }
+
+        boolean improved;
+        do {
+            improved = false;
+            BigDecimal currentGap = selectedCost.subtract(remainingBudget).abs();
+            for (int s = 0; s < selected.size(); s++) {
+                for (int u = 0; u < available.size(); u++) {
+                    Product out = selected.get(s);
+                    Product in = available.get(u);
+                    BigDecimal trialCost = selectedCost
+                            .subtract(out.getAverageCostPrice())
+                            .add(in.getAverageCostPrice());
+                    BigDecimal trialGap = trialCost.subtract(remainingBudget).abs();
+                    if (trialGap.compareTo(currentGap) < 0) {
+                        selected.set(s, in);
+                        available.set(u, out);
+                        selectedCost = trialCost;
+                        currentGap = trialGap;
+                        improved = true;
+                    }
+                }
+            }
+        } while (improved);
+
+        return selected;
     }
 
     /** Open campaign without loading pool (participant bag edits, drafts, etc.). */

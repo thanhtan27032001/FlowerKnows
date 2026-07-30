@@ -74,11 +74,14 @@ class CampaignSuggestPoolServiceTests {
     void suggestPoolExcludesNullCostFromAutofillAndWarnsWhenInWishlist() {
         Product wishlistNullCost = product("Unknown Cost", 20, null);
         Product autofillNullCost = product("Never Stocked", 50, null);
-        Product priced = product("Lipstick", 30, BigDecimal.valueOf(40_000));
+        Product a = product("Lipstick A", 30, BigDecimal.valueOf(40_000));
+        Product b = product("Lipstick B", 30, BigDecimal.valueOf(45_000));
+        Product c = product("Blush", 30, BigDecimal.valueOf(35_000));
+        Product d = product("Mascara", 30, BigDecimal.valueOf(50_000));
 
         when(productRepository.findById(wishlistNullCost.getId())).thenReturn(Optional.of(wishlistNullCost));
         when(productRepository.findByStockQuantityGreaterThanAndAverageCostPriceIsNotNull(0))
-                .thenReturn(List.of(priced));
+                .thenReturn(List.of(a, b, c, d));
 
         CampaignDtos.SuggestPoolResponse response = campaignService.suggestPool(
                 new CampaignDtos.SuggestPoolRequest(
@@ -90,11 +93,12 @@ class CampaignSuggestPoolServiceTests {
                 )
         );
 
-        assertEquals(2, response.suggestedPool().size());
+        assertEquals(5, response.suggestedPool().size());
         assertTrue(response.suggestedPool().stream()
                 .anyMatch(row -> row.productId().equals(wishlistNullCost.getId()) && row.quantity() == 1));
         assertTrue(response.suggestedPool().stream()
-                .anyMatch(row -> row.productId().equals(priced.getId()) && row.quantity() == 4));
+                .filter(row -> !row.productId().equals(wishlistNullCost.getId()))
+                .allMatch(row -> row.quantity() == 1));
         assertTrue(response.suggestedPool().stream()
                 .noneMatch(row -> row.productId().equals(autofillNullCost.getId())));
         assertTrue(response.warnings().stream().anyMatch(w ->
@@ -108,9 +112,10 @@ class CampaignSuggestPoolServiceTests {
     }
 
     @Test
-    void suggestPoolWarnsWhenInsufficientStockAcrossCandidates() {
-        Product a = product("Blush", 2, BigDecimal.valueOf(30_000));
-        Product b = product("Lipstick", 1, BigDecimal.valueOf(40_000));
+    void suggestPoolWarnsWhenDistinctCandidateCountInsufficient() {
+        // Plenty of stock on each SKU, but only 2 distinct candidates for 10 bags.
+        Product a = product("Blush", 100, BigDecimal.valueOf(30_000));
+        Product b = product("Lipstick", 100, BigDecimal.valueOf(40_000));
 
         when(productRepository.findByStockQuantityGreaterThanAndAverageCostPriceIsNotNull(0))
                 .thenReturn(List.of(a, b));
@@ -125,24 +130,59 @@ class CampaignSuggestPoolServiceTests {
                 )
         );
 
-        int suggestedQty = response.suggestedPool().stream()
-                .mapToInt(CampaignDtos.SuggestedPoolItemResponse::quantity)
-                .sum();
-        assertEquals(3, suggestedQty);
+        assertEquals(2, response.suggestedPool().size());
+        assertTrue(response.suggestedPool().stream().allMatch(row -> row.quantity() == 1));
         assertTrue(response.warnings().contains(
-                "Không đủ tồn kho trong toàn hệ thống để lấp đầy 10 túi"
+                "Chỉ tìm được 2/10 sản phẩm khác nhau còn hàng — không đủ để lấp đầy 10 túi theo quy tắc mỗi sản phẩm 1 lần"
         ));
     }
 
     @Test
+    void suggestPoolKeepsWishlistQuantityAndAutofillsQtyOne() {
+        Product wishlist = product("Must Have", 50, BigDecimal.valueOf(20_000));
+        Product a = product("A", 10, BigDecimal.valueOf(30_000));
+        Product b = product("B", 10, BigDecimal.valueOf(40_000));
+        Product c = product("C", 10, BigDecimal.valueOf(50_000));
+
+        when(productRepository.findById(wishlist.getId())).thenReturn(Optional.of(wishlist));
+        when(productRepository.findByStockQuantityGreaterThanAndAverageCostPriceIsNotNull(0))
+                .thenReturn(List.of(a, b, c));
+
+        CampaignDtos.SuggestPoolResponse response = campaignService.suggestPool(
+                new CampaignDtos.SuggestPoolRequest(
+                        5,
+                        BigDecimal.valueOf(100_000),
+                        BigDecimal.valueOf(160_000),
+                        BigDecimal.valueOf(30_000),
+                        List.of(new CampaignDtos.WishlistItemRequest(wishlist.getId(), 2))
+                )
+        );
+
+        assertEquals(4, response.suggestedPool().size());
+        assertEquals(2, response.suggestedPool().stream()
+                .filter(row -> row.productId().equals(wishlist.getId()))
+                .findFirst()
+                .orElseThrow()
+                .quantity());
+        assertTrue(response.suggestedPool().stream()
+                .filter(row -> !row.productId().equals(wishlist.getId()))
+                .allMatch(row -> row.quantity() == 1));
+        assertEquals(5, response.suggestedPool().stream()
+                .mapToInt(CampaignDtos.SuggestedPoolItemResponse::quantity)
+                .sum());
+    }
+
+    @Test
     void suggestPoolReturnsBestEffortWhenOutsideTolerance() {
-        Product cheap = product("Cheap", 100, BigDecimal.valueOf(10_000));
-        Product expensive = product("Expensive", 100, BigDecimal.valueOf(90_000));
+        Product p1 = product("P1", 10, BigDecimal.valueOf(10_000));
+        Product p2 = product("P2", 10, BigDecimal.valueOf(12_000));
+        Product p3 = product("P3", 10, BigDecimal.valueOf(15_000));
+        Product p4 = product("P4", 10, BigDecimal.valueOf(18_000));
 
         when(productRepository.findByStockQuantityGreaterThanAndAverageCostPriceIsNotNull(0))
-                .thenReturn(List.of(cheap, expensive));
+                .thenReturn(List.of(p1, p2, p3, p4));
 
-        // Target cost far from what unit costs can achieve within a tight tolerance.
+        // Target far above what four cheap products can reach within a tight tolerance.
         CampaignDtos.SuggestPoolResponse response = campaignService.suggestPool(
                 new CampaignDtos.SuggestPoolRequest(
                         4,
@@ -153,10 +193,8 @@ class CampaignSuggestPoolServiceTests {
                 )
         );
 
-        int suggestedQty = response.suggestedPool().stream()
-                .mapToInt(CampaignDtos.SuggestedPoolItemResponse::quantity)
-                .sum();
-        assertEquals(4, suggestedQty);
+        assertEquals(4, response.suggestedPool().size());
+        assertTrue(response.suggestedPool().stream().allMatch(row -> row.quantity() == 1));
         assertFalse(response.withinTolerance());
         assertEquals(
                 response.totalSuggestedCost().subtract(BigDecimal.valueOf(1_000_000)),

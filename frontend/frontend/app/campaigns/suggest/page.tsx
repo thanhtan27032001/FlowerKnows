@@ -9,8 +9,8 @@ export default function SuggestCampaignPage() {
 
   return (
     <AppShell title={t("title")}>
-      <div className="space-y-2">
-        <p className="max-w-2xl text-sm text-muted-foreground">
+      <div className="space-y-4">
+        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
           {t("description")}
         </p>
         <SuggestCampaignForm />

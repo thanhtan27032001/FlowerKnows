@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { AlertTriangleIcon, CheckCircle2Icon } from "lucide-react";
 import { ApiError } from "@/src/lib/api/client";
 import {
   campaignApi,
@@ -20,10 +21,12 @@ import {
   type CreateCampaignPrefill,
 } from "@/components/campaigns/create-campaign-form";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { vnd, vndCost } from "@/src/lib/format";
+import { cn } from "@/lib/utils";
 
 type WishlistRow = CampaignPoolRow;
 
@@ -65,10 +68,12 @@ export function SuggestCampaignForm() {
       setResultTolerance(variables.costTolerance);
       setPoolRows(
         poolRowsFromItems(
-          data.suggestedPool.map((row) => ({
-            productId: row.productId,
-            loadedQuantity: row.quantity,
-          }))
+          [...data.suggestedPool]
+            .sort((a, b) => Number(b.unitCost) - Number(a.unitCost))
+            .map((row) => ({
+              productId: row.productId,
+              loadedQuantity: row.quantity,
+            }))
         )
       );
       setFormError(null);
@@ -234,25 +239,28 @@ export function SuggestCampaignForm() {
     setCreateOpen(true);
   };
 
+  const liveCost = editedCost ?? result?.totalSuggestedCost ?? 0;
   const liveDeviation =
-    result != null && editedCost !== null
-      ? editedCost - resultExpectedCost
-      : result?.deviation ?? 0;
+    result != null ? liveCost - resultExpectedCost : 0;
   const liveWithinTolerance =
     result != null ? Math.abs(liveDeviation) <= resultTolerance : false;
+  const fillComplete = poolSum === resultTotalBags;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-3xl space-y-6">
       <form
-        className="space-y-4"
+        className="space-y-5"
         onSubmit={(e) => {
           e.preventDefault();
           submitSuggest();
         }}
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="suggest-total-bags">{tCreate("totalBags")}</Label>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Field
+            id="suggest-total-bags"
+            label={tCreate("totalBags")}
+            error={fieldErrors.totalBags}
+          >
             <Input
               id="suggest-total-bags"
               type="number"
@@ -262,13 +270,13 @@ export function SuggestCampaignForm() {
               onChange={(e) => setTotalBags(e.target.value)}
               aria-invalid={!!fieldErrors.totalBags}
             />
-            {fieldErrors.totalBags ? (
-              <p className="text-xs text-destructive">{fieldErrors.totalBags}</p>
-            ) : null}
-          </div>
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="suggest-bag-price">{tCreate("bagPrice")}</Label>
+          <Field
+            id="suggest-bag-price"
+            label={tCreate("bagPrice")}
+            error={fieldErrors.bagPrice}
+          >
             <Input
               id="suggest-bag-price"
               type="number"
@@ -278,15 +286,13 @@ export function SuggestCampaignForm() {
               onChange={(e) => setBagPrice(e.target.value)}
               aria-invalid={!!fieldErrors.bagPrice}
             />
-            {fieldErrors.bagPrice ? (
-              <p className="text-xs text-destructive">{fieldErrors.bagPrice}</p>
-            ) : null}
-          </div>
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="suggest-expected-cost">
-              {t("expectedTotalCost")}
-            </Label>
+          <Field
+            id="suggest-expected-cost"
+            label={t("expectedTotalCost")}
+            error={fieldErrors.expectedTotalCost}
+          >
             <Input
               id="suggest-expected-cost"
               type="number"
@@ -297,15 +303,13 @@ export function SuggestCampaignForm() {
               placeholder="800000"
               aria-invalid={!!fieldErrors.expectedTotalCost}
             />
-            {fieldErrors.expectedTotalCost ? (
-              <p className="text-xs text-destructive">
-                {fieldErrors.expectedTotalCost}
-              </p>
-            ) : null}
-          </div>
+          </Field>
 
-          <div className="grid gap-2">
-            <Label htmlFor="suggest-tolerance">{t("costTolerance")}</Label>
+          <Field
+            id="suggest-tolerance"
+            label={t("costTolerance")}
+            error={fieldErrors.costTolerance}
+          >
             <Input
               id="suggest-tolerance"
               type="number"
@@ -315,12 +319,7 @@ export function SuggestCampaignForm() {
               onChange={(e) => setCostTolerance(e.target.value)}
               aria-invalid={!!fieldErrors.costTolerance}
             />
-            {fieldErrors.costTolerance ? (
-              <p className="text-xs text-destructive">
-                {fieldErrors.costTolerance}
-              </p>
-            ) : null}
-          </div>
+          </Field>
         </div>
 
         <div className="space-y-2">
@@ -338,6 +337,7 @@ export function SuggestCampaignForm() {
             title={null}
             quantityLabel={tCommon("fields.quantity")}
             disabled={suggestMutation.isPending}
+            variant="list"
           />
           {fieldErrors.wishlist ? (
             <p className="text-sm text-destructive">{fieldErrors.wishlist}</p>
@@ -359,70 +359,95 @@ export function SuggestCampaignForm() {
 
       {result ? (
         <section className="space-y-4 border-t border-border pt-6">
-          <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
               {t("resultTitle")}
             </h2>
-
-            <div
-              className={
+            <Badge
+              variant={liveWithinTolerance ? "secondary" : "outline"}
+              className={cn(
                 liveWithinTolerance
-                  ? "rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm"
-                  : "rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm"
-              }
+                  ? "border-transparent bg-emerald-500/15 text-emerald-900"
+                  : "border-amber-500/40 bg-amber-500/10 text-amber-950"
+              )}
             >
-              <p className="font-medium">
-                {t("deviation", {
-                  amount: formatSignedVnd(liveDeviation),
-                })}
-              </p>
-              <p className="mt-1 text-muted-foreground">
-                {t("totalSuggestedCost", {
-                  amount: vndCost.format(editedCost ?? result.totalSuggestedCost),
-                })}
-                {" · "}
-                {liveWithinTolerance
-                  ? t("withinTolerance")
-                  : t("outsideTolerance")}
-              </p>
-              {poolSum !== resultTotalBags ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("editedPoolSum", {
-                    sum: poolSum,
-                    totalBags: resultTotalBags,
-                  })}
-                </p>
-              ) : null}
-            </div>
-
-            {result.warnings.length > 0 ? (
-              <ul className="space-y-2">
-                {result.warnings.map((warning) => (
-                  <li
-                    key={warning}
-                    className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100"
-                  >
-                    {warning}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+              {liveWithinTolerance
+                ? t("withinTolerance")
+                : t("outsideToleranceShort")}
+            </Badge>
           </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Metric
+              label={t("metricBudget")}
+              value={vndCost.format(resultExpectedCost)}
+              hint={t("metricTolerance", {
+                amount: vnd.format(resultTolerance),
+              })}
+            />
+            <Metric
+              label={t("metricSuggestedCost")}
+              value={vndCost.format(liveCost)}
+              hint={t("deviation", {
+                amount: formatSignedVnd(liveDeviation),
+              })}
+              emphasize={!liveWithinTolerance}
+            />
+            <Metric
+              label={t("metricFill")}
+              value={`${poolSum} / ${resultTotalBags}`}
+              hint={
+                fillComplete ? t("fillComplete") : t("fillIncomplete")
+              }
+              emphasize={!fillComplete}
+            />
+          </div>
+
+          {result.warnings.length > 0 ? (
+            <ul className="space-y-2">
+              {result.warnings.map((warning) => (
+                <li
+                  key={warning}
+                  className="flex gap-2.5 rounded-lg border border-amber-500/35 bg-card px-3 py-2.5 text-sm"
+                >
+                  <AlertTriangleIcon
+                    className="mt-0.5 size-4 shrink-0 text-amber-700"
+                    aria-hidden
+                  />
+                  <span>{warning}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle2Icon
+                className="size-4 shrink-0 text-emerald-700"
+                aria-hidden
+              />
+              {t("noWarnings")}
+            </p>
+          )}
 
           <CampaignPoolEditor
             products={products}
             rows={poolRows}
             onChange={setPoolRows}
             totalBags={String(resultTotalBags)}
+            variant="list"
           />
 
           {formError ? (
             <p className="text-sm text-destructive">{formError}</p>
           ) : null}
 
-          <Button type="button" onClick={openCreateFromSuggestion}>
-            {t("createFromSuggestion")}
-          </Button>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-4">
+            <p className="text-xs text-muted-foreground">
+              {t("createHint")}
+            </p>
+            <Button type="button" onClick={openCreateFromSuggestion}>
+              {t("createFromSuggestion")}
+            </Button>
+          </div>
         </section>
       ) : null}
 
@@ -434,6 +459,55 @@ export function SuggestCampaignForm() {
         }}
         initialValues={createPrefill}
       />
+    </div>
+  );
+}
+
+function Field({
+  id,
+  label,
+  error,
+  children,
+}: {
+  id: string;
+  label: string;
+  error?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor={id} className="text-xs text-muted-foreground">
+        {label}
+      </Label>
+      {children}
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  hint,
+  emphasize = false,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  emphasize?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-border/80 bg-card px-3.5 py-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          "mt-1 font-[family-name:var(--font-display)] text-lg font-semibold tabular-nums tracking-tight",
+          emphasize && "text-amber-900"
+        )}
+      >
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </div>
   );
 }

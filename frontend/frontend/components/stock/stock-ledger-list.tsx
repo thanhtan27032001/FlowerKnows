@@ -133,7 +133,13 @@ export function StockLedgerList() {
           </div>
           <div className="grid gap-2">
             <Label>{t("filters.type")}</Label>
-            <Select value={type || "__all__"} onValueChange={(v) => setType(v === "__all__" ? "" : v)}>
+            <Select
+              value={type || "__all__"}
+              onValueChange={(v) => {
+                const next = String(v ?? "__all__");
+                setType(next === "__all__" ? "" : next);
+              }}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={t("filters.allTypes")}>
                   {type ? stockTxLabel(tStatus, type) : t("filters.allTypes")}

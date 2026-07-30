@@ -416,6 +416,10 @@ public class CampaignService {
                     lineCost
             ));
         }
+        suggestedPool.sort(
+                Comparator.comparing(CampaignDtos.SuggestedPoolItemResponse::unitCost).reversed()
+                        .thenComparing(CampaignDtos.SuggestedPoolItemResponse::productName)
+        );
 
         BigDecimal deviation = runningCost.subtract(request.expectedTotalCost());
         boolean withinTolerance = deviation.abs().compareTo(request.costTolerance()) <= 0;

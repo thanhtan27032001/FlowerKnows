@@ -68,7 +68,11 @@ export function SuggestCampaignForm() {
       setPoolRows(
         poolRowsFromItems(
           [...data.suggestedPool]
-            .sort((a, b) => Number(b.unitCost) - Number(a.unitCost))
+            .sort((a, b) => {
+              const costA = Number(a.unitCost) || 0;
+              const costB = Number(b.unitCost) || 0;
+              return costB - costA;
+            })
             .map((row) => ({
               productId: row.productId,
               loadedQuantity: row.quantity,

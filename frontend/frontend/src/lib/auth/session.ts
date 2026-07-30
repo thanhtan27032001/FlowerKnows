@@ -102,6 +102,12 @@ export function canAccessPath(role: AccountRole, pathname: string): boolean {
   if (pathname === "/login") return true;
   if (role === "OWNER") return true;
   if (isOwnerOnlyPath(pathname)) return false;
+  if (
+    pathname === "/campaigns/suggest" ||
+    pathname.startsWith("/campaigns/suggest/")
+  ) {
+    return false;
+  }
   return (
     pathname === "/campaigns" ||
     pathname.startsWith("/campaigns/") ||

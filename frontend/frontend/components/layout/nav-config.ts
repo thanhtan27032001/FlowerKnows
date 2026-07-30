@@ -7,6 +7,7 @@ import {
   MoreHorizontalIcon,
   PackageIcon,
   ShoppingBagIcon,
+  SparklesIcon,
   UsersIcon,
   UserCogIcon,
 } from "lucide-react";
@@ -19,6 +20,7 @@ export type NavLabelKey =
   | "dashboard"
   | "dashboardShort"
   | "campaigns"
+  | "suggestCampaign"
   | "customers"
   | "orders"
   | "products"
@@ -55,6 +57,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: MegaphoneIcon,
     section: "operations",
     mobile: "primary",
+  },
+  {
+    href: "/campaigns/suggest",
+    labelKey: "suggestCampaign",
+    shortLabelKey: "suggestCampaign",
+    icon: SparklesIcon,
+    section: "operations",
+    mobile: "more",
+    roles: ["OWNER"],
   },
   {
     href: "/customers",
@@ -146,6 +157,11 @@ export function getMobileMoreItems(role: AccountRole) {
 
 export function isNavActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
+  if (href === "/campaigns") {
+    if (pathname === "/campaigns") return true;
+    if (pathname.startsWith("/campaigns/suggest")) return false;
+    return pathname.startsWith("/campaigns/");
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

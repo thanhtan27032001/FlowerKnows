@@ -127,6 +127,35 @@ export type ParticipantToken = {
   exchangedIntoProductNames: string[];
 };
 
+export type WishlistItemInput = {
+  productId: string;
+  quantity: number;
+};
+
+export type SuggestPoolInput = {
+  totalBags: number;
+  bagPrice: number;
+  expectedTotalCost: number;
+  costTolerance: number;
+  wishlist?: WishlistItemInput[];
+};
+
+export type SuggestedPoolItem = {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitCost: number;
+  lineCost: number;
+};
+
+export type SuggestPoolResult = {
+  suggestedPool: SuggestedPoolItem[];
+  totalSuggestedCost: number;
+  deviation: number;
+  withinTolerance: boolean;
+  warnings: string[];
+};
+
 export const campaignKeys = {
   all: ["campaigns"] as const,
   lists: () => [...campaignKeys.all, "list"] as const,
@@ -152,6 +181,9 @@ export const campaignApi = {
 
   create: (input: CreateCampaignInput) =>
     apiClient.post<CampaignDetail>("/api/campaigns", input),
+
+  suggestPool: (input: SuggestPoolInput) =>
+    apiClient.post<SuggestPoolResult>("/api/campaigns/suggest-pool", input),
 
   update: (id: string, input: UpdateCampaignInput) =>
     apiClient.patch<CampaignDetail>(`/api/campaigns/${id}`, input),

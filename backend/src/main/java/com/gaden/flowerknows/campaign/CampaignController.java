@@ -48,6 +48,14 @@ public class CampaignController {
         return campaignService.createCampaign(request);
     }
 
+    @PostMapping("/suggest-pool")
+    @PreAuthorize("hasRole('OWNER')")
+    public CampaignDtos.SuggestPoolResponse suggestPool(
+            @Valid @RequestBody CampaignDtos.SuggestPoolRequest request
+    ) {
+        return campaignService.suggestPool(request);
+    }
+
     @PatchMapping("/{id}")
     @PreAuthorize("hasRole('OWNER')")
     public CampaignDtos.CampaignDetailResponse update(

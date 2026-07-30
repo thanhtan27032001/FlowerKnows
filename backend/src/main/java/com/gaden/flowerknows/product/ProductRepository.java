@@ -14,4 +14,6 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     List<Product> findByNameIgnoreCase(String name);
 
     List<Product> findAllByOrderByCreatedAtDesc();
+
+    List<Product> findByStockQuantityGreaterThanAndAverageCostPriceIsNotNull(int stockQuantity);
 }

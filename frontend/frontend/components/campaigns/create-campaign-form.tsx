@@ -1,18 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PlusIcon, Trash2Icon } from "lucide-react";
 import { ApiError } from "@/src/lib/api/client";
 import {
   campaignApi,
   campaignKeys,
   type CreateCampaignInput,
+  type PoolItemInput,
 } from "@/src/lib/api/campaign";
 import { productApi, productKeys } from "@/src/lib/api/product";
-import { ProductTypeahead } from "@/components/products/product-typeahead";
+import {
+  CampaignPoolEditor,
+  newCampaignPoolRow,
+  poolRowsFromItems,
+  type CampaignPoolRow,
+} from "@/components/campaigns/campaign-pool-editor";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,29 +40,25 @@ import {
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useSuccessClose } from "@/hooks/use-success-close";
-import { createClientId } from "@/lib/utils";
 
-type PoolRow = {
-  key: string;
-  productId: string;
-  loadedQuantity: string;
-  error?: string;
+export type CreateCampaignPrefill = {
+  bagPrice: number;
+  totalBags: number;
+  pool: PoolItemInput[];
 };
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** When set, pre-fills bag price / total bags / pool (US-31). Name & date stay blank. */
+  initialValues?: CreateCampaignPrefill | null;
 };
 
-function newPoolRow(): PoolRow {
-  return {
-    key: createClientId(),
-    productId: "",
-    loadedQuantity: "1",
-  };
-}
-
-export function CreateCampaignForm({ open, onOpenChange }: Props) {
+export function CreateCampaignForm({
+  open,
+  onOpenChange,
+  initialValues = null,
+}: Props) {
   const t = useTranslations("campaigns.create");
   const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
@@ -69,9 +70,24 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
   const [eventDate, setEventDate] = useState("");
   const [bagPrice, setBagPrice] = useState("89000");
   const [totalBags, setTotalBags] = useState("20");
-  const [poolRows, setPoolRows] = useState<PoolRow[]>([newPoolRow()]);
+  const [poolRows, setPoolRows] = useState<CampaignPoolRow[]>([
+    newCampaignPoolRow(),
+  ]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    if (initialValues) {
+      setName("");
+      setEventDate("");
+      setBagPrice(String(initialValues.bagPrice));
+      setTotalBags(String(initialValues.totalBags));
+      setPoolRows(poolRowsFromItems(initialValues.pool));
+      setFieldErrors({});
+      setFormError(null);
+    }
+  }, [open, initialValues]);
 
   const { data: products = [] } = useQuery({
     queryKey: productKeys.lists(),
@@ -100,7 +116,7 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
     setEventDate("");
     setBagPrice("89000");
     setTotalBags("20");
-    setPoolRows([newPoolRow()]);
+    setPoolRows([newCampaignPoolRow()]);
     setFieldErrors({});
     setFormError(null);
   };
@@ -124,14 +140,6 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
   });
 
   const locked = createMutation.isPending || succeeded;
-
-  const updateRow = (key: string, patch: Partial<PoolRow>) => {
-    setPoolRows((prev) =>
-      prev.map((row) =>
-        row.key === key ? { ...row, ...patch, error: undefined } : row
-      )
-    );
-  };
 
   const validate = (): CreateCampaignInput | null => {
     const errors: Record<string, string> = {};
@@ -283,111 +291,17 @@ export function CreateCampaignForm({ open, onOpenChange }: Props) {
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div className="flex items-end justify-between gap-2">
-            <div>
-              <Label>{t("productPool")}</Label>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                <span
-                  className={
-                    quantitiesMatch
-                      ? "font-medium text-foreground"
-                      : "font-medium text-destructive"
-                  }
-                >
-                  {poolSum}
-                </span>
-                {totalBags ? ` / ${totalBags}` : ""}
-              </p>
-            </div>
-          </div>
+        <CampaignPoolEditor
+          products={products}
+          rows={poolRows}
+          onChange={setPoolRows}
+          totalBags={totalBags}
+          disabled={locked}
+        />
 
-          {poolRows.map((row, index) => {
-            const selected = products.find((p) => p.id === row.productId);
-            return (
-              <div
-                key={row.key}
-                className="grid gap-3 rounded-xl border border-border/80 bg-muted/20 p-3"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    {tCommon("fields.product")} {index + 1}
-                  </p>
-                  {poolRows.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() =>
-                        setPoolRows((prev) =>
-                          prev.filter((r) => r.key !== row.key)
-                        )
-                      }
-                      aria-label={tCommon("actions.removeRow")}
-                    >
-                      <Trash2Icon />
-                    </Button>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor={`campaign-pool-product-${row.key}`}>
-                    {tCommon("fields.product")}
-                  </Label>
-                  <ProductTypeahead
-                    id={`campaign-pool-product-${row.key}`}
-                    products={products}
-                    productId={row.productId}
-                    showStock
-                    placeholder={t("productSearchPlaceholder")}
-                    aria-invalid={!!row.error}
-                    onSelect={(product) =>
-                      updateRow(row.key, {
-                        productId: product?.id ?? "",
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>{t("loadedQuantity")}</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    inputMode="numeric"
-                    value={row.loadedQuantity}
-                    onChange={(e) =>
-                      updateRow(row.key, { loadedQuantity: e.target.value })
-                    }
-                    aria-invalid={!!row.error}
-                  />
-                  {selected && (
-                    <p className="text-xs text-muted-foreground">
-                      {selected.stockQuantity}
-                    </p>
-                  )}
-                </div>
-
-                {row.error && (
-                  <p className="text-xs text-destructive">{row.error}</p>
-                )}
-              </div>
-            );
-          })}
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setPoolRows((prev) => [...prev, newPoolRow()])}
-          >
-            <PlusIcon />
-            {tCommon("actions.addProduct")}
-          </Button>
-
-          {fieldErrors.pool && (
-            <p className="text-sm text-destructive">{fieldErrors.pool}</p>
-          )}
-        </div>
+        {fieldErrors.pool && (
+          <p className="text-sm text-destructive">{fieldErrors.pool}</p>
+        )}
 
         {formError && <p className="text-sm text-destructive">{formError}</p>}
       </fieldset>

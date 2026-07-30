@@ -133,4 +133,43 @@ public final class CampaignDtos {
             List<ParticipantSummaryResponse> participants
     ) {
     }
+
+    public record WishlistItemRequest(
+            @NotNull(message = "productId is required") UUID productId,
+            @Min(value = 1, message = "quantity must be at least 1") int quantity
+    ) {
+    }
+
+    public record SuggestPoolRequest(
+            @Min(value = 1, message = "totalBags must be at least 1") int totalBags,
+            @NotNull(message = "bagPrice is required")
+            @DecimalMin(value = "0", inclusive = false, message = "bagPrice must be positive")
+            BigDecimal bagPrice,
+            @NotNull(message = "expectedTotalCost is required")
+            @DecimalMin(value = "0", inclusive = true, message = "expectedTotalCost must be non-negative")
+            BigDecimal expectedTotalCost,
+            @NotNull(message = "costTolerance is required")
+            @DecimalMin(value = "0", inclusive = true, message = "costTolerance must be non-negative")
+            BigDecimal costTolerance,
+            @Valid List<WishlistItemRequest> wishlist
+    ) {
+    }
+
+    public record SuggestedPoolItemResponse(
+            UUID productId,
+            String productName,
+            int quantity,
+            BigDecimal unitCost,
+            BigDecimal lineCost
+    ) {
+    }
+
+    public record SuggestPoolResponse(
+            List<SuggestedPoolItemResponse> suggestedPool,
+            BigDecimal totalSuggestedCost,
+            BigDecimal deviation,
+            boolean withinTolerance,
+            List<String> warnings
+    ) {
+    }
 }

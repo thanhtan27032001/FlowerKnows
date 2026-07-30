@@ -10,10 +10,13 @@ import com.gaden.flowerknows.token.ItemTokenRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -327,6 +330,126 @@ public class CampaignService {
 
         campaign.setStatus(CampaignStatus.OPEN);
         return toMutationDetail(campaign);
+    }
+
+    /**
+     * US-31: pure planning suggestion — no DB writes.
+     */
+    @Transactional(readOnly = true)
+    public CampaignDtos.SuggestPoolResponse suggestPool(CampaignDtos.SuggestPoolRequest request) {
+        List<CampaignDtos.WishlistItemRequest> wishlist =
+                request.wishlist() == null ? List.of() : request.wishlist();
+
+        int wishlistQty = wishlist.stream().mapToInt(CampaignDtos.WishlistItemRequest::quantity).sum();
+        if (wishlistQty > request.totalBags()) {
+            throw new BusinessException(
+                    "Wishlist yêu cầu %d túi nhưng tổng chỉ có %d túi"
+                            .formatted(wishlistQty, request.totalBags())
+            );
+        }
+
+        List<String> warnings = new ArrayList<>();
+        LinkedHashMap<UUID, Integer> quantities = new LinkedHashMap<>();
+        Map<UUID, Product> productsById = new HashMap<>();
+        BigDecimal runningCost = BigDecimal.ZERO;
+        int bagsFilled = 0;
+
+        Set<UUID> wishlistProductIds = new HashSet<>();
+        for (CampaignDtos.WishlistItemRequest item : wishlist) {
+            if (!wishlistProductIds.add(item.productId())) {
+                throw new BusinessException("Duplicate product in wishlist: " + item.productId());
+            }
+            Product product = productRepository.findById(item.productId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + item.productId()));
+            productsById.put(product.getId(), product);
+            quantities.put(product.getId(), item.quantity());
+
+            BigDecimal unitCost = product.getAverageCostPrice();
+            if (unitCost == null) {
+                unitCost = BigDecimal.ZERO;
+                warnings.add(
+                        "SP %s chưa có giá vốn, không tính vào tổng chi phí ước tính"
+                                .formatted(product.getName())
+                );
+            }
+            runningCost = runningCost.add(unitCost.multiply(BigDecimal.valueOf(item.quantity())));
+            bagsFilled += item.quantity();
+        }
+
+        List<Product> candidates = productRepository
+                .findByStockQuantityGreaterThanAndAverageCostPriceIsNotNull(0)
+                .stream()
+                .filter(p -> !wishlistProductIds.contains(p.getId()))
+                .toList();
+
+        int candidateStock = candidates.stream().mapToInt(Product::getStockQuantity).sum();
+        if (wishlistQty + candidateStock < request.totalBags()) {
+            warnings.add(
+                    "Không đủ tồn kho trong toàn hệ thống để lấp đầy %d túi"
+                            .formatted(request.totalBags())
+            );
+        }
+
+        Map<UUID, Integer> candidateAllocated = new HashMap<>();
+        while (bagsFilled < request.totalBags()) {
+            int remainingBags = request.totalBags() - bagsFilled;
+            BigDecimal remainingBudget = request.expectedTotalCost().subtract(runningCost);
+            BigDecimal targetUnitCost = remainingBudget.divide(
+                    BigDecimal.valueOf(remainingBags),
+                    10,
+                    RoundingMode.HALF_UP
+            );
+
+            Product best = null;
+            BigDecimal bestDistance = null;
+            for (Product candidate : candidates) {
+                int used = candidateAllocated.getOrDefault(candidate.getId(), 0);
+                if (used >= candidate.getStockQuantity()) {
+                    continue;
+                }
+                BigDecimal distance = candidate.getAverageCostPrice().subtract(targetUnitCost).abs();
+                if (best == null || distance.compareTo(bestDistance) < 0) {
+                    best = candidate;
+                    bestDistance = distance;
+                }
+            }
+            if (best == null) {
+                break;
+            }
+
+            candidateAllocated.merge(best.getId(), 1, Integer::sum);
+            quantities.merge(best.getId(), 1, Integer::sum);
+            productsById.putIfAbsent(best.getId(), best);
+            runningCost = runningCost.add(best.getAverageCostPrice());
+            bagsFilled++;
+        }
+
+        List<CampaignDtos.SuggestedPoolItemResponse> suggestedPool = new ArrayList<>();
+        for (Map.Entry<UUID, Integer> entry : quantities.entrySet()) {
+            Product product = productsById.get(entry.getKey());
+            BigDecimal unitCost = product.getAverageCostPrice() != null
+                    ? product.getAverageCostPrice()
+                    : BigDecimal.ZERO;
+            BigDecimal lineCost = unitCost.multiply(BigDecimal.valueOf(entry.getValue()));
+            suggestedPool.add(new CampaignDtos.SuggestedPoolItemResponse(
+                    product.getId(),
+                    product.getName(),
+                    entry.getValue(),
+                    unitCost,
+                    lineCost
+            ));
+        }
+
+        BigDecimal deviation = runningCost.subtract(request.expectedTotalCost());
+        boolean withinTolerance = deviation.abs().compareTo(request.costTolerance()) <= 0;
+
+        return new CampaignDtos.SuggestPoolResponse(
+                suggestedPool,
+                runningCost,
+                deviation,
+                withinTolerance,
+                List.copyOf(warnings)
+        );
     }
 
     /** Open campaign without loading pool (participant bag edits, drafts, etc.). */

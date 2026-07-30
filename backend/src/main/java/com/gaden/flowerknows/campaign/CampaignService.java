@@ -335,18 +335,16 @@ public class CampaignService {
 
     /**
      * US-31: pure planning suggestion — no DB writes.
-     * Wishlist keeps Owner-specified quantities; every auto-filled product contributes exactly 1 unit.
+     * Every suggested row (wishlist and auto-fill) starts at quantity=1.
      */
     @Transactional(readOnly = true)
     public CampaignDtos.SuggestPoolResponse suggestPool(CampaignDtos.SuggestPoolRequest request) {
-        List<CampaignDtos.WishlistItemRequest> wishlist =
-                request.wishlist() == null ? List.of() : request.wishlist();
+        List<UUID> wishlistIds = request.wishlist() == null ? List.of() : request.wishlist();
 
-        int wishlistQty = wishlist.stream().mapToInt(CampaignDtos.WishlistItemRequest::quantity).sum();
-        if (wishlistQty > request.totalBags()) {
+        if (wishlistIds.size() > request.totalBags()) {
             throw new BusinessException(
-                    "Wishlist yêu cầu %d túi nhưng tổng chỉ có %d túi"
-                            .formatted(wishlistQty, request.totalBags())
+                    "Wishlist có %d sản phẩm nhưng tổng chỉ có %d túi"
+                            .formatted(wishlistIds.size(), request.totalBags())
             );
         }
 
@@ -356,14 +354,14 @@ public class CampaignService {
         BigDecimal runningCost = BigDecimal.ZERO;
 
         Set<UUID> wishlistProductIds = new HashSet<>();
-        for (CampaignDtos.WishlistItemRequest item : wishlist) {
-            if (!wishlistProductIds.add(item.productId())) {
-                throw new BusinessException("Duplicate product in wishlist: " + item.productId());
+        for (UUID productId : wishlistIds) {
+            if (!wishlistProductIds.add(productId)) {
+                throw new BusinessException("Duplicate product in wishlist: " + productId);
             }
-            Product product = productRepository.findById(item.productId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + item.productId()));
+            Product product = productRepository.findById(productId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + productId));
             productsById.put(product.getId(), product);
-            quantities.put(product.getId(), item.quantity());
+            quantities.put(product.getId(), 1);
 
             BigDecimal unitCost = product.getAverageCostPrice();
             if (unitCost == null) {
@@ -373,10 +371,10 @@ public class CampaignService {
                                 .formatted(product.getName())
                 );
             }
-            runningCost = runningCost.add(unitCost.multiply(BigDecimal.valueOf(item.quantity())));
+            runningCost = runningCost.add(unitCost);
         }
 
-        int remainingNeeded = request.totalBags() - wishlistQty;
+        int remainingNeeded = request.totalBags() - wishlistIds.size();
         List<Product> candidates = productRepository
                 .findByStockQuantityGreaterThanAndAverageCostPriceIsNotNull(0)
                 .stream()

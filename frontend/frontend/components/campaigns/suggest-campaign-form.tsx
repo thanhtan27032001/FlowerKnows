@@ -33,7 +33,6 @@ type WishlistRow = CampaignPoolRow;
 export function SuggestCampaignForm() {
   const t = useTranslations("campaigns.suggest");
   const tCreate = useTranslations("campaigns.create");
-  const tCommon = useTranslations("common");
 
   const [totalBags, setTotalBags] = useState("20");
   const [bagPrice, setBagPrice] = useState("89000");
@@ -142,19 +141,9 @@ export function SuggestCampaignForm() {
 
     let wishlistValid = true;
     const nextWishlist = wishlistRows.map((row) => {
-      const qty = Number(row.loadedQuantity);
       if (!row.productId) {
         wishlistValid = false;
         return { ...row, error: tCreate("selectProduct") };
-      }
-      if (
-        !row.loadedQuantity ||
-        Number.isNaN(qty) ||
-        qty < 1 ||
-        !Number.isInteger(qty)
-      ) {
-        wishlistValid = false;
-        return { ...row, error: t("wishlistQtyInvalid") };
       }
       return { ...row, error: undefined };
     });
@@ -167,13 +156,9 @@ export function SuggestCampaignForm() {
       if (new Set(ids).size !== ids.length) {
         errors.wishlist = t("duplicateWishlistProduct");
       }
-      const wishlistQty = nextWishlist.reduce(
-        (sum, row) => sum + Number(row.loadedQuantity),
-        0
-      );
-      if (bags > 0 && wishlistQty > bags) {
+      if (bags > 0 && ids.length > bags) {
         errors.wishlist = t("wishlistExceedsTotal", {
-          wishlistQty,
+          count: ids.length,
           totalBags: bags,
         });
       }
@@ -187,10 +172,7 @@ export function SuggestCampaignForm() {
       bagPrice: price,
       expectedTotalCost: expected,
       costTolerance: tolerance,
-      wishlist: nextWishlist.map((row) => ({
-        productId: row.productId,
-        quantity: Number(row.loadedQuantity),
-      })),
+      wishlist: nextWishlist.map((row) => row.productId),
     };
   };
 
@@ -335,9 +317,8 @@ export function SuggestCampaignForm() {
             onChange={setWishlistRows}
             requireAtLeastOne={false}
             title={null}
-            quantityLabel={tCommon("fields.quantity")}
             disabled={suggestMutation.isPending}
-            variant="list"
+            variant="wishlist"
           />
           {fieldErrors.wishlist ? (
             <p className="text-sm text-destructive">{fieldErrors.wishlist}</p>

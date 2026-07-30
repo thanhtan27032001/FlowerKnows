@@ -127,17 +127,13 @@ export type ParticipantToken = {
   exchangedIntoProductNames: string[];
 };
 
-export type WishlistItemInput = {
-  productId: string;
-  quantity: number;
-};
-
 export type SuggestPoolInput = {
   totalBags: number;
   bagPrice: number;
   expectedTotalCost: number;
   costTolerance: number;
-  wishlist?: WishlistItemInput[];
+  /** Product IDs that must appear; each is suggested at quantity=1. */
+  wishlist?: string[];
 };
 
 export type SuggestedPoolItem = {

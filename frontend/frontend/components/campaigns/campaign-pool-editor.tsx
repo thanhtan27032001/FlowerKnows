@@ -53,9 +53,10 @@ type Props = {
   productSearchPlaceholder?: string;
   /**
    * `cards` — stacked fields for create/edit dialogs.
-   * `list` — campaign participant-style white cards (suggest page).
+   * `list` — campaign participant-style white cards with editable quantity (suggest result).
+   * `wishlist` — product picker only, no quantity (suggest wishlist).
    */
-  variant?: "cards" | "list";
+  variant?: "cards" | "list" | "wishlist";
 };
 
 export function CampaignPoolEditor({
@@ -143,6 +144,79 @@ export function CampaignPoolEditor({
       {tCommon("actions.addProduct")}
     </Button>
   );
+
+  if (variant === "wishlist") {
+    return (
+      <div className="space-y-3">
+        {header}
+
+        {rows.length === 0 ? (
+          <div className="rounded-lg bg-card px-3 py-6 text-center text-sm text-muted-foreground ring-1 ring-foreground/10">
+            {t("emptyWishlistHint")}
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {rows.map((row) => {
+              const selected = products.find((p) => p.id === row.productId);
+              return (
+                <li
+                  key={row.key}
+                  className="min-w-0 overflow-hidden rounded-lg bg-card ring-1 ring-foreground/10"
+                >
+                  <div className="space-y-1.5 px-3 py-2">
+                    <ProductTypeahead
+                      id={`campaign-pool-product-${row.key}`}
+                      products={products}
+                      productId={row.productId}
+                      showStock
+                      showAverageCost
+                      disabled={disabled}
+                      placeholder={searchPlaceholder}
+                      aria-invalid={!!row.error}
+                      onSelect={(product) =>
+                        updateRow(row.key, {
+                          productId: product?.id ?? "",
+                        })
+                      }
+                    />
+                    <p className="text-xs leading-snug text-muted-foreground/80">
+                      {selected
+                        ? `${tStockIn("stock")} ${selected.stockQuantity} · ${tStockIn("avgCost")} ${formatCostPrice(selected.averageCostPrice, tCommon("format.notSet"))}`
+                        : t("selectProduct")}
+                    </p>
+                    {row.error ? (
+                      <p className="text-xs text-destructive">{row.error}</p>
+                    ) : null}
+                  </div>
+
+                  {canRemove ? (
+                    <div className="flex flex-wrap items-center gap-2 border-t border-border/40 px-3 py-1.5">
+                      <span className="flex-1" />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7"
+                        disabled={disabled}
+                        onClick={() =>
+                          onChange(rows.filter((r) => r.key !== row.key))
+                        }
+                      >
+                        <Trash2Icon className="size-3.5" />
+                        {tCommon("actions.removeRow")}
+                      </Button>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {addButton}
+      </div>
+    );
+  }
 
   if (variant === "list") {
     return (

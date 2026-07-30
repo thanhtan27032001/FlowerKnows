@@ -134,12 +134,6 @@ public final class CampaignDtos {
     ) {
     }
 
-    public record WishlistItemRequest(
-            @NotNull(message = "productId is required") UUID productId,
-            @Min(value = 1, message = "quantity must be at least 1") int quantity
-    ) {
-    }
-
     public record SuggestPoolRequest(
             @Min(value = 1, message = "totalBags must be at least 1") int totalBags,
             @NotNull(message = "bagPrice is required")
@@ -151,7 +145,8 @@ public final class CampaignDtos {
             @NotNull(message = "costTolerance is required")
             @DecimalMin(value = "0", inclusive = true, message = "costTolerance must be non-negative")
             BigDecimal costTolerance,
-            @Valid List<WishlistItemRequest> wishlist
+            /** Product IDs that must appear; each is suggested at quantity=1. */
+            List<UUID> wishlist
     ) {
     }
 

@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 3.2 (US-31: auto-filled products now capped at quantity=1 each — need N distinct products to fill N bags, not fewer products at higher quantity; wishlist quantities unaffected)
+**Version:** 3.3 (US-31 simplified: every suggested row — wishlist and auto-fill alike — starts at quantity=1; no wishlist quantity input anymore; Owner increases quantities manually after reviewing the suggestion)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -295,26 +295,26 @@ This is the single source of truth for schema design across the whole document.
 | `bag_price` | Yes | Price per bag customers will pay |
 | `expected_total_cost` | Yes | Target total cost (sum of item costs) for the whole pool |
 | `cost_tolerance` | Yes | Allowed deviation — the final suggestion should land within `expected_total_cost ± cost_tolerance` |
-| `wishlist` | No | List of `{ product_id, quantity }` — products that MUST appear in the suggestion with at least that quantity |
+| `wishlist` | No | List of `product_id`s — products that MUST appear in the suggestion. **No quantity input** — every wishlist product is suggested at `quantity = 1`, same as every auto-filled product (see AC #2/#4) |
 
 **Acceptance Criteria:**
 
 | # | Given | When | Then |
 |---|---|---|---|
-| 1 | Owner fills in the inputs above | Submits | The system computes a suggested pool: a list of `{ product, quantity }` rows |
-| 2 | Wishlist items are specified | Computing the suggestion | Every wishlist product appears in the result with **at least** its requested quantity (all `product_id`+`quantity` pairs guaranteed included) |
-| 3 | Sum of quantities in the wishlist already **exceeds** `total_bags` | Owner submits | Blocked immediately with a clear error — "Wishlist yêu cầu X túi nhưng tổng chỉ có N túi" — no suggestion is computed |
-| 4 | Filling in the remaining bags (`total_bags` − wishlist quantity) | Computing the suggestion | The system selects **additional distinct products, each with `quantity = 1` only** (never repeating a product already used — every auto-filled row is a different product, and never overlaps a wishlist product either) — using each product's **`average_cost_price`** as its cost basis — such that: (a) the **count** of auto-filled rows = remaining bags needed exactly (i.e. `total_bags` − wishlist quantity), (b) total cost across the whole pool (wishlist + auto-filled) lands as close as possible to `expected_total_cost`, ideally within `± cost_tolerance`. **This quantity=1 rule applies only to the auto-filled portion** — wishlist items keep whatever quantity Owner specified for them (per AC #2), which may be > 1 |
+| 1 | Owner fills in the inputs above | Submits | The system computes a suggested pool: a list of `{ product, quantity = 1 }` rows — **uniformly quantity 1 for every row**, whether from the wishlist or auto-filled |
+| 2 | Wishlist products are specified | Computing the suggestion | Every wishlist product appears in the result, each at `quantity = 1` |
+| 3 | The wishlist has **more distinct products** than `total_bags` | Owner submits | Blocked immediately with a clear error — "Wishlist có X sản phẩm nhưng tổng chỉ có N túi" — no suggestion is computed |
+| 4 | Filling in the remaining bags (`total_bags` − number of wishlist products) | Computing the suggestion | The system selects **additional distinct products, each at `quantity = 1`** (never repeating a product already used — every auto-filled row is a different product, and never overlaps a wishlist product either) — using each product's **`average_cost_price`** as its cost basis — such that: (a) the **count** of auto-filled rows = remaining bags needed exactly, (b) total cost across the whole pool (wishlist + auto-filled) lands as close as possible to `expected_total_cost`, ideally within `± cost_tolerance` |
 | 5 | A candidate product has `average_cost_price = null` (never stocked in yet — no known cost) | Computing the suggestion | That product is **excluded** from auto-fill candidates (its cost is unknown, so it can't be reliably budgeted) — UNLESS it's explicitly in the wishlist, in which case it's still included per AC #2, but its cost contributes `0` to the budget calculation and a warning is shown: "SP X chưa có giá vốn, không tính vào tổng chi phí ước tính" |
 | 6 | A valid combination is found within tolerance | — | Result shown: the full pool list, `total_suggested_cost`, and confirmation it's within tolerance |
 | 7 | **No combination fits within the tolerance** (e.g. not enough product variety, or available stock too limited) | — | The system still returns its **closest attempt** (minimizing the gap to `expected_total_cost`) — never a hard failure with nothing to show. Clearly displays the actual deviation (e.g. "Lệch +45.000đ so với ngân sách") so Owner knows to adjust manually |
 | 8 | The number of **distinct candidate products available** (with `stock_quantity` ≥ 1 and known cost) is fewer than the remaining bags needed | — | The system can't produce a full-size suggestion (since each auto-filled product can only contribute 1 unit) — fills as many distinct products as it can, then shows a distinct warning: "Chỉ tìm được X/Y sản phẩm khác nhau còn hàng — không đủ để lấp đầy N túi theo quy tắc mỗi sản phẩm 1 lần" so Owner knows they need more product variety in stock, not just more quantity of existing products |
-| 9 | A suggestion is shown | Owner reviews it | The list is **fully editable** — add/remove rows, change quantities — before proceeding, exactly like manually composing a pool |
+| 9 | A suggestion is shown (every row starts at `quantity = 1`, per AC #1) | Owner reviews it | The list is **fully editable** — Owner can manually **increase any row's quantity** (e.g. wants 3 of a particular wishlist item instead of 1), add new rows, or remove rows — before proceeding, exactly like manually composing a pool. The suggestion is a *starting point*, not a final answer — the algorithm never has to guess desired quantities beyond 1 per item, keeping it simple |
 | 10 | Owner is satisfied with the (possibly edited) list | Clicks "Tạo Campaign từ gợi ý này" | Pre-fills the existing **Create Campaign** form (US-01) with `total_bags`, `bag_price`, and the pool rows — Owner still provides `name`/`event_date` and goes through the normal US-01 creation flow and validation (this feature does not bypass or duplicate US-01's own logic, it only pre-fills the form) |
 
 **Access:** Owner only.
 
-**Note on algorithm approach:** This is a heuristic "best-effort" suggestion tool, not a guaranteed-optimal solver. With the auto-fill quantity fixed at 1 per product, the problem becomes "pick exactly K distinct products (K = remaining bags needed) whose total `average_cost_price` best approximates the remaining budget" — a fixed-count subset-sum approximation. For a shop-scale catalog, a greedy/local-search approach (e.g. sort candidates, iteratively swap in/out products to narrow the gap toward the target) is sufficient and far simpler to implement/maintain than an exact optimization algorithm. Perfect optimality is not required since Owner can always edit the result (AC #9).
+**Note on algorithm approach:** This is a heuristic "best-effort" suggestion tool, not a guaranteed-optimal solver. Since every row (wishlist and auto-filled alike) is fixed at `quantity = 1`, the problem simplifies to "pick exactly `total_bags` distinct products (wishlist ones guaranteed included) whose total `average_cost_price` best approximates `expected_total_cost`" — a fixed-count subset-sum approximation. For a shop-scale catalog, a greedy/local-search approach (e.g. sort candidates by cost, iteratively swap in/out products to narrow the gap toward the target) is sufficient and far simpler to implement/maintain than an exact optimization algorithm. Perfect optimality is not required since Owner can always edit quantities upward afterward (AC #9).
 
 ---
 

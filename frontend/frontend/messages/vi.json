@@ -305,6 +305,7 @@
       "duplicateProduct": "Mỗi sản phẩm chỉ được xuất hiện một lần trong pool",
       "quantitiesMismatch": "Tổng số lượng nạp phải bằng tổng số túi",
       "emptyPoolHint": "Chưa có sản phẩm — thêm dòng hoặc chạy gợi ý.",
+      "emptyWishlistHint": "Chưa chọn sản phẩm bắt buộc — thêm nếu cần.",
       "failed": "Không tạo được phiên live"
     },
     "suggest": {
@@ -315,11 +316,10 @@
       "expectedTotalCostInvalid": "Tổng chi phí kỳ vọng phải là số ≥ 0",
       "costToleranceInvalid": "Dung sai phải là số ≥ 0",
       "wishlist": "Wishlist (tuỳ chọn)",
-      "wishlistHint": "Sản phẩm bắt buộc có trong gợi ý, với ít nhất số lượng đã chọn.",
-      "wishlistQtyInvalid": "Số lượng phải là số nguyên ≥ 1",
-      "fixWishlist": "Sửa wishlist trước khi gửi",
+      "wishlistHint": "Sản phẩm bắt buộc có trong gợi ý — mỗi SP được gợi ý với số lượng 1; bạn tăng sau khi xem kết quả.",
+      "fixWishlist": "Chọn sản phẩm cho mọi dòng wishlist trước khi gửi",
       "duplicateWishlistProduct": "Mỗi sản phẩm chỉ được xuất hiện một lần trong wishlist",
-      "wishlistExceedsTotal": "Wishlist yêu cầu {wishlistQty} túi nhưng tổng chỉ có {totalBags} túi",
+      "wishlistExceedsTotal": "Wishlist có {count} sản phẩm nhưng tổng chỉ có {totalBags} túi",
       "submit": "Gợi ý pool",
       "suggesting": "Đang gợi ý…",
       "failed": "Không tạo được gợi ý pool",
@@ -335,7 +335,7 @@
       "metricFill": "Số túi đã chọn",
       "metricTolerance": "Dung sai ±{amount}",
       "fillComplete": "Đã đủ số túi",
-      "fillIncomplete": "Chưa đủ số túi — thêm sản phẩm",
+      "fillIncomplete": "Chưa đủ số túi — thêm sản phẩm hoặc tăng số lượng",
       "noWarnings": "Không có cảnh báo tồn kho / giá vốn",
       "createHint": "Bạn vẫn cần nhập tên và ngày sự kiện ở bước tạo.",
       "createFromSuggestion": "Tạo Campaign từ gợi ý này"

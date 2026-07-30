@@ -7,10 +7,9 @@ import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { productApi, productKeys } from "@/src/lib/api/product";
-import { formatCostPrice, vnd } from "@/src/lib/format";
-import { StatusBadge } from "@/components/shared/status-badge";
+import { formatCostPrice } from "@/src/lib/format";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -50,7 +49,7 @@ export function ProductList({ onCreate, onStockIn }: Props) {
         </Button>
       </div>
 
-      {isLoading && <ListSkeleton columns={5} />}
+      {isLoading && <ListSkeleton columns={3} />}
 
       {isError && (
         <QueryErrorState
@@ -70,96 +69,40 @@ export function ProductList({ onCreate, onStockIn }: Props) {
       )}
 
       {!isLoading && !isError && products.length > 0 && (
-        <>
-          <div className="grid gap-3 md:hidden">
-            {products.map((product) => (
-              <Link key={product.id} href={`/products/${product.id}`}>
-                <Card className="fk-card-shadow fk-card-shadow-hover transition-colors duration-200 hover:bg-muted/30 motion-reduce:transition-none">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-base leading-snug">
-                        {product.name}
-                      </CardTitle>
-                      {product.lowStock && <StatusBadge type="lowStock" />}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">{t("listPrice")}</p>
-                      <p className="font-medium tabular-nums">
-                        {vnd.format(product.listPrice)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">{t("stock")}</p>
-                      <p className="font-medium tabular-nums">
-                        {product.stockQuantity}
-                      </p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-muted-foreground">{t("avgCost")}</p>
-                      <p className="font-medium tabular-nums">
-                        {formatCostPrice(
-                          product.averageCostPrice,
-                          tCommon("format.notSet")
-                        )}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-
-          <div className="fk-table-surface hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("name")}</TableHead>
-                  <TableHead>{t("listPrice")}</TableHead>
-                  <TableHead>{t("avgCost")}</TableHead>
-                  <TableHead>{t("stock")}</TableHead>
-                  <TableHead className="w-[120px]">{t("status")}</TableHead>
+        <div className="fk-table-surface">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("name")}</TableHead>
+                <TableHead>{t("avgCost")}</TableHead>
+                <TableHead className="text-right">{t("stock")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {products.map((product) => (
+                <TableRow key={product.id} className="cursor-pointer">
+                  <TableCell>
+                    <Link
+                      href={`/products/${product.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {product.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {formatCostPrice(
+                      product.averageCostPrice,
+                      tCommon("format.notSet")
+                    )}
+                  </TableCell>
+                  <TableCell className="tabular-nums text-right">
+                    {product.stockQuantity}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.map((product) => (
-                  <TableRow key={product.id} className="cursor-pointer">
-                    <TableCell>
-                      <Link
-                        href={`/products/${product.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {product.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {vnd.format(product.listPrice)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatCostPrice(
-                        product.averageCostPrice,
-                        tCommon("format.notSet")
-                      )}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {product.stockQuantity}
-                    </TableCell>
-                    <TableCell>
-                      {product.lowStock ? (
-                        <StatusBadge type="lowStock" />
-                      ) : (
-                        <span className="text-muted-foreground">
-                          {tCommon("fallback.emDash")}
-                        </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

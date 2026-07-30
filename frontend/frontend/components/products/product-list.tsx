@@ -8,7 +8,7 @@ import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { productApi, productKeys } from "@/src/lib/api/product";
 import { formatCostPrice } from "@/src/lib/format";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -47,6 +47,12 @@ export function ProductList({ onCreate, onStockIn }: Props) {
         >
           {t("stockInButton")}
         </Button>
+        <Link
+          href="/stock-ledger"
+          className={buttonVariants({ variant: "outline" })}
+        >
+          {t("stockLedgerButton")}
+        </Link>
       </div>
 
       {isLoading && <ListSkeleton columns={3} />}

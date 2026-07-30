@@ -517,6 +517,7 @@
     "list": {
       "createButton": "Tạo sản phẩm",
       "stockInButton": "Nhập kho",
+      "stockLedgerButton": "Sổ kho",
       "loadError": "Không tải được danh sách sản phẩm",
       "empty": "Chưa có sản phẩm. Tạo sản phẩm đầu tiên để quản lý tồn kho.",
       "lowStock": "Sắp hết",
@@ -608,6 +609,31 @@
       "note": "Ghi chú",
       "balanceAfter": "Tồn sau",
       "ledgerMismatch": "Lệch sổ cái: tổng biến động tồn không khớp số tồn hiện tại. Kiểm tra các giao dịch ghi thiếu."
+    }
+  },
+  "stockLedger": {
+    "title": "Sổ kho",
+    "loadError": "Không tải được sổ kho",
+    "empty": "Không có giao dịch kho nào khớp bộ lọc.",
+    "filters": {
+      "product": "Sản phẩm",
+      "productPlaceholder": "Gõ tên sản phẩm…",
+      "type": "Loại giao dịch",
+      "allTypes": "Tất cả loại giao dịch",
+      "dateFrom": "Từ ngày",
+      "dateTo": "Đến ngày"
+    },
+    "columns": {
+      "productName": "Sản phẩm",
+      "dateTime": "Ngày giờ",
+      "type": "Loại",
+      "quantityChange": "Thay đổi",
+      "note": "Ghi chú"
+    },
+    "pagination": {
+      "summary": "Trang {page}/{totalPages} · {totalElements} giao dịch",
+      "previous": "Trang trước",
+      "next": "Trang sau"
     }
   },
   "orders": {

@@ -2,6 +2,9 @@ package com.gaden.flowerknows.stock;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -19,6 +22,33 @@ public interface StockTransactionRepository extends JpaRepository<StockTransacti
     List<StockTransaction> findByProductIdOrderByCreatedAtDesc(UUID productId);
 
     List<StockTransaction> findByProductIdOrderByCreatedAtAsc(UUID productId);
+
+    @Query("""
+            SELECT new com.gaden.flowerknows.stock.StockLedgerItem(
+                s.id,
+                p.id,
+                p.name,
+                s.type,
+                s.quantityChange,
+                s.costPrice,
+                s.note,
+                s.createdAt
+            )
+            FROM StockTransaction s
+            JOIN s.product p
+            WHERE (:productId IS NULL OR p.id = :productId)
+              AND (:type IS NULL OR s.type = :type)
+              AND s.createdAt >= :createdFrom
+              AND s.createdAt < :createdToExclusive
+            ORDER BY s.createdAt DESC, s.id DESC
+            """)
+    Page<StockLedgerItem> findLedgerPage(
+            @Param("productId") UUID productId,
+            @Param("type") StockTransactionType type,
+            @Param("createdFrom") Instant createdFrom,
+            @Param("createdToExclusive") Instant createdToExclusive,
+            Pageable pageable
+    );
 
     @Query("""
             SELECT COALESCE(SUM(s.quantityChange), 0) FROM StockTransaction s

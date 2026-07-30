@@ -17,7 +17,10 @@ import { shippingStatusLabel } from "@/src/lib/i18n-labels";
 import { formatDateTime, vnd } from "@/src/lib/format";
 import { useAuth } from "@/components/providers/auth-provider";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { StatusBadge } from "@/components/shared/status-badge";
+import {
+  SHIPPING_STATUS_COLORS,
+  StatusBadge,
+} from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -95,13 +98,29 @@ function OrderShippingControls({
             }}
             disabled={locked || status === "COMPLETED"}
           >
-            <SelectTrigger className="h-8 w-full">
+            <SelectTrigger
+              className="h-8 w-full font-medium"
+              style={{
+                backgroundColor: SHIPPING_STATUS_COLORS[status].bg,
+                color: SHIPPING_STATUS_COLORS[status].fg,
+                borderColor: SHIPPING_STATUS_COLORS[status].border,
+              }}
+            >
               <SelectValue>{shippingStatusLabel(tStatus, status)}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {options.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {shippingStatusLabel(tStatus, s)}
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{
+                        backgroundColor: SHIPPING_STATUS_COLORS[s].bg,
+                      }}
+                      aria-hidden
+                    />
+                    {shippingStatusLabel(tStatus, s)}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>

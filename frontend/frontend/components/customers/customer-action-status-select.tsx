@@ -10,6 +10,7 @@ import {
   type CustomerActionStatus,
 } from "@/src/lib/api/customer";
 import { actionStatusLabel } from "@/src/lib/i18n-labels";
+import { ACTION_STATUS_COLORS } from "@/components/shared/status-badge";
 import { Spinner } from "@/components/feedback/spinner";
 import {
   Select,
@@ -50,6 +51,8 @@ export function CustomerActionStatusSelect({ customerId, value }: Props) {
         ? t("updateFailed")
         : null;
 
+  const colors = ACTION_STATUS_COLORS[value];
+
   return (
     <div className="inline-flex flex-col gap-1">
       <div className="inline-flex items-center gap-2">
@@ -62,17 +65,32 @@ export function CustomerActionStatusSelect({ customerId, value }: Props) {
           disabled={mutation.isPending}
         >
           <SelectTrigger
-            className="h-8 w-auto min-w-[10.5rem] border-primary/30 bg-primary/5 font-medium"
+            className="h-8 w-auto min-w-[10.5rem] font-medium"
             aria-label={t("aria")}
+            style={{
+              backgroundColor: colors.bg,
+              color: colors.fg,
+              borderColor: colors.border,
+            }}
           >
             <SelectValue>{actionStatusLabel(tStatus, value)}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {ACTION_STATUS_VALUES.map((status) => (
-              <SelectItem key={status} value={status}>
-                {actionStatusLabel(tStatus, status)}
-              </SelectItem>
-            ))}
+            {ACTION_STATUS_VALUES.map((status) => {
+              const optionColors = ACTION_STATUS_COLORS[status];
+              return (
+                <SelectItem key={status} value={status}>
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: optionColors.bg }}
+                      aria-hidden
+                    />
+                    {actionStatusLabel(tStatus, status)}
+                  </span>
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
         {mutation.isPending && <Spinner className="size-3.5" />}

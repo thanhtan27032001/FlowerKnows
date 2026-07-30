@@ -19,6 +19,7 @@ import {
 import { customerKeys } from "@/src/lib/api/customer";
 import { formatCostPrice, formatDateTime, vnd, vndCost } from "@/src/lib/format";
 import { shippingStatusLabel } from "@/src/lib/i18n-labels";
+import { SHIPPING_STATUS_COLORS } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -59,6 +60,7 @@ function OrderStatusSelect({ order }: { order: Order }) {
   });
 
   const options = SHIPPING_NEXT[order.shippingStatus];
+  const colors = SHIPPING_STATUS_COLORS[order.shippingStatus];
 
   return (
     <div className="space-y-1">
@@ -72,17 +74,34 @@ function OrderStatusSelect({ order }: { order: Order }) {
           }}
           disabled={mutation.isPending || order.shippingStatus === "COMPLETED"}
         >
-          <SelectTrigger className="h-8 w-[150px]">
+          <SelectTrigger
+            className="h-8 w-[150px] font-medium"
+            style={{
+              backgroundColor: colors.bg,
+              color: colors.fg,
+              borderColor: colors.border,
+            }}
+          >
             <SelectValue>
               {shippingStatusLabel(tStatus, order.shippingStatus)}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {options.map((status) => (
-              <SelectItem key={status} value={status}>
-                {shippingStatusLabel(tStatus, status)}
-              </SelectItem>
-            ))}
+            {options.map((status) => {
+              const optionColors = SHIPPING_STATUS_COLORS[status];
+              return (
+                <SelectItem key={status} value={status}>
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: optionColors.bg }}
+                      aria-hidden
+                    />
+                    {shippingStatusLabel(tStatus, status)}
+                  </span>
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
         {mutation.isPending && (

@@ -72,12 +72,17 @@ export function CampaignList({ onCreate }: Props) {
           <div className="grid gap-3 md:hidden">
             {campaigns.map((campaign) => (
               <Link key={campaign.id} href={`/campaigns/${campaign.id}`}>
-                <Card className="fk-card-shadow fk-card-shadow-hover transition-colors duration-200 hover:bg-muted/30 motion-reduce:transition-none">
-                  <CardHeader className="pb-2">
+                <Card className="gap-2 fk-card-shadow fk-card-shadow-hover transition-colors duration-200 hover:bg-muted/30 motion-reduce:transition-none">
+                  <CardHeader>
                     <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-base leading-snug">
-                        {campaign.name}
-                      </CardTitle>
+                      <div className="min-w-0 space-y-1">
+                        <CardTitle className="text-base leading-snug">
+                          {campaign.name}
+                        </CardTitle>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(campaign.eventDate)}
+                        </p>
+                      </div>
                       <StatusBadge
                         variant={
                           campaign.status === "OPEN" ? "info" : "neutral"
@@ -87,19 +92,19 @@ export function CampaignList({ onCreate }: Props) {
                       </StatusBadge>
                     </div>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-2 text-sm">
+                  <CardContent className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <p className="text-muted-foreground">{t("eventDate")}</p>
-                      <p className="font-medium">{formatDate(campaign.eventDate)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">{t("bagPrice")}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("bagPrice")}
+                      </p>
                       <p className="font-medium tabular-nums">
                         {vnd.format(campaign.bagPrice)}
                       </p>
                     </div>
-                    <div className="col-span-2">
-                      <p className="text-muted-foreground">{t("bagsSold")}</p>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        {t("bagsSold")}
+                      </p>
                       <p className="font-medium tabular-nums">
                         {campaign.bagsSold} / {campaign.totalBags}
                       </p>

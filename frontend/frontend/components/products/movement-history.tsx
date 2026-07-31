@@ -1,14 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/components/providers/auth-provider";
 import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
-import { productApi, productKeys } from "@/src/lib/api/product";
+import {
+  productApi,
+  productKeys,
+  type StockTransaction,
+} from "@/src/lib/api/product";
 import { formatCostPrice, formatDateTime } from "@/src/lib/format";
 import { stockTxLabel } from "@/src/lib/i18n-labels";
+import { UndoStockInDialog } from "@/components/products/undo-stock-in-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -27,6 +35,9 @@ export function MovementHistory({ productId }: Props) {
   const t = useTranslations("products.history");
   const tStatus = useTranslations("common.status");
   const tCommon = useTranslations("common");
+  const { isOwner } = useAuth();
+  const [undoTarget, setUndoTarget] = useState<StockTransaction | null>(null);
+
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: productKeys.transactions(productId),
     queryFn: () => productApi.listStockTransactions(productId),
@@ -97,6 +108,17 @@ export function MovementHistory({ productId }: Props) {
                       {row.balanceAfter}
                     </span>
                   </p>
+                  {isOwner && row.isUndoable && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7"
+                      onClick={() => setUndoTarget(row)}
+                    >
+                      {t("undo")}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -112,6 +134,7 @@ export function MovementHistory({ productId }: Props) {
                   <TableHead>{t("cost")}</TableHead>
                   <TableHead>{t("note")}</TableHead>
                   <TableHead>{t("balanceAfter")}</TableHead>
+                  {isOwner && <TableHead className="w-[1%]">{t("actions")}</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -142,12 +165,38 @@ export function MovementHistory({ productId }: Props) {
                     <TableCell className="tabular-nums">
                       {row.balanceAfter}
                     </TableCell>
+                    {isOwner && (
+                      <TableCell>
+                        {row.isUndoable ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7"
+                            onClick={() => setUndoTarget(row)}
+                          >
+                            {t("undo")}
+                          </Button>
+                        ) : null}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
         </>
+      )}
+
+      {isOwner && undoTarget && (
+        <UndoStockInDialog
+          open={!!undoTarget}
+          onOpenChange={(open) => {
+            if (!open) setUndoTarget(null);
+          }}
+          transaction={undoTarget}
+          productId={productId}
+        />
       )}
     </div>
   );

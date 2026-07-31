@@ -647,7 +647,18 @@
       "cost": "Giá vốn",
       "note": "Ghi chú",
       "balanceAfter": "Tồn sau",
-      "ledgerMismatch": "Lệch sổ cái: tổng biến động tồn không khớp số tồn hiện tại. Kiểm tra các giao dịch ghi thiếu."
+      "actions": "Thao tác",
+      "undo": "Hoàn tác",
+      "ledgerMismatch": "Lệch sổ cái: tổng biến động tồn không khớp số tồn hiện tại. Kiểm tra các giao dịch ghi thiếu.",
+      "undoDialog": {
+        "title": "Hoàn tác nhập kho?",
+        "intro": "Thao tác này sẽ xóa bản ghi nhập kho và đưa tồn kho / giá vốn TB về trạng thái trước lần nhập đó.",
+        "stockWillDecrease": "Tồn kho sẽ giảm:",
+        "avgCostWillRevert": "Giá vốn trung bình sẽ trở về:",
+        "avgCostUnset": "Chưa có (lần nhập kho đầu tiên)",
+        "confirm": "Hoàn tác",
+        "failed": "Không hoàn tác được nhập kho"
+      }
     }
   },
   "stockLedger": {

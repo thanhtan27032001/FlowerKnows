@@ -70,4 +70,7 @@ export const stockLedgerApi = {
       `/api/stock-transactions?${params.toString()}`
     );
   },
+
+  undoStockIn: (id: string) =>
+    apiClient.post<void>(`/api/stock-transactions/${id}/undo`),
 };

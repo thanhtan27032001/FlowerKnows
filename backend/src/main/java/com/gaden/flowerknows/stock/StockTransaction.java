@@ -39,6 +39,14 @@ public class StockTransaction {
     @Column(name = "cost_price", precision = 12, scale = 2)
     private BigDecimal costPrice;
 
+    /**
+     * Snapshot of {@code product.average_cost_price} immediately before this
+     * stock-in recalculation (US-13 / US-33). Null for non-stock-in rows and
+     * for a product's first-ever stock-in.
+     */
+    @Column(name = "average_cost_price_before", precision = 12, scale = 2)
+    private BigDecimal averageCostPriceBefore;
+
     @Column(length = 500)
     private String note;
 
@@ -49,7 +57,7 @@ public class StockTransaction {
     }
 
     public StockTransaction(Product product, StockTransactionType type, int quantityChange, String note) {
-        this(product, type, quantityChange, null, note);
+        this(product, type, quantityChange, null, null, note);
     }
 
     public StockTransaction(
@@ -59,10 +67,22 @@ public class StockTransaction {
             BigDecimal costPrice,
             String note
     ) {
+        this(product, type, quantityChange, costPrice, null, note);
+    }
+
+    public StockTransaction(
+            Product product,
+            StockTransactionType type,
+            int quantityChange,
+            BigDecimal costPrice,
+            BigDecimal averageCostPriceBefore,
+            String note
+    ) {
         this.product = product;
         this.type = type;
         this.quantityChange = quantityChange;
         this.costPrice = costPrice;
+        this.averageCostPriceBefore = averageCostPriceBefore;
         this.note = note;
         this.createdAt = Instant.now();
     }
@@ -89,6 +109,10 @@ public class StockTransaction {
 
     public BigDecimal getCostPrice() {
         return costPrice;
+    }
+
+    public BigDecimal getAverageCostPriceBefore() {
+        return averageCostPriceBefore;
     }
 
     public Instant getCreatedAt() {

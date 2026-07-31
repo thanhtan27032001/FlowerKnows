@@ -209,9 +209,17 @@ public class ProductService {
         long ledgerSum = stockTransactionRepository.sumQuantityChangeByProductId(productId);
         boolean mismatch = ledgerSum != product.getStockQuantity();
 
+        UUID latestStockInId = newestFirst.stream()
+                .filter(tx -> tx.getType() == StockTransactionType.STOCK_IN)
+                .map(StockTransaction::getId)
+                .findFirst()
+                .orElse(null);
+
         int running = product.getStockQuantity();
         List<ProductDtos.StockTransactionResponse> result = new ArrayList<>();
         for (StockTransaction tx : newestFirst) {
+            boolean isUndoable = tx.getType() == StockTransactionType.STOCK_IN
+                    && tx.getId().equals(latestStockInId);
             result.add(new ProductDtos.StockTransactionResponse(
                     tx.getId(),
                     product.getId(),
@@ -220,10 +228,12 @@ public class ProductService {
                     toLabel(tx.getType()),
                     tx.getQuantityChange(),
                     tx.getCostPrice(),
+                    tx.getAverageCostPriceBefore(),
                     tx.getNote(),
                     tx.getCreatedAt(),
                     running,
-                    mismatch
+                    mismatch,
+                    isUndoable
             ));
             running -= tx.getQuantityChange();
         }

@@ -20,6 +20,7 @@ import com.gaden.flowerknows.token.ItemTokenRepository;
 import com.gaden.flowerknows.token.SourceType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -33,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,6 +66,12 @@ class CostTrackingServiceTests {
 
         assertEquals(25, product.getStockQuantity());
         assertEquals(BigDecimal.valueOf(130.00).setScale(2), product.getAverageCostPrice());
+
+        ArgumentCaptor<StockTransaction> captor = ArgumentCaptor.forClass(StockTransaction.class);
+        verify(stockTransactionRepository, times(2)).save(captor.capture());
+        List<StockTransaction> rows = captor.getAllValues();
+        assertEquals(0, BigDecimal.valueOf(100).compareTo(rows.get(0).getAverageCostPriceBefore()));
+        assertEquals(0, BigDecimal.valueOf(150.00).setScale(2).compareTo(rows.get(1).getAverageCostPriceBefore()));
     }
 
     @Test

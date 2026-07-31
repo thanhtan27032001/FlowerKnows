@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 3.4 (US-12: multi-row product creation + fixes missing cost_price requirement for initial stock; adds US-32 Product List search & sort)
+**Version:** 3.5 (Adds US-33 — Undo Stock In, Owner-only, restricted to the most recent stock-in per product; stock_transaction gains average_cost_price_before snapshot)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -67,6 +67,7 @@ This is the single source of truth for schema design across the whole document.
 | `type` | enum | `stock_in` / `stock_adjustment` / `campaign_lock` / `campaign_return` / `exchange_in` / `exchange_out` / `cash_out_return` / `token_cancel_return` / `order_fulfillment` / `exchange_undo_return` / `exchange_undo_remove` |
 | `quantity_change` | int | Positive = stock added/returned, negative = stock removed/locked |
 | `cost_price` | decimal, nullable | **Required when `type = stock_in`** — the cost price of this specific batch. Null for all other transaction types (they don't introduce new cost, only move existing stock). |
+| `average_cost_price_before` | decimal, nullable | **Set only when `type = stock_in`** — a snapshot of `product.average_cost_price` immediately *before* this transaction was applied (null if this was the product's very first-ever stock-in). Exists solely to make US-33 (Undo Stock In) possible without needing to recompute the weighted average backward through history. |
 | `note` | string, nullable | Required for `stock_adjustment` (reason); optional for other types |
 | `created_at` | datetime | |
 
@@ -664,7 +665,7 @@ This is the single source of truth for schema design across the whole document.
 |---|---|---|---|
 | 1 | Staff is on the "Product List" screen | Clicks "Create New Product(s)" | A **multi-row** form is shown, mirroring the same pattern as Stock In (US-13) and Record Item (US-04): each row has `name` (required), `list_price` (required), initial `stock_quantity` (default 0, optional), and — **only shown/required if `stock_quantity` > 0 for that row** — `cost_price` (required whenever an initial quantity is entered, matching US-13's rule so `average_cost_price` is never silently left unset). Staff can add/remove rows to create several products in one go |
 | 2 | One row has `stock_quantity` > 0 but no `cost_price` entered | Clicks submit | Blocked with an inline error on that row — "Vui lòng nhập giá vốn nếu nhập tồn kho ban đầu" (fixes a gap in earlier versions of this spec where initial stock could be entered without a cost, leaving `average_cost_price` unset) |
-| 3 | Staff submits a valid multi-row form | — | **Single `@Transactional` operation**: for each row, (a) creates the `product`, (b) if that row's `stock_quantity` > 0, creates a `stock_transaction` (`type = stock_in`, `quantity_change = +stock_quantity`, `cost_price`, `note = "Initial stock"`) and sets `product.average_cost_price = cost_price` for that first batch |
+| 3 | Staff submits a valid multi-row form | — | **Single `@Transactional` operation**: for each row, (a) creates the `product`, (b) if that row's `stock_quantity` > 0, creates a `stock_transaction` (`type = stock_in`, `quantity_change = +stock_quantity`, `cost_price`, `average_cost_price_before = null` — always null here since it's necessarily this product's first-ever stock movement, `note = "Initial stock"`) and sets `product.average_cost_price = cost_price` for that first batch |
 | 4 | Any row's `name` duplicates an existing product (or another row in the same submission) | Clicks submit | The system warns of the duplicate name(s), requiring confirmation to still create it/them or to remove that row (to avoid duplicate products skewing reports) |
 | 5 | Creation succeeds | — | All new products appear in the list, ready to be used in other modules |
 | 6 | Staff only wants to create a single product (the common case) | — | The form still works with just one row — multi-row is additive capability, not a requirement |
@@ -697,7 +698,7 @@ This is the single source of truth for schema design across the whole document.
 | # | Given | When | Then |
 |---|---|---|---|
 | 1 | Staff is on the product list or a product's detail page | Clicks "Stock In" | A multi-row stock-in form is shown: each row has `product` (select, defaults to the currently viewed product if opened from its detail page) + quantity received + **`cost_price` (required)** + `note` (optional, e.g. "August batch received") |
-| 2 | Staff adds several different product rows in one stock-in action | Clicks "Confirm Stock In" | The system processes everything in one transaction: for each row, (a) **adds to `product.stock_quantity`** by the received quantity, (b) **recalculates `product.average_cost_price`** using the weighted-average formula below, (c) creates one `stock_transaction` (`type = stock_in`, `quantity_change = +quantity`, `cost_price`, `note`) |
+| 2 | Staff adds several different product rows in one stock-in action | Clicks "Confirm Stock In" | The system processes everything in one transaction: for each row, (a) **adds to `product.stock_quantity`** by the received quantity, (b) **recalculates `product.average_cost_price`** using the weighted-average formula below, (c) creates one `stock_transaction` (`type = stock_in`, `quantity_change = +quantity`, `cost_price`, `average_cost_price_before` = the product's `average_cost_price` value **prior** to this recalculation (enables US-33), `note`) |
 | 3 | Staff enters a quantity ≤ 0, or leaves `cost_price` blank/≤ 0, on a row | Clicks submit | The system shows an error right at that row and blocks submission of the entire form |
 | 4 | Stock in succeeds | — | The new `stock_quantity` and `average_cost_price` for each product are shown; the new `stock_transaction` rows (including `cost_price`) appear first in the Stock Movement History (US-15) |
 
@@ -710,6 +711,28 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 
 **Note:** All other stock-affecting flows (campaign close return, item exchange, cash out, token cancel) move existing stock back into inventory — they change `stock_quantity` but must NOT change `average_cost_price`, since no new cost was incurred.
 
+---
+
+### US-33: Undo a Stock In
+
+**As** Owner, **I want to** undo a mistaken Stock In entry, **so that** I can correct a data-entry error (wrong quantity, wrong cost price, wrong product) without it permanently skewing `average_cost_price`.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | A `stock_transaction` with `type = stock_in` is the **most recent** `stock_in` transaction for its `product` (no other `stock_in` row for the same product has a later `created_at`) | Owner views it in the Stock Movement History (US-15) | An "Hoàn tác" (Undo) action is shown |
+| 2 | A **newer** `stock_in` transaction exists for the same product | Owner views an older one | No Undo action available — **only the single most recent stock-in per product can be undone**, to keep the `average_cost_price` reversal mathematically clean (see the dev note below) |
+| 3 | Owner clicks Undo | — | A confirmation shows exactly what will happen: `stock_quantity` will decrease by this transaction's `quantity_change`, and `average_cost_price` will revert to `average_cost_price_before` (or become unset/null if this was the product's first-ever stock-in) |
+| 4 | Reversing `stock_quantity` would take it **below 0** (some of this stock has already been consumed elsewhere — locked into a campaign, sold, etc. — since this stock-in happened) | Owner confirms | Blocked — "Không thể hoàn tác vì một phần hàng đã được sử dụng (VD khóa vào campaign). Tồn kho sau hoàn tác sẽ âm." No partial application |
+| 5 | Validation passes | Owner confirms | `@Transactional`: (a) `product.stock_quantity -= quantity_change`, (b) `product.average_cost_price = this transaction's average_cost_price_before`, (c) the `stock_transaction` row itself is **deleted** (not kept as a reversed/cancelled record — same reasoning as US-28: this corrects a mistake, it's not a business event worth preserving in history) |
+| 6 | Undo succeeds | Staff/Owner views Stock Movement History | The undone entry is gone entirely; `stock_quantity` and `average_cost_price` reflect the correction immediately |
+
+**Access:** Owner only (same reasoning as US-28/US-29 — corrects already-recorded data).
+
+**Dev note — why only the most recent stock-in is undoable:** `average_cost_price` is a running weighted average recalculated incrementally. Reversing an *arbitrary* past stock-in would require unwinding every recalculation that happened after it — which the `average_cost_price_before` snapshot doesn't support (it only captures the state immediately before *that one* transaction, not a full replay history). Restricting Undo to "only the latest stock-in, and only if nothing has stocked in since" sidesteps this entirely: reversing the single most recent entry is always mathematically exact, using just that one snapshot.
+
+---
 
 ### US-14: Manual Stock Adjustment
 
@@ -845,6 +868,7 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | US-12 Create Product | ✅ | ✅ |
 | US-32 Search & Sort Product List | ✅ | ✅ |
 | US-13 Stock In | ✅ | ✅ |
+| US-33 Undo Stock In | ✅ | ❌ |
 | US-14 Stock Adjustment | ✅ | ❌ (Owner only — inventory-affecting correction, higher risk) |
 | US-15 View Stock Movement History | ✅ | ✅ |
 | Products nav item | ✅ | ✅ (visible, but "Adjust Stock" action hidden/blocked) |

@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface StockTransactionRepository extends JpaRepository<StockTransaction, UUID> {
@@ -22,6 +23,26 @@ public interface StockTransactionRepository extends JpaRepository<StockTransacti
     List<StockTransaction> findByProductIdOrderByCreatedAtDesc(UUID productId);
 
     List<StockTransaction> findByProductIdOrderByCreatedAtAsc(UUID productId);
+
+    @Query("""
+            SELECT s FROM StockTransaction s
+            JOIN FETCH s.product
+            WHERE s.id = :id
+            """)
+    Optional<StockTransaction> findByIdWithProduct(@Param("id") UUID id);
+
+    @Query("""
+            SELECT COUNT(s) > 0 FROM StockTransaction s
+            WHERE s.product.id = :productId
+              AND s.type = com.gaden.flowerknows.stock.StockTransactionType.STOCK_IN
+              AND (s.createdAt > :createdAt
+                   OR (s.createdAt = :createdAt AND s.id > :id))
+            """)
+    boolean existsNewerStockIn(
+            @Param("productId") UUID productId,
+            @Param("createdAt") Instant createdAt,
+            @Param("id") UUID id
+    );
 
     @Query("""
             SELECT new com.gaden.flowerknows.stock.StockLedgerItem(

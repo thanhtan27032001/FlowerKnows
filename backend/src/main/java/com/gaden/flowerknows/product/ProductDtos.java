@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -110,10 +111,12 @@ public final class ProductDtos {
             String typeLabel,
             int quantityChange,
             BigDecimal costPrice,
+            BigDecimal averageCostPriceBefore,
             String note,
             Instant createdAt,
             int balanceAfter,
-            boolean ledgerMismatch
+            boolean ledgerMismatch,
+            @JsonProperty("isUndoable") boolean isUndoable
     ) {
     }
 

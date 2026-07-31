@@ -56,10 +56,12 @@ export type StockTransaction = {
   typeLabel: string;
   quantityChange: number;
   costPrice: number | null;
+  averageCostPriceBefore: number | null;
   note: string | null;
   createdAt: string;
   balanceAfter: number;
   ledgerMismatch: boolean;
+  isUndoable: boolean;
 };
 
 export const productKeys = {

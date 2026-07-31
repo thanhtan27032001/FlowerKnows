@@ -58,14 +58,14 @@ export function MobileBottomNav() {
             const active = isNavActive(pathname, item.href);
 
             return (
-              <li key={item.href} className="min-w-0">
+              <li key={item.href} className="flex min-w-0 p-1">
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex h-full flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors",
+                    "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors",
                     active
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "fk-nav-active-mobile"
+                      : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
                   )}
                   aria-current={active ? "page" : undefined}
                 >
@@ -79,15 +79,15 @@ export function MobileBottomNav() {
             );
           })}
 
-          <li className="min-w-0">
+          <li className="flex min-w-0 p-1">
             <button
               type="button"
               onClick={() => setMoreOpen(true)}
               className={cn(
-                "flex h-full w-full flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors",
+                "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors",
                 moreActive || moreOpen
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "fk-nav-active-mobile"
+                  : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
               )}
               aria-expanded={moreOpen}
               aria-haspopup="dialog"
@@ -136,8 +136,8 @@ export function MobileBottomNav() {
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
                         active
-                          ? "bg-muted text-foreground"
-                          : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                          ? "fk-nav-active"
+                          : "fk-nav-item text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
                       )}
                       aria-current={active ? "page" : undefined}
                     >

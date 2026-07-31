@@ -207,6 +207,13 @@
   border-left: 3px solid transparent;
 }
 
+/* Mobile bottom tabs — same accent fill as desktop, without the edge bar. */
+.fk-nav-active-mobile {
+  background-color: var(--sidebar-accent);
+  font-weight: 600;
+  color: var(--sidebar-foreground);
+}
+
 /* ---------------------------------------------------------------------- */
 /* Card / surface shadow system                                          */
 /* ---------------------------------------------------------------------- */
@@ -247,6 +254,45 @@
   box-shadow:
     0 1px 2px 0 color-mix(in oklch, var(--foreground) 6%, transparent),
     0 0 0 2px var(--ring);
+}
+
+/* iOS Safari: native date/time controls ignore box-shadow field chrome unless
+   appearance is reset. Use a real border so the outline matches other fields. */
+.fk-field-surface:is(
+  [type="date"],
+  [type="datetime-local"],
+  [type="time"],
+  [type="month"],
+  [type="week"]
+) {
+  -webkit-appearance: none;
+  appearance: none;
+  border-color: var(--border);
+  box-shadow: 0 1px 2px 0 color-mix(in oklch, var(--foreground) 6%, transparent);
+}
+
+.fk-field-surface:is(
+  [type="date"],
+  [type="datetime-local"],
+  [type="time"],
+  [type="month"],
+  [type="week"]
+):focus-within {
+  border-color: var(--ring);
+  box-shadow:
+    0 1px 2px 0 color-mix(in oklch, var(--foreground) 6%, transparent),
+    0 0 0 2px var(--ring);
+}
+
+.fk-field-surface:is(
+  [type="date"],
+  [type="datetime-local"],
+  [type="time"],
+  [type="month"],
+  [type="week"]
+)::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  cursor: pointer;
 }
 
 .fk-table-surface {

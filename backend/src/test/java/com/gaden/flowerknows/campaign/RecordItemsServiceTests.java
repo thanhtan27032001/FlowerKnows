@@ -1,5 +1,6 @@
 package com.gaden.flowerknows.campaign;
 
+import com.gaden.flowerknows.common.BatchLineException;
 import com.gaden.flowerknows.common.BusinessException;
 import com.gaden.flowerknows.customer.Customer;
 import com.gaden.flowerknows.customer.CustomerService;
@@ -176,8 +177,8 @@ class RecordItemsServiceTests {
 
         // productA: request 2 of 5 remaining — OK
         // productB: request 3 of 1 remaining — FAIL
-        ParticipantService.BatchLineException ex = assertThrows(
-                ParticipantService.BatchLineException.class,
+        BatchLineException ex = assertThrows(
+                BatchLineException.class,
                 () -> participantService.recordItems(
                         campaignId,
                         new ParticipantService.RecordItemsRequest(
@@ -216,8 +217,8 @@ class RecordItemsServiceTests {
                 .thenReturn(0L);
 
         UUID unknownProductId = UUID.randomUUID();
-        ParticipantService.BatchLineException ex = assertThrows(
-                ParticipantService.BatchLineException.class,
+        BatchLineException ex = assertThrows(
+                BatchLineException.class,
                 () -> participantService.recordItems(
                         campaignId,
                         new ParticipantService.RecordItemsRequest(

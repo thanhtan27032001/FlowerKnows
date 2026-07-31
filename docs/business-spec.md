@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 3.3 (US-31 simplified: every suggested row — wishlist and auto-fill alike — starts at quantity=1; no wishlist quantity input anymore; Owner increases quantities manually after reviewing the suggestion)
+**Version:** 3.4 (US-12: multi-row product creation + fixes missing cost_price requirement for initial stock; adds US-32 Product List search & sort)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -654,18 +654,37 @@ This is the single source of truth for schema design across the whole document.
 
 > This module adds direct management of `product` and stock (`stock_quantity`) — independent of the Campaign/Token lifecycle. This is the only place where Staff **proactively** increases stock (receiving new goods) or adjusts it when there's a real-world discrepancy, instead of stock only changing "passively" through the flows in Modules 1–7.
 
-### US-12: Create a new Product
+### US-12: Create one or more new Products
 
-**As** Staff, **I want to** create a new `product` in the system, **so that** I can use it for a Campaign, an item exchange, or a stock-in.
+**As** Staff, **I want to** create one or more new `product`s in the system in a single submission, **so that** I can quickly set up several products at once instead of repeating the create flow one at a time.
 
 **Acceptance Criteria:**
 
 | # | Given | When | Then |
 |---|---|---|---|
-| 1 | Staff is on the "Product List" screen | Clicks "Create New Product" | A form is shown: `name` (required), `list_price` (required), initial `stock_quantity` (default 0, optional) |
-| 2 | Staff enters an initial `stock_quantity` > 0 | Clicks submit | The system: (a) creates the `product`, (b) if initial `stock_quantity` > 0, also creates a `stock_transaction` (`type = stock_in`, `quantity_change = +stock_quantity`, `note = "Initial stock"`) |
-| 3 | `name` duplicates an existing product | Clicks submit | The system warns of a duplicate name, requiring confirmation to still create it or to select the existing product (to avoid duplicate products skewing reports) |
-| 4 | Creation succeeds | — | The product appears in the list, ready to be used in other modules |
+| 1 | Staff is on the "Product List" screen | Clicks "Create New Product(s)" | A **multi-row** form is shown, mirroring the same pattern as Stock In (US-13) and Record Item (US-04): each row has `name` (required), `list_price` (required), initial `stock_quantity` (default 0, optional), and — **only shown/required if `stock_quantity` > 0 for that row** — `cost_price` (required whenever an initial quantity is entered, matching US-13's rule so `average_cost_price` is never silently left unset). Staff can add/remove rows to create several products in one go |
+| 2 | One row has `stock_quantity` > 0 but no `cost_price` entered | Clicks submit | Blocked with an inline error on that row — "Vui lòng nhập giá vốn nếu nhập tồn kho ban đầu" (fixes a gap in earlier versions of this spec where initial stock could be entered without a cost, leaving `average_cost_price` unset) |
+| 3 | Staff submits a valid multi-row form | — | **Single `@Transactional` operation**: for each row, (a) creates the `product`, (b) if that row's `stock_quantity` > 0, creates a `stock_transaction` (`type = stock_in`, `quantity_change = +stock_quantity`, `cost_price`, `note = "Initial stock"`) and sets `product.average_cost_price = cost_price` for that first batch |
+| 4 | Any row's `name` duplicates an existing product (or another row in the same submission) | Clicks submit | The system warns of the duplicate name(s), requiring confirmation to still create it/them or to remove that row (to avoid duplicate products skewing reports) |
+| 5 | Creation succeeds | — | All new products appear in the list, ready to be used in other modules |
+| 6 | Staff only wants to create a single product (the common case) | — | The form still works with just one row — multi-row is additive capability, not a requirement |
+
+---
+
+### US-32: Search & Sort the Product List
+
+**As** Staff or Owner, **I want to** search products by name and sort the list by name, average cost, or stock quantity, **so that** I can quickly find a specific product or spot outliers (e.g. highest-value stock, lowest stock) without scrolling through everything.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Staff/Owner is on the "Product List" screen | Types into a search box | The list filters by `name`, accent/case-insensitive (reusing the same search-folding utility already built for Customer search, US-19) |
+| 2 | Staff/Owner clicks a column header (`Name`, `Avg cost`, `Stock`) | — | The list sorts by that column; clicking again toggles ascending/descending. Sorting happens at the query level (`ORDER BY`), not client-side after fetching everything — consistent with the pagination approach already used for the Stock Ledger (US-15) |
+| 3 | Sorting by `Avg cost` (`average_cost_price`) | — | Products with a `null` average cost (never stocked in) are sorted consistently to one end (e.g. always last, regardless of ascending/descending direction) rather than interleaved unpredictably |
+| 4 | Search and sort are both active at once | — | They combine correctly (e.g. "products matching 'gương', sorted by stock ascending") |
+
+**Access:** Both Owner and Staff (read-only search/sort, same permission level as viewing the product list itself).
 
 ---
 
@@ -824,6 +843,7 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | US-08 Cancel Token (incl. overdue alerts) | ✅ | ❌ |
 | US-09 Create Order / update shipping status | ✅ | ❌ |
 | US-12 Create Product | ✅ | ✅ |
+| US-32 Search & Sort Product List | ✅ | ✅ |
 | US-13 Stock In | ✅ | ✅ |
 | US-14 Stock Adjustment | ✅ | ❌ (Owner only — inventory-affecting correction, higher risk) |
 | US-15 View Stock Movement History | ✅ | ✅ |

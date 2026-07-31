@@ -9,8 +9,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.gaden.flowerknows.campaign.ParticipantService;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,8 +22,8 @@ public class GlobalExceptionHandler {
                 .body(ApiError.of("NOT_FOUND", ex.getMessage()));
     }
 
-    @ExceptionHandler(ParticipantService.BatchLineException.class)
-    public ResponseEntity<BatchLineApiError> handleBatchLine(ParticipantService.BatchLineException ex) {
+    @ExceptionHandler(BatchLineException.class)
+    public ResponseEntity<BatchLineApiError> handleBatchLine(BatchLineException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new BatchLineApiError(
                         "BATCH_LINE_VALIDATION",
@@ -45,7 +43,7 @@ public class GlobalExceptionHandler {
             String error,
             String message,
             Instant timestamp,
-            List<ParticipantService.LineError> lineErrors
+            List<BatchLineException.LineError> lineErrors
     ) {
     }
 

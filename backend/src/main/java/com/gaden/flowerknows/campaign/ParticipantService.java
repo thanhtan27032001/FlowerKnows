@@ -1,5 +1,7 @@
 package com.gaden.flowerknows.campaign;
 
+import com.gaden.flowerknows.common.BatchLineException;
+import com.gaden.flowerknows.common.BatchLineException.LineError;
 import com.gaden.flowerknows.common.BusinessException;
 import com.gaden.flowerknows.common.ResourceNotFoundException;
 import com.gaden.flowerknows.customer.Customer;
@@ -477,22 +479,6 @@ public class ParticipantService {
             @NotEmpty(message = "lines must not be empty")
             @Valid List<RecordItemLine> lines
     ) {
-    }
-
-    public record LineError(int lineIndex, UUID productId, String message) {
-    }
-
-    public static class BatchLineException extends BusinessException {
-        private final List<LineError> lineErrors;
-
-        public BatchLineException(String message, List<LineError> lineErrors) {
-            super(message);
-            this.lineErrors = lineErrors;
-        }
-
-        public List<LineError> getLineErrors() {
-            return lineErrors;
-        }
     }
 
     public record TokenRecordResponse(

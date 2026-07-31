@@ -97,7 +97,7 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
 
   const { data: products = [] } = useQuery({
     queryKey: productKeys.lists(),
-    queryFn: productApi.list,
+    queryFn: () => productApi.list(),
     enabled: open && !poolLocked,
   });
 

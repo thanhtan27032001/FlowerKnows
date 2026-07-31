@@ -29,8 +29,12 @@ public class ProductController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('OWNER','STAFF')")
-    public List<ProductDtos.ProductResponse> list() {
-        return productService.list();
+    public List<ProductDtos.ProductResponse> list(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir
+    ) {
+        return productService.list(q, sortBy, sortDir);
     }
 
     @GetMapping("/name-exists")
@@ -51,7 +55,9 @@ public class ProductController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('OWNER','STAFF')")
-    public ProductDtos.ProductResponse create(@Valid @RequestBody ProductDtos.CreateProductRequest request) {
+    public ProductDtos.CreateProductsResponse create(
+            @Valid @RequestBody ProductDtos.CreateProductsRequest request
+    ) {
         return productService.create(request);
     }
 

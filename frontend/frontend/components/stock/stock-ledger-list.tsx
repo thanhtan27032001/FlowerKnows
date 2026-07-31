@@ -85,7 +85,7 @@ export function StockLedgerList() {
 
   const productsQuery = useQuery({
     queryKey: productKeys.lists(),
-    queryFn: productApi.list,
+    queryFn: () => productApi.list(),
   });
 
   const ledgerQuery = useQuery({

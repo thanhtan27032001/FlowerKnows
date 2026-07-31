@@ -17,18 +17,24 @@ public final class ProductDtos {
     private ProductDtos() {
     }
 
-    public record CreateProductRequest(
+    public record CreateProductItemRequest(
             @NotBlank(message = "name is required") String name,
             @NotNull(message = "listPrice is required")
             @DecimalMin(value = "0", inclusive = false, message = "listPrice must be positive")
             BigDecimal listPrice,
             @Min(value = 0, message = "stockQuantity cannot be negative") Integer stockQuantity,
-            Boolean confirmDuplicate
+            BigDecimal costPrice
     ) {
         public int resolvedStockQuantity() {
             return stockQuantity == null ? 0 : stockQuantity;
         }
+    }
 
+    public record CreateProductsRequest(
+            @NotEmpty(message = "products must not be empty")
+            @Valid List<CreateProductItemRequest> products,
+            Boolean confirmDuplicate
+    ) {
         public boolean isConfirmDuplicate() {
             return Boolean.TRUE.equals(confirmDuplicate);
         }
@@ -89,6 +95,11 @@ public final class ProductDtos {
                     product.getStockQuantity() <= lowStockThreshold
             );
         }
+    }
+
+    public record CreateProductsResponse(
+            List<ProductResponse> products
+    ) {
     }
 
     public record StockTransactionResponse(

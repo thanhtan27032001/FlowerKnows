@@ -1,23 +1,34 @@
 package com.gaden.flowerknows.product;
 
+import com.gaden.flowerknows.common.BatchLineException;
+import com.gaden.flowerknows.common.BatchLineException.LineError;
 import com.gaden.flowerknows.common.BusinessException;
 import com.gaden.flowerknows.common.ResourceNotFoundException;
+import com.gaden.flowerknows.common.TextSearch;
 import com.gaden.flowerknows.stock.StockService;
 import com.gaden.flowerknows.stock.StockTransaction;
 import com.gaden.flowerknows.stock.StockTransactionRepository;
 import com.gaden.flowerknows.stock.StockTransactionType;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class ProductService {
+
+    private static final String COST_REQUIRED_MESSAGE =
+            "Vui lòng nhập giá vốn nếu nhập tồn kho ban đầu";
 
     private final ProductRepository productRepository;
     private final StockService stockService;
@@ -37,8 +48,10 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProductDtos.ProductResponse> list() {
-        return productRepository.findAllByOrderByCreatedAtDesc().stream()
+    public List<ProductDtos.ProductResponse> list(String q, String sortBy, String sortDir) {
+        String foldedQuery = TextSearch.fold(q);
+        Sort sort = resolveSort(sortBy, sortDir);
+        return productRepository.search(foldedQuery, sort).stream()
                 .map(p -> ProductDtos.ProductResponse.from(p, lowStockThreshold))
                 .toList();
     }
@@ -58,27 +71,65 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductDtos.ProductResponse create(ProductDtos.CreateProductRequest request) {
-        String name = request.name().trim();
-        if (productRepository.existsByNameIgnoreCase(name) && !request.isConfirmDuplicate()) {
+    public ProductDtos.CreateProductsResponse create(ProductDtos.CreateProductsRequest request) {
+        List<ProductDtos.CreateProductItemRequest> items = request.products();
+        List<LineError> lineErrors = new ArrayList<>();
+
+        for (int i = 0; i < items.size(); i++) {
+            ProductDtos.CreateProductItemRequest item = items.get(i);
+            int stock = item.resolvedStockQuantity();
+            if (stock > 0 && (item.costPrice() == null || item.costPrice().signum() <= 0)) {
+                lineErrors.add(new LineError(i, null, COST_REQUIRED_MESSAGE));
+            }
+        }
+        if (!lineErrors.isEmpty()) {
+            throw new BatchLineException(COST_REQUIRED_MESSAGE, lineErrors);
+        }
+
+        List<String> trimmedNames = items.stream()
+                .map(item -> item.name().trim())
+                .toList();
+
+        Set<String> seenInBatch = new HashSet<>();
+        Set<String> duplicateNames = new LinkedHashSet<>();
+        for (String name : trimmedNames) {
+            String key = name.toLowerCase(Locale.ROOT);
+            if (!seenInBatch.add(key)) {
+                duplicateNames.add(name);
+            }
+        }
+
+        for (String name : trimmedNames) {
+            if (productRepository.existsByNameIgnoreCase(name)) {
+                duplicateNames.add(name);
+            }
+        }
+
+        if (!duplicateNames.isEmpty() && !request.isConfirmDuplicate()) {
+            String joined = String.join("\", \"", duplicateNames);
             throw new BusinessException(
-                    "A product named \"" + name + "\" already exists. Confirm to create a duplicate, or select the existing product."
+                    "A product named \"" + joined + "\" already exists (or is duplicated in this submission). "
+                            + "Confirm to create a duplicate, or remove that row."
             );
         }
 
-        Product product = new Product(name, request.listPrice(), 0);
-        product = productRepository.save(product);
+        List<ProductDtos.ProductResponse> created = new ArrayList<>();
+        for (ProductDtos.CreateProductItemRequest item : items) {
+            String name = item.name().trim();
+            Product product = productRepository.save(new Product(name, item.listPrice(), 0));
 
-        int initialStock = request.resolvedStockQuantity();
-        if (initialStock > 0) {
-            stockService.applyStockChange(
-                    product,
-                    initialStock,
-                    StockTransactionType.STOCK_IN,
-                    "Initial stock"
-            );
+            int initialStock = item.resolvedStockQuantity();
+            if (initialStock > 0) {
+                stockService.applyStockIn(
+                        product,
+                        initialStock,
+                        item.costPrice(),
+                        "Initial stock"
+                );
+            }
+            created.add(ProductDtos.ProductResponse.from(product, lowStockThreshold));
         }
-        return ProductDtos.ProductResponse.from(product, lowStockThreshold);
+        return new ProductDtos.CreateProductsResponse(created);
     }
 
     @Transactional
@@ -182,6 +233,33 @@ public class ProductService {
     public Product requireProduct(UUID id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + id));
+    }
+
+    static Sort resolveSort(String sortBy, String sortDir) {
+        if (sortBy == null || sortBy.isBlank()) {
+            return Sort.by(Sort.Order.desc("createdAt"));
+        }
+
+        if (sortDir != null && !sortDir.isBlank()
+                && !"asc".equalsIgnoreCase(sortDir)
+                && !"desc".equalsIgnoreCase(sortDir)) {
+            throw new IllegalArgumentException("sortDir must be asc or desc");
+        }
+
+        Sort.Direction direction = "desc".equalsIgnoreCase(sortDir)
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
+
+        return switch (sortBy) {
+            case "name" -> Sort.by(new Sort.Order(direction, "name"));
+            case "stockQuantity" -> Sort.by(new Sort.Order(direction, "stockQuantity"));
+            case "averageCostPrice" -> Sort.by(
+                    new Sort.Order(direction, "averageCostPrice").nullsLast()
+            );
+            default -> throw new IllegalArgumentException(
+                    "sortBy must be one of: name, averageCostPrice, stockQuantity"
+            );
+        };
     }
 
     private static String toLabel(StockTransactionType type) {

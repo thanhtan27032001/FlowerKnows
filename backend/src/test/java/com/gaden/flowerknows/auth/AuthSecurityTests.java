@@ -69,14 +69,16 @@ class AuthSecurityTests {
         UUID productId = UUID.randomUUID();
 
         when(productService.create(any())).thenReturn(
-                new ProductDtos.ProductResponse(
-                        productId,
-                        "Rose Lipstick",
-                        BigDecimal.valueOf(250000),
-                        0,
-                        null,
-                        true
-                )
+                new ProductDtos.CreateProductsResponse(List.of(
+                        new ProductDtos.ProductResponse(
+                                productId,
+                                "Rose Lipstick",
+                                BigDecimal.valueOf(250000),
+                                0,
+                                null,
+                                true
+                        )
+                ))
         );
         when(productService.stockIn(any())).thenReturn(
                 new ProductDtos.StockInResponse(List.of())
@@ -86,7 +88,7 @@ class AuthSecurityTests {
                         .header("Authorization", "Bearer " + staffToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Rose Lipstick","listPrice":250000,"stockQuantity":0}
+                                {"products":[{"name":"Rose Lipstick","listPrice":250000,"stockQuantity":0}]}
                                 """))
                 .andExpect(status().isCreated());
 

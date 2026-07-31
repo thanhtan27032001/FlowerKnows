@@ -550,9 +550,11 @@
     "title": "Sản phẩm",
     "detailFallbackTitle": "Sản phẩm",
     "list": {
-      "createButton": "Tạo sản phẩm",
+      "createButton": "Tạo sản phẩm mới",
       "stockInButton": "Nhập kho",
       "stockLedgerButton": "Sổ kho",
+      "searchPlaceholder": "Tìm theo tên sản phẩm…",
+      "searchEmpty": "Không có sản phẩm khớp tìm kiếm.",
       "loadError": "Không tải được danh sách sản phẩm",
       "empty": "Chưa có sản phẩm. Tạo sản phẩm đầu tiên để quản lý tồn kho.",
       "lowStock": "Sắp hết",
@@ -563,11 +565,13 @@
       "status": "Trạng thái"
     },
     "create": {
-      "title": "Tạo sản phẩm",
-      "description": "Thêm sản phẩm cho phiên live, đổi món và nhập kho.",
+      "title": "Tạo sản phẩm mới",
+      "description": "Thêm một hoặc nhiều sản phẩm cho phiên live, đổi món và nhập kho. Có thể thêm nhiều dòng trong một lần gửi.",
       "name": "Tên",
       "listPrice": "Giá niêm yết (VND)",
       "initialStock": "Tồn ban đầu (tuỳ chọn)",
+      "costPrice": "Giá vốn (VND)",
+      "costRequired": "Vui lòng nhập giá vốn nếu nhập tồn kho ban đầu",
       "namePlaceholder": "vd. Little Angel Blush",
       "submit": "Tạo sản phẩm",
       "nameRequired": "Tên là bắt buộc",
@@ -576,7 +580,7 @@
       "nameCheckFailed": "Không kiểm tra được tên sản phẩm",
       "failed": "Không tạo được sản phẩm",
       "duplicateTitle": "Trùng tên sản phẩm",
-      "duplicateDescription": "Đã có sản phẩm tên \"{name}\". Tạo thêm cùng tên có thể làm lệch báo cáo. Vẫn tạo, hoặc hủy và chọn sản phẩm có sẵn.",
+      "duplicateDescription": "Đã có sản phẩm tên \"{name}\" (hoặc trùng trong form). Tạo thêm cùng tên có thể làm lệch báo cáo. Vẫn tạo, hoặc hủy và bỏ dòng trùng.",
       "createAnyway": "Vẫn tạo"
     },
     "edit": {

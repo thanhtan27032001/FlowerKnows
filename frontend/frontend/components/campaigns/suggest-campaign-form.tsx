@@ -54,7 +54,7 @@ export function SuggestCampaignForm() {
 
   const { data: products = [] } = useQuery({
     queryKey: productKeys.lists(),
-    queryFn: productApi.list,
+    queryFn: () => productApi.list(),
   });
 
   const suggestMutation = useMutation({

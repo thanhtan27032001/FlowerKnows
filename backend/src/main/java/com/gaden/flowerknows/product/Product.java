@@ -1,5 +1,6 @@
 package com.gaden.flowerknows.product;
 
+import com.gaden.flowerknows.common.TextSearch;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -22,6 +23,10 @@ public class Product {
     @Column(nullable = false)
     private String name;
 
+    /** Folded name for accent/case-insensitive search (US-32). */
+    @Column(name = "search_key", nullable = false)
+    private String searchKey;
+
     @Column(name = "list_price", nullable = false, precision = 12, scale = 0)
     private BigDecimal listPrice;
 
@@ -38,7 +43,7 @@ public class Product {
     }
 
     public Product(String name, BigDecimal listPrice, int stockQuantity) {
-        this.name = name;
+        setName(name);
         this.listPrice = listPrice;
         this.stockQuantity = stockQuantity;
         this.createdAt = Instant.now();
@@ -54,6 +59,11 @@ public class Product {
 
     public void setName(String name) {
         this.name = name;
+        this.searchKey = TextSearch.fold(name);
+    }
+
+    public String getSearchKey() {
+        return searchKey;
     }
 
     public BigDecimal getListPrice() {

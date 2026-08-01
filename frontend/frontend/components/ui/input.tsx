@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import { Input as InputPrimitive } from "@base-ui/react/input"
 
@@ -11,8 +13,21 @@ const DATE_INPUT_TYPES = new Set([
   "week",
 ])
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+/** Native number inputs change value on wheel; React's onWheel is passive so we must use this. */
+function blockNumberInputWheel(event: WheelEvent) {
+  event.preventDefault()
+  ;(event.currentTarget as HTMLInputElement).blur()
+}
+
+function Input({
+  className,
+  type,
+  onFocus,
+  onBlur,
+  ...props
+}: React.ComponentProps<"input">) {
   const isDateLike = type != null && DATE_INPUT_TYPES.has(type)
+  const isNumber = type === "number"
 
   return (
     <InputPrimitive
@@ -24,6 +39,20 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         isDateLike && "appearance-none border-border",
         className
       )}
+      onFocus={(event) => {
+        if (isNumber) {
+          event.currentTarget.addEventListener("wheel", blockNumberInputWheel, {
+            passive: false,
+          })
+        }
+        onFocus?.(event)
+      }}
+      onBlur={(event) => {
+        if (isNumber) {
+          event.currentTarget.removeEventListener("wheel", blockNumberInputWheel)
+        }
+        onBlur?.(event)
+      }}
       {...props}
     />
   )

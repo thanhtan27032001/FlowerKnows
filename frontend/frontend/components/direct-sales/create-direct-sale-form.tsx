@@ -28,6 +28,7 @@ import {
 } from "@/src/lib/api/product";
 import { reportKeys } from "@/src/lib/api/report";
 import { vnd } from "@/src/lib/format";
+import { CreateProductForm } from "@/components/products/create-product-form";
 import { ProductTypeahead } from "@/components/products/product-typeahead";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,7 @@ function newRow(): Row {
 
 export function CreateDirectSaleForm({ open, onOpenChange }: Props) {
   const t = useTranslations("directSales.create");
+  const tProductList = useTranslations("products.list");
   const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
@@ -100,6 +102,7 @@ export function CreateDirectSaleForm({ open, onOpenChange }: Props) {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [successSale, setSuccessSale] = useState<DirectSale | null>(null);
+  const [createProductOpen, setCreateProductOpen] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
   const deferredSearch = useDeferredValue(customerSearch.trim());
 
@@ -285,9 +288,16 @@ export function CreateDirectSaleForm({ open, onOpenChange }: Props) {
     });
   };
 
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
+      setCreateProductOpen(false);
+      setSuccessSale(null);
+    }
+    onOpenChange(next);
+  };
+
   const close = () => {
-    setSuccessSale(null);
-    onOpenChange(false);
+    handleOpenChange(false);
   };
 
   const formBody = successSale ? (
@@ -494,7 +504,16 @@ export function CreateDirectSaleForm({ open, onOpenChange }: Props) {
       </Button>
     </div>
   ) : (
-    <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+    <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+      <Button
+        type="button"
+        variant="outline"
+        disabled={mutation.isPending}
+        className="sm:mr-auto"
+        onClick={() => setCreateProductOpen(true)}
+      >
+        {tProductList("createButton")}
+      </Button>
       <Button
         type="button"
         variant="outline"
@@ -514,9 +533,16 @@ export function CreateDirectSaleForm({ open, onOpenChange }: Props) {
     </div>
   );
 
+  const createProductOverlay = (
+    <CreateProductForm
+      open={createProductOpen}
+      onOpenChange={setCreateProductOpen}
+    />
+  );
+
   if (isMobile) {
     return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
+      <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent side="bottom" className="overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{t("title")}</SheetTitle>
@@ -525,12 +551,13 @@ export function CreateDirectSaleForm({ open, onOpenChange }: Props) {
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
         </SheetContent>
+        {createProductOverlay}
       </Sheet>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
@@ -539,6 +566,7 @@ export function CreateDirectSaleForm({ open, onOpenChange }: Props) {
         {formBody}
         <DialogFooter>{footer}</DialogFooter>
       </DialogContent>
+      {createProductOverlay}
     </Dialog>
   );
 }

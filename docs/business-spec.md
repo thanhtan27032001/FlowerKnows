@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 4.0 (Adds MODULE 11 — Direct Sale, a regular retail flow parallel to the blind bag mechanic; both Owner+Staff can create, Owner-only to cancel; integrated into Revenue/Gross Margin reporting)
+**Version:** 4.1 (US-13: adds inline "Create Product" overlay from within Stock In form, avoiding a form-abandonment round trip)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -720,6 +720,8 @@ This is the single source of truth for schema design across the whole document.
 | 1 | Staff is on the product list or a product's detail page | Clicks "Stock In" | A multi-row stock-in form is shown: each row has `product` (select, defaults to the currently viewed product if opened from its detail page) + quantity received + **`cost_price` (required)** + `note` (optional, e.g. "August batch received") |
 | 2 | Staff adds several different product rows in one stock-in action | Clicks "Confirm Stock In" | The system processes everything in one transaction: for each row, (a) **adds to `product.stock_quantity`** by the received quantity, (b) **recalculates `product.average_cost_price`** using the weighted-average formula below, (c) creates one `stock_transaction` (`type = stock_in`, `quantity_change = +quantity`, `cost_price`, `average_cost_price_before` = the product's `average_cost_price` value **prior** to this recalculation (enables US-33), `note`) |
 | 3 | Staff enters a quantity ≤ 0, or leaves `cost_price` blank/≤ 0, on a row | Clicks submit | The system shows an error right at that row and blocks submission of the entire form |
+| 3a | Staff is filling in the Stock In form and the product they need doesn't exist yet | Clicks "Tạo sản phẩm mới" (a button placed in the form's bottom action bar, alongside "Hủy"/"Xác nhận nhập kho") | The Create Product form (US-12) opens **as an overlay on top of** the still-open Stock In form (not replacing it — Stock In's in-progress rows/data must not be lost) |
+| 3b | Staff creates the new product via that overlay | Product creation succeeds | The overlay closes, returning to the Stock In form with all previously-entered rows **intact**; the product search/autocomplete data is refreshed so the newly created product is immediately selectable in any row — Staff manually picks it in whichever row needs it (no auto-selection) |
 | 4 | Stock in succeeds | — | The new `stock_quantity` and `average_cost_price` for each product are shown; the new `stock_transaction` rows (including `cost_price`) appear first in the Stock Movement History (US-15) |
 
 **Weighted-average cost formula (applied on every `stock_in`, and ONLY on `stock_in`):**

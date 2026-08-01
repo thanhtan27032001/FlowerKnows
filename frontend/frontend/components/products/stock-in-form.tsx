@@ -12,6 +12,7 @@ import {
 } from "@/src/lib/api/product";
 import { reportKeys } from "@/src/lib/api/report";
 import { formatCostPrice } from "@/src/lib/format";
+import { CreateProductForm } from "@/components/products/create-product-form";
 import { ProductTypeahead } from "@/components/products/product-typeahead";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ export function StockInForm({
   onSuccess,
 }: Props) {
   const t = useTranslations("products.stockIn");
+  const tList = useTranslations("products.list");
   const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
@@ -78,6 +80,7 @@ export function StockInForm({
   const [recentProductIds, setRecentProductIds] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [successSummary, setSuccessSummary] = useState<Product[] | null>(null);
+  const [createProductOpen, setCreateProductOpen] = useState(false);
 
   const { data: products = [] } = useQuery({
     queryKey: productKeys.lists(),
@@ -197,9 +200,16 @@ export function StockInForm({
     );
   };
 
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
+      setCreateProductOpen(false);
+      setSuccessSummary(null);
+    }
+    onOpenChange(next);
+  };
+
   const close = () => {
-    setSuccessSummary(null);
-    onOpenChange(false);
+    handleOpenChange(false);
   };
 
   const formBody = successSummary ? (
@@ -333,7 +343,16 @@ export function StockInForm({
       </Button>
     </div>
   ) : (
-    <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+    <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+      <Button
+        type="button"
+        variant="outline"
+        disabled={mutation.isPending}
+        className="sm:mr-auto"
+        onClick={() => setCreateProductOpen(true)}
+      >
+        {tList("createButton")}
+      </Button>
       <Button
         type="button"
         variant="outline"
@@ -353,9 +372,18 @@ export function StockInForm({
     </div>
   );
 
+  // Nested inside Dialog/Sheet root so Base UI stacks the overlay correctly
+  // without closing or resetting Stock In row state (US-13 AC#3a/3b).
+  const createProductOverlay = (
+    <CreateProductForm
+      open={createProductOpen}
+      onOpenChange={setCreateProductOpen}
+    />
+  );
+
   if (isMobile) {
     return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
+      <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent side="bottom" className="overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{t("title")}</SheetTitle>
@@ -364,12 +392,13 @@ export function StockInForm({
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
         </SheetContent>
+        {createProductOverlay}
       </Sheet>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
@@ -378,6 +407,7 @@ export function StockInForm({
         {formBody}
         <DialogFooter>{footer}</DialogFooter>
       </DialogContent>
+      {createProductOverlay}
     </Dialog>
   );
 }

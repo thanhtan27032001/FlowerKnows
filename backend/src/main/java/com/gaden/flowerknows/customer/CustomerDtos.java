@@ -72,6 +72,27 @@ public final class CustomerDtos {
     ) {
     }
 
+    public record DirectSaleLineSummaryResponse(
+            UUID id,
+            UUID productId,
+            String productName,
+            int quantity,
+            BigDecimal unitPrice,
+            BigDecimal costPriceSnapshot
+    ) {
+    }
+
+    public record DirectSaleSummaryResponse(
+            UUID id,
+            Instant createdAt,
+            BigDecimal recognizedRevenue,
+            BigDecimal totalCost,
+            BigDecimal grossMargin,
+            boolean missingCostWarning,
+            List<DirectSaleLineSummaryResponse> lines
+    ) {
+    }
+
     public record CustomerDetailResponse(
             UUID id,
             String name,
@@ -84,7 +105,8 @@ public final class CustomerDtos {
             CustomerOrderSummaryResponse latestOrder,
             List<CustomerOrderSummaryResponse> orders,
             List<TokenCardResponse> holdingTokens,
-            List<TokenCardResponse> history
+            List<TokenCardResponse> history,
+            List<DirectSaleSummaryResponse> directSales
     ) {
     }
 }

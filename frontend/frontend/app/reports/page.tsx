@@ -212,7 +212,7 @@ export default function ReportsPage() {
               </div>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -234,6 +234,18 @@ export default function ReportsPage() {
                 <CardContent>
                   <p className="text-2xl font-semibold tabular-nums">
                     {vnd.format(report.revenueFromCancelledTokens)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {t("kpis.directSaleRevenue")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-semibold tabular-nums">
+                    {vnd.format(report.revenueFromDirectSales)}
                   </p>
                 </CardContent>
               </Card>
@@ -268,7 +280,7 @@ export default function ReportsPage() {
                 <CardTitle>{t("margin.title")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   <div>
                     <p className="text-sm text-muted-foreground">
                       {t("margin.orderGrossMargin")}
@@ -286,6 +298,14 @@ export default function ReportsPage() {
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {t("margin.fullMargin")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {t("margin.directSaleGrossMargin")}
+                    </p>
+                    <p className="text-xl font-semibold tabular-nums">
+                      {vndCost.format(report.directSaleGrossMargin)}
                     </p>
                   </div>
                   <div>

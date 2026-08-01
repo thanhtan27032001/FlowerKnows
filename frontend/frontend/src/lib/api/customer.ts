@@ -63,6 +63,25 @@ export type CustomerOrderSummary = {
   tokenCount: number;
 };
 
+export type DirectSaleLineSummary = {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  costPriceSnapshot: number | null;
+};
+
+export type DirectSaleSummary = {
+  id: string;
+  createdAt: string;
+  recognizedRevenue: number;
+  totalCost: number;
+  grossMargin: number;
+  missingCostWarning: boolean;
+  lines: DirectSaleLineSummary[];
+};
+
 export type CustomerDetail = {
   id: string;
   name: string;
@@ -76,6 +95,7 @@ export type CustomerDetail = {
   orders: CustomerOrderSummary[];
   holdingTokens: CustomerToken[];
   history: CustomerToken[];
+  directSales: DirectSaleSummary[];
 };
 
 /** Backend enum values — display labels live in messages via `common.status.action`. */

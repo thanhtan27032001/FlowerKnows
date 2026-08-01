@@ -113,6 +113,8 @@ export function canAccessPath(role: AccountRole, pathname: string): boolean {
     pathname.startsWith("/campaigns/") ||
     pathname === "/customers" ||
     pathname.startsWith("/customers/") ||
+    pathname === "/direct-sales" ||
+    pathname.startsWith("/direct-sales/") ||
     pathname === "/products" ||
     pathname.startsWith("/products/")
   );

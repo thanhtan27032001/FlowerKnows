@@ -285,6 +285,7 @@ public class ProductService {
             case ORDER_FULFILLMENT -> "Removed for Order Fulfillment (deprecated)";
             case EXCHANGE_UNDO_RETURN -> "Returned from Undoing Item Exchange";
             case EXCHANGE_UNDO_REMOVE -> "Removed from Undoing Item Exchange";
+            case DIRECT_SALE -> "Direct Sale";
         };
     }
 }

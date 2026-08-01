@@ -26,6 +26,7 @@ public final class ReportDtos {
             BigDecimal totalProfit,
             BigDecimal revenueFromOrders,
             BigDecimal revenueFromCancelledTokens,
+            BigDecimal revenueFromDirectSales,
             String note
     ) {
     }
@@ -35,9 +36,11 @@ public final class ReportDtos {
             Instant to,
             BigDecimal revenueFromOrders,
             BigDecimal revenueFromCancelledTokens,
+            BigDecimal revenueFromDirectSales,
             BigDecimal totalRevenue,
             BigDecimal orderGrossMargin,
             BigDecimal cancelledTokenMargin,
+            BigDecimal directSaleGrossMargin,
             BigDecimal totalGrossMargin,
             BigDecimal grossMarginPercent,
             long ordersWithMissingCostBasis,

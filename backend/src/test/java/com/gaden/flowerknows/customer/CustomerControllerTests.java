@@ -138,6 +138,7 @@ class CustomerControllerTests {
                 null,
                 List.of(),
                 List.of(),
+                List.of(),
                 List.of()
         );
     }

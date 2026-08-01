@@ -181,6 +181,9 @@ export default function DashboardPage() {
                         cancelled: vndCost.format(
                           profit.revenueFromCancelledTokens
                         ),
+                        directSales: vndCost.format(
+                          profit.revenueFromDirectSales
+                        ),
                       })}
                     </p>
                   </CardContent>

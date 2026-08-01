@@ -8,6 +8,7 @@ import {
   PackageIcon,
   ShoppingBagIcon,
   SparklesIcon,
+  StoreIcon,
   UsersIcon,
   UserCogIcon,
 } from "lucide-react";
@@ -23,6 +24,7 @@ export type NavLabelKey =
   | "suggestCampaign"
   | "customers"
   | "orders"
+  | "directSales"
   | "products"
   | "alerts"
   | "reports"
@@ -74,6 +76,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: UsersIcon,
     section: "operations",
     mobile: "primary",
+  },
+  {
+    href: "/direct-sales",
+    labelKey: "directSales",
+    shortLabelKey: "directSales",
+    icon: StoreIcon,
+    section: "operations",
+    mobile: "more",
   },
   {
     href: "/orders",

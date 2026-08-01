@@ -23,7 +23,7 @@ import { DeleteRecordedTokenDialog } from "@/components/tokens/delete-recorded-t
 import { useAuth } from "@/components/providers/auth-provider";
 import { useFlashIds } from "@/hooks/use-flash-ids";
 import { customerApi, customerKeys, type CustomerDetail, type CustomerToken } from "@/src/lib/api/customer";
-import { vnd } from "@/src/lib/format";
+import { formatDateTime, vnd } from "@/src/lib/format";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -256,6 +256,65 @@ export default function CustomerDetailPage({
             </section>
 
             <CustomerExchangeHistory customerId={customer.id} />
+
+            <section className="space-y-3">
+              <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
+                {tDetail("directSales")}
+              </h2>
+              {(customer.directSales ?? []).length === 0 ? (
+                <Card className="border-border/70 bg-muted/20">
+                  <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                    {tDetail("directSalesEmpty")}
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-3">
+                  {(customer.directSales ?? []).map((sale) => (
+                    <Card key={sale.id} className="border-border/70">
+                      <CardHeader className="pb-2">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <CardTitle className="text-base font-semibold">
+                            {vnd.format(sale.recognizedRevenue)}
+                          </CardTitle>
+                          <p className="text-xs text-muted-foreground tabular-nums">
+                            {formatDateTime(sale.createdAt)}
+                          </p>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {tDetail("directSaleMargin")}:{" "}
+                          <span className="tabular-nums text-foreground">
+                            {vnd.format(sale.grossMargin)}
+                          </span>
+                        </p>
+                        {sale.missingCostWarning && (
+                          <p className="text-xs text-amber-800 dark:text-amber-200">
+                            {tDetail("directSaleMissingCost")}
+                          </p>
+                        )}
+                      </CardHeader>
+                      <CardContent className="space-y-1.5 pt-0">
+                        {sale.lines.map((line) => (
+                          <div
+                            key={line.id}
+                            className="flex justify-between gap-3 text-sm"
+                          >
+                            <span>
+                              {line.productName}{" "}
+                              <span className="text-muted-foreground">
+                                {tDetail("directSaleQty", { qty: line.quantity })}
+                              </span>
+                            </span>
+                            <span className="tabular-nums shrink-0">
+                              {vnd.format(line.unitPrice * line.quantity)}
+                            </span>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </section>
 
             <section className="space-y-3">
               <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">

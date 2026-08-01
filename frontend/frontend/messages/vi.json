@@ -120,6 +120,7 @@
     "suggestCampaign": "Gợi ý tạo Campaign",
     "customers": "Khách hàng",
     "orders": "Đơn hàng",
+    "directSales": "Bán hàng",
     "products": "Sản phẩm",
     "alerts": "Cảnh báo",
     "reports": "Báo cáo",
@@ -184,7 +185,7 @@
       "loadError": "Không tải được tổng quan lợi nhuận",
       "totalCapital": "Tổng vốn đã đầu tư",
       "totalRevenue": "Tổng doanh thu",
-      "revenueBreakdown": "Đơn hàng {orders} · Đã hủy {cancelled}",
+      "revenueBreakdown": "Đơn hàng {orders} · Đã hủy {cancelled} · Bán trực tiếp {directSales}",
       "totalProfit": "Tổng lợi nhuận",
       "negativeHint": "Số âm là bình thường giai đoạn đầu khi nhập kho nhiều hơn bán",
       "cashBasisNote": "Đây là số liệu theo cơ sở tiền mặt đơn giản, bao gồm toàn bộ chi phí nhập kho dù đã bán hay chưa. Để xem biên lợi nhuận khớp theo từng đơn, mở Báo cáo biên lợi nhuận."
@@ -490,7 +491,13 @@
       "holdingTokens": "Token đang giữ",
       "holdingEmpty": "Khách này hiện không giữ món nào",
       "history": "Lịch sử",
-      "historyEmpty": "Chưa có token đã xử lý."
+      "historyEmpty": "Chưa có token đã xử lý.",
+      "directSales": "Lịch sử mua trực tiếp",
+      "directSalesEmpty": "Chưa có lần mua trực tiếp nào.",
+      "directSaleRevenue": "Doanh thu",
+      "directSaleMargin": "Biên gộp",
+      "directSaleQty": "×{qty}",
+      "directSaleMissingCost": "Thiếu giá vốn — biên gộp có thể cao hơn thực tế"
     },
     "exchangeHistory": {
       "title": "Lịch sử đổi món",
@@ -686,6 +693,58 @@
       "next": "Trang sau"
     }
   },
+  "directSales": {
+    "title": "Bán hàng",
+    "createButton": "Tạo bán hàng",
+    "loading": "Đang tải lịch sử bán hàng…",
+    "list": {
+      "loadError": "Không tải được lịch sử bán hàng",
+      "empty": "Chưa có lần bán trực tiếp nào. Nhấn «Tạo bán hàng» để ghi nhận.",
+      "walkIn": "Khách vãng lai",
+      "customer": "Khách hàng",
+      "revenue": "Doanh thu",
+      "totalCost": "Giá vốn",
+      "grossMargin": "Biên gộp",
+      "created": "Thời gian",
+      "items": "Món",
+      "qty": "×{qty}",
+      "missingCost": "Thiếu giá vốn — biên gộp có thể cao hơn thực tế",
+      "cancel": "Hủy"
+    },
+    "create": {
+      "title": "Tạo bán hàng",
+      "description": "Ghi nhận bán trực tiếp ngoài cơ chế blind bag. Doanh thu được ghi nhận ngay.",
+      "customerOptional": "Khách hàng (tuỳ chọn)",
+      "customerPlaceholder": "Tìm theo tên hoặc SĐT — để trống nếu khách vãng lai",
+      "customerClear": "Bỏ chọn khách",
+      "loadingCustomers": "Đang tìm…",
+      "noCustomers": "Không tìm thấy khách",
+      "product": "Sản phẩm",
+      "productPlaceholder": "Chọn sản phẩm…",
+      "quantity": "Số lượng",
+      "unitPrice": "Đơn giá",
+      "stockHint": "Tồn: {stock}",
+      "listPriceHint": "Giá niêm yết: {price}",
+      "selectProduct": "Chọn sản phẩm",
+      "quantityInvalid": "Số lượng phải là số nguyên ≥ 1",
+      "priceInvalid": "Đơn giá phải ≥ 0",
+      "confirm": "Xác nhận bán",
+      "failed": "Không tạo được bán hàng",
+      "successTitle": "Đã ghi nhận bán hàng",
+      "successRevenue": "Doanh thu: {revenue}",
+      "successMargin": "Biên gộp: {margin}",
+      "missingCostWarning": "Một số món thiếu giá vốn — biên gộp có thể cao hơn thực tế"
+    },
+    "cancelDialog": {
+      "title": "Hủy bán hàng?",
+      "intro": "Thao tác này sẽ hoàn tồn kho và xóa doanh thu/biên gộp khỏi báo cáo — không giữ lại bản ghi đã hủy.",
+      "willRestoreStock": "Hoàn tồn kho",
+      "willRemoveRevenue": "Gỡ khỏi doanh thu",
+      "willRemoveMargin": "Gỡ biên gộp",
+      "confirm": "Xác nhận hủy",
+      "failed": "Không hủy được bán hàng"
+    }
+  },
   "orders": {
     "title": "Đơn hàng",
     "loading": "Đang tải đơn hàng…",
@@ -770,6 +829,7 @@
     "kpis": {
       "revenueFromOrders": "Doanh thu từ đơn",
       "cancelledTokenRevenue": "Doanh thu từ hủy token",
+      "directSaleRevenue": "Doanh thu bán trực tiếp",
       "totalRevenue": "Tổng doanh thu",
       "totalRefunded": "Tổng hoàn tiền (đổi tiền)"
     },
@@ -777,6 +837,7 @@
       "title": "Biên lợi nhuận gộp",
       "orderGrossMargin": "Biên gộp từ đơn",
       "cancelledTokenMargin": "Biên từ hủy token",
+      "directSaleGrossMargin": "Biên từ bán trực tiếp",
       "fullMargin": "100% biên (không có giá vốn)",
       "totalGrossMargin": "Tổng biên gộp",
       "grossMarginPct": "Biên gộp %"

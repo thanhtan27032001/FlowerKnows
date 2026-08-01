@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 3.5 (Adds US-33 — Undo Stock In, Owner-only, restricted to the most recent stock-in per product; stock_transaction gains average_cost_price_before snapshot)
+**Version:** 4.0 (Adds MODULE 11 — Direct Sale, a regular retail flow parallel to the blind bag mechanic; both Owner+Staff can create, Owner-only to cancel; integrated into Revenue/Gross Margin reporting)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -64,7 +64,7 @@ This is the single source of truth for schema design across the whole document.
 |---|---|---|
 | `id` | PK | |
 | `product_id` | FK → product | |
-| `type` | enum | `stock_in` / `stock_adjustment` / `campaign_lock` / `campaign_return` / `exchange_in` / `exchange_out` / `cash_out_return` / `token_cancel_return` / `order_fulfillment` / `exchange_undo_return` / `exchange_undo_remove` |
+| `type` | enum | `stock_in` / `stock_adjustment` / `campaign_lock` / `campaign_return` / `exchange_in` / `exchange_out` / `cash_out_return` / `token_cancel_return` / `order_fulfillment` / `exchange_undo_return` / `exchange_undo_remove` / `direct_sale` |
 | `quantity_change` | int | Positive = stock added/returned, negative = stock removed/locked |
 | `cost_price` | decimal, nullable | **Required when `type = stock_in`** — the cost price of this specific batch. Null for all other transaction types (they don't introduce new cost, only move existing stock). |
 | `average_cost_price_before` | decimal, nullable | **Set only when `type = stock_in`** — a snapshot of `product.average_cost_price` immediately *before* this transaction was applied (null if this was the product's very first-ever stock-in). Exists solely to make US-33 (Undo Stock In) possible without needing to recompute the weighted average backward through history. |
@@ -157,6 +157,26 @@ This is the single source of truth for schema design across the whole document.
 |---|---|---|
 | `order_id` | FK | |
 | `item_token_id` | FK | |
+
+### `direct_sale` (Regular retail sale — NOT part of the blind bag mechanic)
+| Field | Type | Description |
+|---|---|---|
+| `id` | PK | |
+| `customer_id` | FK → customer, nullable | Optional — direct sales may be to an anonymous walk-in customer, unlike everything in the blind bag flow which always requires a known `customer` |
+| `created_at` | datetime | |
+| `recognized_revenue` | decimal | Sum of `quantity × unit_price` across all lines — **recognized immediately at creation**, unlike blind bag Orders which defer revenue recognition |
+| `total_cost` | decimal | Sum of `quantity × cost_price_snapshot` across all lines (treating a null snapshot as `0`, same convention as elsewhere) |
+| `gross_margin` | decimal | = `recognized_revenue` − `total_cost` |
+
+### `direct_sale_line`
+| Field | Type | Description |
+|---|---|---|
+| `id` | PK | |
+| `direct_sale_id` | FK → direct_sale | |
+| `product_id` | FK → product | |
+| `quantity` | int | |
+| `unit_price` | decimal | Price actually charged per unit — defaults to `product.list_price` but editable (e.g. for a discount), unlike the blind bag flow where `token_value` is fixed by `bag_price` |
+| `cost_price_snapshot` | decimal, nullable | `product.average_cost_price` at the moment of sale (may be null if never stocked in with a cost) |
 
 ---
 
@@ -623,11 +643,11 @@ This is the single source of truth for schema design across the whole document.
 
 | # | Given | When | Then |
 |---|---|---|---|
-| 1 | Staff selects a time range (day/month) | Views the Revenue Report | Shows: (a) Revenue from Orders (by `order.created_at` and `recognized_revenue`), (b) Revenue from Cancelled Tokens, (c) Total Revenue = (a) + (b) |
+| 1 | Staff selects a time range (day/month) | Views the Revenue Report | Shows: (a) Revenue from Orders (by `order.created_at` and `recognized_revenue`), (b) Revenue from Cancelled Tokens, (c) **Revenue from Direct Sales** (by `direct_sale.created_at` and `recognized_revenue`, US-34), (d) Total Revenue = (a) + (b) + (c) |
 | 2 | There is an `actual_refund_amount` (cash-out) within the time range | Viewing the report | A separate "Total Refunded (Cash Out)" line is shown — not directly subtracted from revenue (it's a different flow), but displayed for reconciling actual cash flow |
 | 3 | Staff views the report for a specific `campaign` | Selects the campaign | Shows: the campaign's total `prepaid_amount`, bags sold / `total_bags`, and a **breakdown** of that campaign's tokens by `status` (`holding`/`exchanged`/`cashed_out`/`ordered`/`cancelled`) — showing what % of revenue has been "finalized" |
 | 4 | Staff wants to verify data correctness | Viewing the report | The system shows the reconciliation formula: Total Prepaid = Holding Tokens + Recognized Revenue + Total Refunded — if it doesn't balance, a data-error warning is shown |
-| 5 | Staff selects a time range | Views the Gross Margin section | Shows: (a) **Order gross margin** = Σ `order.gross_margin` for orders in range, (b) **Cancelled Token margin** = Σ `token_value` for cancelled tokens in range (treated as 100% margin, no cost), (c) **Total Gross Margin** = (a) + (b), (d) **Gross Margin %** = Total Gross Margin / Total Revenue |
+| 5 | Staff selects a time range | Views the Gross Margin section | Shows: (a) **Order gross margin** = Σ `order.gross_margin` for orders in range, (b) **Cancelled Token margin** = Σ `token_value` for cancelled tokens in range (treated as 100% margin, no cost), (c) **Direct Sale margin** = Σ `direct_sale.gross_margin` for direct sales in range, (d) **Total Gross Margin** = (a) + (b) + (c), (e) **Gross Margin %** = Total Gross Margin / Total Revenue |
 | 6 | A token included in an order has a null `cost_basis` (e.g. the product was never stocked in with a cost price before the token was created) | Viewing the Gross Margin report | That token's cost is treated as 0 in the `total_cost`/`gross_margin` calculation, and the report shows a small warning noting N orders contain tokens with missing cost data (so Staff knows the margin figure may be overstated) |
 
 ---
@@ -642,7 +662,7 @@ This is the single source of truth for schema design across the whole document.
 |---|---|---|---|
 | 1 | Staff opens the Dashboard | Views the top summary section | Shows 3 KPI cards: **Total Capital Invested**, **Total Revenue**, **Total Profit** |
 | 2 | Calculating Total Capital Invested | — | = Σ (`cost_price` × `quantity_change`) across **all** `stock_transaction` rows with `type = stock_in`, all time — this is a simple cash-basis figure and **includes the cost of stock still sitting unsold in inventory** (it does NOT matter whether the stock has been sold yet) |
-| 3 | Calculating Total Revenue | — | Same definition as US-11 AC #1: Revenue from Orders (`recognized_revenue`) + Revenue from Cancelled Tokens |
+| 3 | Calculating Total Revenue | — | Same definition as US-11 AC #1: Revenue from Orders (`recognized_revenue`) + Revenue from Cancelled Tokens + **Revenue from Direct Sales**|
 | 4 | Calculating Total Profit | — | = Total Revenue − Total Capital Invested |
 | 5 | Staff views this section | — | A small info tooltip/note clarifies: *"This is a simple cash-basis figure that includes the cost of all inventory purchased, whether sold or not. For per-order matched profit margin, see the Gross Margin Report."* — to prevent confusion with the different (and more precise) number shown in US-11's Gross Margin Report |
 | 6 | Early in the shop's life, more has been spent on stock-in than has been sold yet | Viewing Total Profit | The figure may correctly show as negative — this is expected and not treated as an error |
@@ -843,6 +863,44 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 
 ---
 
+## MODULE 11 — Direct Sale (regular retail, outside the blind bag mechanic)
+
+> This module is entirely independent of the Campaign/Token/Order machinery in Modules 1–7. It exists because the shop also sells products the normal way — a customer picks something off the shelf and pays for it right then, with no blind bag involved.
+
+### US-34: Create a Direct Sale
+
+**As** Staff or Owner, **I want to** record a regular sale of one or more products directly, **so that** `stock_quantity` and revenue reflect it immediately, without going through the blind bag flow.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Staff/Owner is on the Direct Sale screen | Clicks "Tạo bán hàng" | A **multi-row** form (same pattern as Stock In/Record Item): optional `customer` (search/select an existing one, or leave blank for an anonymous walk-in sale — no "create new customer" required here), then rows of `product` (select) + `quantity` + `unit_price` (defaults to `product.list_price`, editable) |
+| 2 | Any row's `quantity` exceeds that product's current `stock_quantity` | Clicks submit | Blocked entirely (whole submission rejected, atomic) — "SP X chỉ còn Y trong kho" on the offending row(s) |
+| 3 | Form is valid | Clicks submit | `@Transactional`: (a) creates the `direct_sale` (with `customer_id` if provided), (b) for each row, creates a `direct_sale_line` (`unit_price`, `cost_price_snapshot = product.average_cost_price` at this moment), **deducts `product.stock_quantity`** by `quantity`, and writes one `stock_transaction` (`type = direct_sale`, `quantity_change = -quantity`) per row, (c) computes and stores `recognized_revenue`, `total_cost` (treating a null `cost_price_snapshot` as `0`, with a warning shown), `gross_margin` on the `direct_sale` row |
+| 4 | Sale succeeds | — | **Revenue is recognized immediately** — unlike blind bag Orders, there is no deferred/prepaid stage here at all |
+| 5 | A `customer` was selected | Staff/Owner views that Customer Page later | The direct sale appears in a "Lịch sử mua trực tiếp" (Direct Purchase History) section, separate from the token/campaign history — these are fundamentally different kinds of transactions and should not be visually merged |
+
+**Access:** Both Owner and Staff (this is routine point-of-sale activity, not a sensitive correction — matches the reasoning already used for Record Participant/Record Item).
+
+---
+
+### US-35: Cancel a Direct Sale (undo a mistake)
+
+**As** Owner, **I want to** cancel a mistakenly-entered Direct Sale, **so that** stock and revenue figures are corrected without leaving a wrong transaction on the books.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | A `direct_sale` exists | Owner clicks "Hủy" on it | Confirmation shown: what will be reversed (stock returned per line, revenue/margin removed) |
+| 2 | Owner confirms | — | `@Transactional`: for each `direct_sale_line`, **add `quantity` back to `product.stock_quantity`**, writing one `stock_transaction` per line (`type = direct_sale`, `quantity_change = +quantity`, `note = "Cancelled direct sale"`); then delete the `direct_sale` and its `direct_sale_line` rows entirely |
+| 3 | Cancelled | — | The sale disappears from the customer's Direct Purchase History (US-34 AC#5) and from revenue reporting — same "erase the mistake" treatment as US-28/US-33, not a preserved cancelled-status record |
+
+**Access:** Owner only (correcting already-recorded data — same reasoning as other undo features).
+
+---
+
 ## Permission Matrix (applies to every US above)
 
 | Module / Action | Owner | Staff |
@@ -882,6 +940,8 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | Create Customer | ✅ | ✅ |
 | US-21 Login | ✅ | ✅ |
 | US-22 Create account / manage accounts | ✅ | ❌ (hidden from nav entirely) |
+| US-34 Create Direct Sale | ✅ | ✅ |
+| US-35 Cancel Direct Sale | ✅ | ❌ |
 
 **Critical implementation note:** Every restriction above must be enforced **on the backend** (`@PreAuthorize` or equivalent per-endpoint role check), not just hidden in the frontend UI. Hiding a button from Staff in the UI is a UX convenience only — a Staff member could otherwise call the API directly (e.g. via browser dev tools) and bypass a frontend-only restriction. Frontend hiding and backend enforcement are both required, independently.
 

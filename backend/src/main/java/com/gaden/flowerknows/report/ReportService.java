@@ -6,6 +6,7 @@ import com.gaden.flowerknows.campaign.CampaignParticipantRepository;
 import com.gaden.flowerknows.campaign.CampaignPoolRepository;
 import com.gaden.flowerknows.campaign.CampaignRepository;
 import com.gaden.flowerknows.common.ResourceNotFoundException;
+import com.gaden.flowerknows.directsale.DirectSaleRepository;
 import com.gaden.flowerknows.exchange.ExchangeTransactionRepository;
 import com.gaden.flowerknows.order.OrderRepository;
 import com.gaden.flowerknows.product.Product;
@@ -37,6 +38,7 @@ public class ReportService {
     private final ItemTokenRepository itemTokenRepository;
     private final ExchangeTransactionRepository exchangeRepository;
     private final StockTransactionRepository stockTransactionRepository;
+    private final DirectSaleRepository directSaleRepository;
     private final int lowStockThreshold;
 
     public ReportService(
@@ -48,6 +50,7 @@ public class ReportService {
             ItemTokenRepository itemTokenRepository,
             ExchangeTransactionRepository exchangeRepository,
             StockTransactionRepository stockTransactionRepository,
+            DirectSaleRepository directSaleRepository,
             @Value("${app.low-stock-threshold:5}") int lowStockThreshold
     ) {
         this.productRepository = productRepository;
@@ -58,6 +61,7 @@ public class ReportService {
         this.itemTokenRepository = itemTokenRepository;
         this.exchangeRepository = exchangeRepository;
         this.stockTransactionRepository = stockTransactionRepository;
+        this.directSaleRepository = directSaleRepository;
         this.lowStockThreshold = lowStockThreshold;
     }
 
@@ -73,7 +77,8 @@ public class ReportService {
         BigDecimal totalCapitalInvested = stockTransactionRepository.sumCapitalInvestedFromStockIn();
         BigDecimal revenueFromOrders = orderRepository.sumAllRecognizedRevenue();
         BigDecimal revenueFromCancelled = itemTokenRepository.sumAllCancelledTokenValue();
-        BigDecimal totalRevenue = revenueFromOrders.add(revenueFromCancelled);
+        BigDecimal revenueFromDirectSales = directSaleRepository.sumAllRecognizedRevenue();
+        BigDecimal totalRevenue = revenueFromOrders.add(revenueFromCancelled).add(revenueFromDirectSales);
         BigDecimal totalProfit = totalRevenue.subtract(totalCapitalInvested);
 
         return new ReportDtos.ProfitOverviewResponse(
@@ -82,6 +87,7 @@ public class ReportService {
                 totalProfit,
                 revenueFromOrders,
                 revenueFromCancelled,
+                revenueFromDirectSales,
                 "Đây là số liệu theo cơ sở tiền mặt đơn giản, bao gồm toàn bộ chi phí nhập kho dù đã bán hay chưa. Để xem biên lợi nhuận khớp theo từng đơn, mở Báo cáo biên lợi nhuận."
         );
     }
@@ -93,10 +99,12 @@ public class ReportService {
 
         BigDecimal revenueFromOrders = orderRepository.sumRecognizedRevenueBetween(from, to);
         BigDecimal revenueFromCancelled = itemTokenRepository.sumCancelledTokenValueBetween(from, to);
-        BigDecimal totalRevenue = revenueFromOrders.add(revenueFromCancelled);
+        BigDecimal revenueFromDirectSales = directSaleRepository.sumRecognizedRevenueBetween(from, to);
+        BigDecimal totalRevenue = revenueFromOrders.add(revenueFromCancelled).add(revenueFromDirectSales);
         BigDecimal orderGrossMargin = orderRepository.sumGrossMarginBetween(from, to);
         BigDecimal cancelledTokenMargin = revenueFromCancelled;
-        BigDecimal totalGrossMargin = orderGrossMargin.add(cancelledTokenMargin);
+        BigDecimal directSaleGrossMargin = directSaleRepository.sumGrossMarginBetween(from, to);
+        BigDecimal totalGrossMargin = orderGrossMargin.add(cancelledTokenMargin).add(directSaleGrossMargin);
         BigDecimal grossMarginPercent = totalRevenue.compareTo(BigDecimal.ZERO) == 0
                 ? BigDecimal.ZERO
                 : totalGrossMargin
@@ -116,9 +124,11 @@ public class ReportService {
                 to,
                 revenueFromOrders,
                 revenueFromCancelled,
+                revenueFromDirectSales,
                 totalRevenue,
                 orderGrossMargin,
                 cancelledTokenMargin,
+                directSaleGrossMargin,
                 totalGrossMargin,
                 grossMarginPercent,
                 ordersWithMissingCostBasis,

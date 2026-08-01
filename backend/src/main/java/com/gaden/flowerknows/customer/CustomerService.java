@@ -4,6 +4,8 @@ import com.gaden.flowerknows.campaign.CampaignParticipant;
 import com.gaden.flowerknows.campaign.CampaignParticipantRepository;
 import com.gaden.flowerknows.common.ResourceNotFoundException;
 import com.gaden.flowerknows.common.TextSearch;
+import com.gaden.flowerknows.directsale.DirectSale;
+import com.gaden.flowerknows.directsale.DirectSaleRepository;
 import com.gaden.flowerknows.exchange.ExchangeTransactionRepository;
 import com.gaden.flowerknows.exchange.ExchangedIntoProductNames;
 import com.gaden.flowerknows.order.Order;
@@ -37,19 +39,22 @@ public class CustomerService {
     private final CampaignParticipantRepository participantRepository;
     private final OrderRepository orderRepository;
     private final ExchangeTransactionRepository exchangeRepository;
+    private final DirectSaleRepository directSaleRepository;
 
     public CustomerService(
             CustomerRepository customerRepository,
             ItemTokenRepository itemTokenRepository,
             CampaignParticipantRepository participantRepository,
             OrderRepository orderRepository,
-            ExchangeTransactionRepository exchangeRepository
+            ExchangeTransactionRepository exchangeRepository,
+            DirectSaleRepository directSaleRepository
     ) {
         this.customerRepository = customerRepository;
         this.itemTokenRepository = itemTokenRepository;
         this.participantRepository = participantRepository;
         this.orderRepository = orderRepository;
         this.exchangeRepository = exchangeRepository;
+        this.directSaleRepository = directSaleRepository;
     }
 
     @Transactional(readOnly = true)
@@ -129,6 +134,12 @@ public class CustomerService {
         CustomerDtos.CustomerOrderSummaryResponse latestOrder =
                 orders.isEmpty() ? null : orders.getFirst();
 
+        List<CustomerDtos.DirectSaleSummaryResponse> directSales =
+                directSaleRepository.findByCustomerIdWithLines(id).stream()
+                        .sorted(Comparator.comparing(DirectSale::getCreatedAt).reversed())
+                        .map(this::toDirectSaleSummary)
+                        .toList();
+
         return new CustomerDtos.CustomerDetailResponse(
                 customer.getId(),
                 customer.getName(),
@@ -141,7 +152,8 @@ public class CustomerService {
                 latestOrder,
                 orders,
                 holdingCards,
-                historyCards
+                historyCards,
+                directSales
         );
     }
 
@@ -223,6 +235,29 @@ public class CustomerService {
                 order.getShippingStatus().name(),
                 order.getCarrierOrderId(),
                 tokenCount
+        );
+    }
+
+    private CustomerDtos.DirectSaleSummaryResponse toDirectSaleSummary(DirectSale sale) {
+        boolean missingCost = sale.getLines().stream()
+                .anyMatch(line -> line.getCostPriceSnapshot() == null);
+        return new CustomerDtos.DirectSaleSummaryResponse(
+                sale.getId(),
+                sale.getCreatedAt(),
+                sale.getRecognizedRevenue(),
+                sale.getTotalCost(),
+                sale.getGrossMargin(),
+                missingCost,
+                sale.getLines().stream()
+                        .map(line -> new CustomerDtos.DirectSaleLineSummaryResponse(
+                                line.getId(),
+                                line.getProduct().getId(),
+                                line.getProduct().getName(),
+                                line.getQuantity(),
+                                line.getUnitPrice(),
+                                line.getCostPriceSnapshot()
+                        ))
+                        .toList()
         );
     }
 

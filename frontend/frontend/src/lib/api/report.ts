@@ -32,9 +32,11 @@ export type RevenueReport = {
   to: string;
   revenueFromOrders: number;
   revenueFromCancelledTokens: number;
+  revenueFromDirectSales: number;
   totalRevenue: number;
   orderGrossMargin: number;
   cancelledTokenMargin: number;
+  directSaleGrossMargin: number;
   totalGrossMargin: number;
   grossMarginPercent: number;
   ordersWithMissingCostBasis: number;
@@ -50,6 +52,7 @@ export type ProfitOverview = {
   totalProfit: number;
   revenueFromOrders: number;
   revenueFromCancelledTokens: number;
+  revenueFromDirectSales: number;
   note: string;
 };
 

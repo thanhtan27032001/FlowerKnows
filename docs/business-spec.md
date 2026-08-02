@@ -103,6 +103,7 @@ This is the single source of truth for schema design across the whole document.
 | `total_bags_purchased` | int | Cumulative if purchased multiple times |
 | `prepaid_amount` | decimal | Amount prepaid (= total_bags_purchased × bag_price). **`0` while `status = draft`** — no money has actually been collected yet |
 | `status` | enum | `draft` / `confirmed`. Default `confirmed` (existing rows and the normal US-03 flow). See US-27 — `draft` rows do NOT count against the campaign's sold/remaining bag count, and do not appear in prepaid/revenue reconciliation until confirmed |
+| `created_at` | datetime | When the participant was first added to the campaign (used to sort the participant list ascending) |
 
 ### `item_token` (Token — core entity of the system)
 | Field | Type | Description |

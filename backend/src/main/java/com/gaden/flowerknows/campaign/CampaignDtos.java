@@ -74,7 +74,8 @@ public final class CampaignDtos {
             BigDecimal prepaidAmount,
             ParticipantStatus status,
             int itemsRecorded,
-            List<String> recordedItemNames
+            List<String> recordedItemNames,
+            Instant createdAt
     ) {
     }
 

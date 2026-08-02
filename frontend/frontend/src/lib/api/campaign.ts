@@ -33,6 +33,7 @@ export type ParticipantSummary = {
   status: ParticipantStatus;
   itemsRecorded: number;
   recordedItemNames: string[];
+  createdAt: string;
 };
 
 export type CampaignDetail = CampaignSummary & {

@@ -15,6 +15,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -46,6 +47,9 @@ public class CampaignParticipant {
     @Column(nullable = false, length = 20)
     private ParticipantStatus status = ParticipantStatus.CONFIRMED;
 
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt = Instant.now();
+
     protected CampaignParticipant() {
     }
 
@@ -65,6 +69,7 @@ public class CampaignParticipant {
         this.totalBagsPurchased = totalBagsPurchased;
         this.prepaidAmount = prepaidAmount;
         this.status = status;
+        this.createdAt = Instant.now();
     }
 
     public void addBags(int bags, BigDecimal amount) {
@@ -106,5 +111,9 @@ public class CampaignParticipant {
 
     public void setStatus(ParticipantStatus status) {
         this.status = status;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
     }
 }

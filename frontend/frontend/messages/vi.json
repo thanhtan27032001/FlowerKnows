@@ -426,6 +426,7 @@
       "deleteParticipantConfirm": "Xóa người tham gia",
       "deleteParticipantFailed": "Không xóa được người tham gia",
       "prepaid": "Trả trước",
+      "addedAt": "Thêm lúc {date}",
       "viewProfile": "Xem hồ sơ khách",
       "recordItem": "Ghi nhận món",
       "loading": "Đang tải món…",

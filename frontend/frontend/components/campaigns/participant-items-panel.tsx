@@ -339,6 +339,9 @@ export function ParticipantItemsPanel({
                 {t("prepaid")}: {vnd.format(participant.prepaidAmount)}
               </span>
             )}
+            <span className="tabular-nums">
+              {t("addedAt", { date: formatDateTime(participant.createdAt) })}
+            </span>
             <Link
               href={`/customers/${participant.customerId}`}
               className="inline-flex items-center gap-1 font-medium text-foreground/80 transition-colors hover:text-foreground"

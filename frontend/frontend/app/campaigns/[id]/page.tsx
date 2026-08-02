@@ -111,6 +111,15 @@ export default function CampaignDetailPage({
     [campaign?.participants]
   );
 
+  const participantsByAddedAsc = useMemo(
+    () =>
+      [...(campaign?.participants ?? [])].sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      ),
+    [campaign?.participants]
+  );
+
   const canDelete = (campaign?.participants.length ?? 0) === 0;
 
   const openRecordItem = (customerId = "") => {
@@ -359,7 +368,7 @@ export default function CampaignDetailPage({
                 )}
               </div>
 
-              {campaign.participants.length === 0 ? (
+              {participantsByAddedAsc.length === 0 ? (
                 <Card className="border-border/70 bg-muted/20">
                   <CardContent className="py-8 text-center text-sm text-muted-foreground">
                     {tDetail("participantsEmpty")}
@@ -367,7 +376,7 @@ export default function CampaignDetailPage({
                 </Card>
               ) : (
                 <div className="grid min-w-0 gap-1">
-                  {campaign.participants.map((p) => (
+                  {participantsByAddedAsc.map((p) => (
                     <ParticipantItemsPanel
                       key={p.id}
                       campaign={campaign}

@@ -16,9 +16,10 @@ public interface CampaignParticipantRepository extends JpaRepository<CampaignPar
     List<CampaignParticipant> findByCampaignId(UUID campaignId);
 
     @Query("""
-            SELECT DISTINCT p FROM CampaignParticipant p
+            SELECT p FROM CampaignParticipant p
             JOIN FETCH p.customer
             WHERE p.campaign.id = :campaignId
+            ORDER BY p.createdAt ASC
             """)
     List<CampaignParticipant> findByCampaignIdWithCustomer(UUID campaignId);
 

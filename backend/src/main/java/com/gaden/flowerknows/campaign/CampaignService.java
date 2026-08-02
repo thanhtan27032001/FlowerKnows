@@ -642,7 +642,8 @@ public class CampaignService {
                 participant.getPrepaidAmount(),
                 participant.getStatus(),
                 itemsRecorded,
-                recordedItemNames
+                recordedItemNames,
+                participant.getCreatedAt()
         );
     }
 }

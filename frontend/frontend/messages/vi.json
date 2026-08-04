@@ -62,6 +62,10 @@
         "quantity": "Số lượng"
       }
     },
+    "copy": {
+      "copied": "Đã chép",
+      "copy": "Sao chép"
+    },
     "fields": {
       "name": "Tên",
       "phone": "Số điện thoại",
@@ -504,6 +508,7 @@
     "detail": {
       "loadError": "Không tải được khách hàng",
       "actionStatus": "Trạng thái xử lý",
+      "copyContact": "Chép SĐT+địa chỉ",
       "overdueCount": "{count} quá hạn",
       "prepaidBalance": "Số dư trả trước",
       "prepaidHint": "Tổng giá trị token đang giữ",
@@ -558,6 +563,7 @@
       "title": "Trạng thái giao hàng đơn",
       "shippingStatus": "Trạng thái giao hàng",
       "carrierOrderId": "Mã vận đơn",
+      "copyCarrierId": "Chép mã vận đơn",
       "notSetYet": "Chưa có",
       "save": "Lưu",
       "saveFailed": "Không cập nhật được trạng thái giao hàng",
@@ -775,6 +781,9 @@
       "totalCost": "Tổng giá vốn",
       "grossMargin": "Biên lợi nhuận gộp",
       "carrierOrderId": "Mã vận đơn",
+      "shippingContact": "SĐT / địa chỉ",
+      "copyContact": "Chép SĐT+địa chỉ",
+      "copyCarrierId": "Chép mã vận đơn",
       "notSetYet": "Chưa có",
       "shippingStatus": "Trạng thái giao hàng",
       "customer": "Khách hàng",

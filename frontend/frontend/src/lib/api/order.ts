@@ -15,6 +15,8 @@ export type Order = {
   id: string;
   customerId: string;
   customerName: string;
+  customerPhone: string | null;
+  customerAddress: string | null;
   createdAt: string;
   recognizedRevenue: number;
   totalCost: number;

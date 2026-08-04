@@ -18,6 +18,9 @@ import { formatDateTime, vnd } from "@/src/lib/format";
 import { useAuth } from "@/components/providers/auth-provider";
 import { PendingButton } from "@/components/feedback/pending-button";
 import {
+  CopyButton,
+} from "@/components/shared/copy-button";
+import {
   SHIPPING_STATUS_COLORS,
   StatusBadge,
 } from "@/components/shared/status-badge";
@@ -129,13 +132,22 @@ function OrderShippingControls({
         <div className="grid gap-1.5">
           <Label className="text-xs">{t("carrierOrderId")}</Label>
           <div className="flex gap-2">
-            <Input
-              className="h-8"
-              value={carrierOrderId}
-              onChange={(e) => setCarrierOrderId(e.target.value)}
-              placeholder={t("notSetYet")}
-              disabled={locked}
-            />
+            <div className="flex min-w-0 flex-1 items-center gap-1">
+              <Input
+                className="h-8 min-w-0 flex-1"
+                value={carrierOrderId}
+                onChange={(e) => setCarrierOrderId(e.target.value)}
+                placeholder={t("notSetYet")}
+                disabled={locked}
+              />
+              <CopyButton
+                text={carrierOrderId || order.carrierOrderId || ""}
+                label={t("copyCarrierId")}
+                disabled={
+                  !(carrierOrderId.trim() || order.carrierOrderId?.trim())
+                }
+              />
+            </div>
             <PendingButton
               type="button"
               size="sm"
@@ -209,9 +221,16 @@ export function CustomerOrderStatusSection({
         ) : (
           <div className="space-y-1 text-sm">
             <p className="text-muted-foreground">{t("carrierOrderId")}</p>
-            <p className="font-medium">
-              {latestOrder.carrierOrderId || t("notSetYet")}
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="min-w-0 font-medium break-all">
+                {latestOrder.carrierOrderId || t("notSetYet")}
+              </p>
+              <CopyButton
+                text={latestOrder.carrierOrderId ?? ""}
+                label={t("copyCarrierId")}
+                disabled={!latestOrder.carrierOrderId?.trim()}
+              />
+            </div>
           </div>
         )}
 
@@ -254,11 +273,18 @@ export function CustomerOrderStatusSection({
                       {order.tokenCount} {t("items").toLowerCase()} ·{" "}
                       {vnd.format(order.recognizedRevenue)}
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t("carrierIdLabel", {
-                        id: order.carrierOrderId || t("notSetYet"),
-                      })}
-                    </p>
+                    <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <span className="min-w-0 break-all">
+                        {t("carrierIdLabel", {
+                          id: order.carrierOrderId || t("notSetYet"),
+                        })}
+                      </span>
+                      <CopyButton
+                        text={order.carrierOrderId ?? ""}
+                        label={t("copyCarrierId")}
+                        disabled={!order.carrierOrderId?.trim()}
+                      />
+                    </div>
                   </div>
                   <StatusBadge
                     type="shipping"

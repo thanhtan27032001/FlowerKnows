@@ -40,6 +40,8 @@ public final class OrderDtos {
             UUID id,
             UUID customerId,
             String customerName,
+            String customerPhone,
+            String customerAddress,
             Instant createdAt,
             BigDecimal recognizedRevenue,
             BigDecimal totalCost,

@@ -12,6 +12,10 @@ import { Spinner } from "@/components/feedback/spinner";
 import { OrderExportPreview } from "@/components/orders/order-export-preview";
 import { useAuth } from "@/components/providers/auth-provider";
 import {
+  CopyButton,
+  formatPhoneWithAddress,
+} from "@/components/shared/copy-button";
+import {
   orderApi,
   orderKeys,
   SHIPPING_NEXT,
@@ -230,12 +234,45 @@ function OrderCard({
               </p>
             </div>
           </div>
+
+          <div>
+            <p className="text-muted-foreground">{t("shippingContact")}</p>
+            <div className="flex items-start gap-1">
+              <div className="min-w-0">
+                <p className="font-medium">
+                  {order.customerPhone?.trim() || tCommon("fallback.noPhone")}
+                </p>
+                <p className="mt-0.5 text-sm text-muted-foreground break-words">
+                  {order.customerAddress?.trim() || t("notSetYet")}
+                </p>
+              </div>
+              <CopyButton
+                text={formatPhoneWithAddress(
+                  order.customerPhone,
+                  order.customerAddress
+                )}
+                label={t("copyContact")}
+                disabled={
+                  !order.customerPhone?.trim() && !order.customerAddress?.trim()
+                }
+              />
+            </div>
+          </div>
+
           <div>
             <p className="text-muted-foreground">{t("carrierOrderId")}</p>
-            <p className="font-medium">
-              {order.carrierOrderId || t("notSetYet")}
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="min-w-0 font-medium break-all">
+                {order.carrierOrderId || t("notSetYet")}
+              </p>
+              <CopyButton
+                text={order.carrierOrderId ?? ""}
+                label={t("copyCarrierId")}
+                disabled={!order.carrierOrderId?.trim()}
+              />
+            </div>
           </div>
+
           <ul className="space-y-1.5 text-muted-foreground">
             {order.tokens.map((token) => (
               <li key={token.id} className="min-w-0">

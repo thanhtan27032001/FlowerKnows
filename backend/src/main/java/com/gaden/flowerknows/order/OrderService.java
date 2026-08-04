@@ -130,6 +130,8 @@ public class OrderService {
                 order.getId(),
                 order.getCustomer().getId(),
                 order.getCustomer().getName(),
+                order.getCustomer().getPhone(),
+                order.getCustomer().getAddress(),
                 order.getCreatedAt(),
                 order.getRecognizedRevenue(),
                 order.getTotalCost(),

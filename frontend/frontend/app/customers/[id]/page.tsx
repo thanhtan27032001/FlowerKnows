@@ -24,6 +24,10 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useFlashIds } from "@/hooks/use-flash-ids";
 import { customerApi, customerKeys, type CustomerDetail, type CustomerToken } from "@/src/lib/api/customer";
 import { formatDateTime, vnd } from "@/src/lib/format";
+import {
+  CopyButton,
+  formatPhoneWithAddress,
+} from "@/components/shared/copy-button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -161,10 +165,22 @@ export default function CustomerDetailPage({
                       {tCommon("actions.edit")}
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {customer.phone || tCommon("fallback.noPhone")}
-                    {customer.address ? ` · ${customer.address}` : ""}
-                  </p>
+                  <div className="flex items-start gap-1 text-sm text-muted-foreground">
+                    <p className="min-w-0">
+                      {customer.phone || tCommon("fallback.noPhone")}
+                      {customer.address ? ` · ${customer.address}` : ""}
+                    </p>
+                    <CopyButton
+                      text={formatPhoneWithAddress(
+                        customer.phone,
+                        customer.address
+                      )}
+                      label={tDetail("copyContact")}
+                      disabled={
+                        !customer.phone?.trim() && !customer.address?.trim()
+                      }
+                    />
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-medium text-muted-foreground">
                       {tDetail("actionStatus")}

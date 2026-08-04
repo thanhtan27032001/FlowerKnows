@@ -49,6 +49,19 @@
       "primaryNav": "Điều hướng chính",
       "searchCustomers": "Tìm khách hàng"
     },
+    "export": {
+      "button": "Xuất ảnh",
+      "previewTitle": "Xem trước danh sách đóng gói",
+      "previewDescription": "Kiểm tra bảng tóm tắt trước khi tải hoặc chia sẻ ảnh PNG.",
+      "download": "Tải ảnh",
+      "downloading": "Đang tạo ảnh…",
+      "failed": "Không tạo được ảnh. Thử lại.",
+      "columns": {
+        "customer": "Khách hàng",
+        "item": "Món",
+        "quantity": "Số lượng"
+      }
+    },
     "fields": {
       "name": "Tên",
       "phone": "Số điện thoại",
@@ -251,7 +264,9 @@
       "showMorePool": "Xem thêm ({count})",
       "showLessPool": "Thu gọn",
       "participantsTitle": "Người tham gia",
-      "participantsEmpty": "Chưa ghi nhận người tham gia."
+      "participantsEmpty": "Chưa ghi nhận người tham gia.",
+      "selectParticipant": "Chọn người tham gia",
+      "exportLoading": "Đang tải món để xuất ảnh…"
     },
     "edit": {
       "title": "Sửa phiên live",
@@ -440,6 +455,9 @@
       "costBasis": "Giá vốn",
       "issued": "Phát hành {date}",
       "sourceCampaign": "Phiên live"
+    },
+    "export": {
+      "loadFailed": "Không tải được món của người tham gia đã chọn"
     }
   },
   "customers": {
@@ -765,7 +783,8 @@
       "carrierId": "Mã vận đơn",
       "shipping": "Giao hàng",
       "itemsCount": "{count, plural, =1 {# món} other {# món}}",
-      "costLabel": "Giá vốn/bán: {cost}/{price}"
+      "costLabel": "Giá vốn/bán: {cost}/{price}",
+      "selectOrder": "Chọn đơn hàng"
     },
     "create": {
       "title": "Tạo đơn",

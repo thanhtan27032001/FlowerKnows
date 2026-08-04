@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, ImageIcon } from "lucide-react";
 import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { Spinner } from "@/components/feedback/spinner";
+import { OrderExportPreview } from "@/components/orders/order-export-preview";
+import { useAuth } from "@/components/providers/auth-provider";
 import {
   orderApi,
   orderKeys,
@@ -21,6 +23,7 @@ import { formatCostPrice, formatDateTime, vnd, vndCost } from "@/src/lib/format"
 import { shippingStatusLabel } from "@/src/lib/i18n-labels";
 import { SHIPPING_STATUS_COLORS } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -116,9 +119,15 @@ function OrderStatusSelect({ order }: { order: Order }) {
 function OrderCard({
   order,
   highlighted,
+  selectable,
+  selected,
+  onToggleSelect,
 }: {
   order: Order;
   highlighted: boolean;
+  selectable: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   const t = useTranslations("orders.list");
   const tCommon = useTranslations("common");
@@ -130,7 +139,8 @@ function OrderCard({
         "gap-0",
         highlighted
           ? "fk-card-shadow fk-card-shadow-hover ring-2 ring-primary/50"
-          : "fk-card-shadow fk-card-shadow-hover"
+          : "fk-card-shadow fk-card-shadow-hover",
+        selected && "bg-primary/5"
       )}
     >
       <div
@@ -172,11 +182,20 @@ function OrderCard({
               </div>
             </div>
             <div
-              className="shrink-0"
+              className="flex shrink-0 items-center gap-2"
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
             >
               <OrderStatusSelect order={order} />
+              {selectable && (
+                <input
+                  type="checkbox"
+                  className="size-4 shrink-0 rounded border-border accent-primary"
+                  checked={selected}
+                  onChange={onToggleSelect}
+                  aria-label={t("selectOrder")}
+                />
+              )}
             </div>
           </div>
         </CardHeader>
@@ -241,16 +260,49 @@ function OrderCard({
 
 export function OrderList({ highlightId }: Props) {
   const t = useTranslations("orders.list");
+  const tExport = useTranslations("common.export");
+  const { isOwner } = useAuth();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [previewOpen, setPreviewOpen] = useState(false);
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: orderKeys.lists(),
     queryFn: () => orderApi.list(),
   });
 
   const orders = data ?? [];
+  const selectedOrders = useMemo(
+    () => (data ?? []).filter((order) => selectedIds.has(order.id)),
+    [data, selectedIds]
+  );
+
+  const toggleSelect = (orderId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="relative space-y-4">
       <QueryProgressBar active={isFetching && !isLoading} />
+
+      {isOwner && !isLoading && !isError && orders.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            disabled={selectedIds.size === 0}
+            onClick={() => setPreviewOpen(true)}
+          >
+            <ImageIcon data-icon="inline-start" />
+            {tExport("button")}
+          </Button>
+        </div>
+      )}
 
       {isLoading && <ListSkeleton cardsOnly />}
 
@@ -278,9 +330,20 @@ export function OrderList({ highlightId }: Props) {
               key={order.id}
               order={order}
               highlighted={highlightId === order.id}
+              selectable={isOwner}
+              selected={selectedIds.has(order.id)}
+              onToggleSelect={() => toggleSelect(order.id)}
             />
           ))}
         </div>
+      )}
+
+      {isOwner && (
+        <OrderExportPreview
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          orders={selectedOrders}
+        />
       )}
     </div>
   );

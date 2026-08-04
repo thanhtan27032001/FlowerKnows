@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 4.1 (US-13: adds inline "Create Product" overlay from within Stock In form, avoiding a form-abandonment round trip)
+**Version:** 4.3 (US-36 iOS Share Sheet fix for image export; adds US-37 — Export Campaign Participant Items as an image, sharing US-36's export utility)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -103,7 +103,6 @@ This is the single source of truth for schema design across the whole document.
 | `total_bags_purchased` | int | Cumulative if purchased multiple times |
 | `prepaid_amount` | decimal | Amount prepaid (= total_bags_purchased × bag_price). **`0` while `status = draft`** — no money has actually been collected yet |
 | `status` | enum | `draft` / `confirmed`. Default `confirmed` (existing rows and the normal US-03 flow). See US-27 — `draft` rows do NOT count against the campaign's sold/remaining bag count, and do not appear in prepaid/revenue reconciliation until confirmed |
-| `created_at` | datetime | When the participant was first added to the campaign (used to sort the participant list ascending) |
 
 ### `item_token` (Token — core entity of the system)
 | Field | Type | Description |
@@ -622,6 +621,51 @@ This is the single source of truth for schema design across the whole document.
 
 ---
 
+### US-36: Export selected Orders as a packing-list image
+
+**As** Owner, **I want to** select multiple orders from the Order list and export a summary table (customer / item / quantity) as a downloadable image, **so that** I can share a clear packing list with whoever is packing or shipping orders, without them needing access to the app itself.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Owner is on the Order list screen | Views the list | Each order row/card has a selection checkbox |
+| 2 | Owner selects one or more orders | — | An "Xuất ảnh" (Export Image) button becomes active. **Owner only** -- this button is not shown to Staff |
+| 3 | >= 1 order selected | Clicks "Xuất ảnh" | The system aggregates the selected orders' contents: for every included `item_token`, look up its `product` and the order's `customer`. Group rows by `customer` (merging cells visually the same way as the reference layout); within each customer's group, group by `product` name and **sum quantity** if the same product appears more than once (e.g. across multiple selected orders for that same customer, or multiple tokens of the same product in one order) |
+| 4 | Aggregated data is ready | — | Renders as an HTML table matching the reference format exactly: **Customer** column (cell spans/merges across all of that customer's item rows) | **Item** column (product name) | **Quantity** column (summed count) |
+| 5 | Table is rendered | — | Converted client-side into a downloadable image (PNG) -- this is a **frontend-only** feature, no backend endpoint needed, since all the underlying order/token/product data is already available from existing APIs. Use a DOM-to-image library (e.g. `html2canvas` or equivalent) to capture the rendered table |
+| 6 | Image is generated | On a browser/device that supports the **Web Share API with file attachments** (`navigator.canShare({ files: [...] })` returns true — this is how iOS Safari behaves) | Opens the native **share sheet** (`navigator.share()` with the PNG as a file) instead of a plain download — this is the only reliable way to get "Save Image" into the iOS Photos library; a standard `<a download>` link does **not** trigger a proper save on iOS Safari (known platform limitation, this was the bug being fixed in v4.3) |
+| 6b | Image is generated | On a browser/device **without** Web Share API file support (desktop browsers, most Android browsers) | Falls back to the standard `<a download="orders-export-YYYY-MM-DD.png">` browser download — this already works correctly on those platforms, no change needed there |
+| 7 | No orders are selected | — | The "Xuất ảnh" button stays disabled |
+
+**Access:** Owner only.
+
+**Note:** This is purely a client-side rendering/export feature -- no new entity, no new API endpoint. It reuses the existing Order list data (already includes customer, tokens, and product info per the current Order screen, per the shop's own reference screenshot). **The image-generation + share/download logic (html2canvas capture + Web Share API/fallback from AC #6/#6b) should be built as a shared, reusable utility** -- US-37 below needs the exact same export mechanism, just fed different source data.
+
+---
+
+### US-37: Export a Campaign's participant items as an image
+
+**As** Owner, **I want to** select participants within a Campaign and export their items (customer / item / quantity) as a downloadable image, **so that** I have the same kind of shareable packing-list image as US-36, but scoped to one Campaign's participants instead of selected Orders.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Owner is on a Campaign's participant view (US-16) | Views the participant list | Each participant row has a selection checkbox |
+| 2 | Owner selects one or more participants | -- | An "Xuất ảnh" (Export Image) button becomes active. **Owner only** -- not shown to Staff |
+| 3 | >= 1 participant selected | Clicks "Xuất ảnh" | The system uses each selected participant's item_token list exactly as already displayed in US-16 (including the "new item (~~old item~~)" formatting for exchanged tokens per US-16 AC #3) -- no new data-fetching logic, reuse what's already loaded on that screen |
+| 4 | Data is ready | -- | Renders the same table format as US-36: **Customer** column (participant's customer name, cell spans across their item rows) \| **Item** column \| **Quantity** column (grouped/summed by product name per customer, same aggregation rule as US-36) |
+| 5 | Table is rendered | -- | Uses the **same shared export utility** built for US-36 (html2canvas capture, Web Share API on iOS per AC #6/#6b of US-36, standard download fallback elsewhere) -- do not duplicate this logic |
+| 6 | Image is generated | -- | Filename like `campaign-{campaign-name}-export-YYYY-MM-DD.png` |
+| 7 | No participants selected | -- | The "Xuất ảnh" button stays disabled |
+
+**Access:** Owner only.
+
+**Note:** This is the same export mechanism as US-36, applied to a different data source (Campaign participants' tokens instead of selected Orders' tokens). Both features should share one underlying "export table as image" component/utility, parameterized by input rows, rather than being built as two separate implementations.
+
+---
+
 ## MODULE 8 — Dashboard & Reports
 
 ### US-10: View Inventory Report
@@ -926,6 +970,7 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | US-07 Cash Out | ✅ | ❌ |
 | US-08 Cancel Token (incl. overdue alerts) | ✅ | ❌ |
 | US-09 Create Order / update shipping status | ✅ | ❌ |
+| US-36 Export Orders as Image | ✅ | ❌ |
 | US-12 Create Product | ✅ | ✅ |
 | US-32 Search & Sort Product List | ✅ | ✅ |
 | US-13 Stock In | ✅ | ✅ |
@@ -935,6 +980,7 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | Products nav item | ✅ | ✅ (visible, but "Adjust Stock" action hidden/blocked) |
 | US-16 View participant items from Campaign page | ✅ | ✅ (read-only — same restriction as US-05) |
 | US-16 Item Exchange / Cash Out from Campaign page | ✅ | ❌ |
+| US-37 Export Campaign Participant Items as Image | ✅ | ❌ |
 | US-17 Dashboard | ✅ | ❌ (hidden from nav entirely) |
 | US-10/US-11 Reports | ✅ | ❌ (hidden from nav entirely) |
 | US-18 Update `customer.action_status` | ✅ | ✅ |

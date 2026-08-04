@@ -44,6 +44,10 @@ type Props = {
   participant: ParticipantSummary;
   canRecordItem: boolean;
   onRecordItem: () => void;
+  /** Owner-only US-37 export selection (hidden when undefined). */
+  exportSelectable?: boolean;
+  exportSelected?: boolean;
+  onToggleExportSelect?: () => void;
 };
 
 function toCustomerToken(
@@ -72,8 +76,12 @@ export function ParticipantItemsPanel({
   participant,
   canRecordItem,
   onRecordItem,
+  exportSelectable = false,
+  exportSelected = false,
+  onToggleExportSelect,
 }: Props) {
   const t = useTranslations("campaigns.participantPanel");
+  const tDetail = useTranslations("campaigns.detail");
   const tCommon = useTranslations("common");
   const { isOwner } = useAuth();
   const queryClient = useQueryClient();
@@ -223,7 +231,12 @@ export function ParticipantItemsPanel({
   const canDeleteParticipant = campaignOpen && itemsRecorded === 0;
 
   return (
-    <div className="min-w-0 max-w-full overflow-hidden rounded-lg bg-card ring-1 ring-foreground/10">
+    <div
+      className={cn(
+        "min-w-0 max-w-full overflow-hidden rounded-lg bg-card ring-1 ring-foreground/10",
+        exportSelected && "bg-primary/5"
+      )}
+    >
       <div className="flex min-w-0 items-stretch gap-1">
         <button
           type="button"
@@ -266,6 +279,17 @@ export function ParticipantItemsPanel({
             </span>
           </span>
         </button>
+        {exportSelectable && (
+          <div className="flex items-center px-3">
+            <input
+              type="checkbox"
+              className="size-4 shrink-0 rounded border-border accent-primary"
+              checked={exportSelected}
+              onChange={() => onToggleExportSelect?.()}
+              aria-label={tDetail("selectParticipant")}
+            />
+          </div>
+        )}
       </div>
 
       {campaignOpen && (

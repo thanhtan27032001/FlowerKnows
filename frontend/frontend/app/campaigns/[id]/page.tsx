@@ -8,6 +8,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { AppShell } from "@/components/layout/app-shell";
+import { CampaignParticipantExportBar } from "@/components/campaigns/campaign-participant-export-bar";
 import { CloseCampaignDialog } from "@/components/campaigns/close-campaign-dialog";
 import { DeleteCampaignDialog } from "@/components/campaigns/delete-campaign-dialog";
 import { EditCampaignForm } from "@/components/campaigns/edit-campaign-form";
@@ -89,6 +90,9 @@ export default function CampaignDetailPage({
   const [itemOpen, setItemOpen] = useState(false);
   const [itemCustomerId, setItemCustomerId] = useState("");
   const [poolExpanded, setPoolExpanded] = useState(false);
+  const [exportSelectedIds, setExportSelectedIds] = useState<Set<string>>(
+    new Set()
+  );
 
   const {
     data: campaign,
@@ -119,6 +123,15 @@ export default function CampaignDetailPage({
       ),
     [campaign?.participants]
   );
+
+  const toggleExportSelect = (participantId: string) => {
+    setExportSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(participantId)) next.delete(participantId);
+      else next.add(participantId);
+      return next;
+    });
+  };
 
   const canDelete = (campaign?.participants.length ?? 0) === 0;
 
@@ -357,15 +370,23 @@ export default function CampaignDetailPage({
                 <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
                   {tDetail("participantsTitle")}
                 </h2>
-                {campaign.status === "OPEN" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setParticipantOpen(true)}
-                  >
-                    {tDetail("recordParticipant")}
-                  </Button>
-                )}
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {isOwner && participantsByAddedAsc.length > 0 && (
+                    <CampaignParticipantExportBar
+                      campaign={campaign}
+                      selectedIds={exportSelectedIds}
+                    />
+                  )}
+                  {campaign.status === "OPEN" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setParticipantOpen(true)}
+                    >
+                      {tDetail("recordParticipant")}
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {participantsByAddedAsc.length === 0 ? (
@@ -376,18 +397,23 @@ export default function CampaignDetailPage({
                 </Card>
               ) : (
                 <div className="grid min-w-0 gap-1">
-                  {participantsByAddedAsc.map((p) => (
-                    <ParticipantItemsPanel
-                      key={p.id}
-                      campaign={campaign}
-                      participant={p}
-                      canRecordItem={
-                        campaign.status === "OPEN" &&
-                        (p.status ?? "CONFIRMED") === "CONFIRMED"
-                      }
-                      onRecordItem={() => openRecordItem(p.customerId)}
-                    />
-                  ))}
+                  {participantsByAddedAsc.map((p) => {
+                    const isDraft = (p.status ?? "CONFIRMED") === "DRAFT";
+                    return (
+                      <ParticipantItemsPanel
+                        key={p.id}
+                        campaign={campaign}
+                        participant={p}
+                        canRecordItem={
+                          campaign.status === "OPEN" && !isDraft
+                        }
+                        onRecordItem={() => openRecordItem(p.customerId)}
+                        exportSelectable={isOwner && !isDraft}
+                        exportSelected={exportSelectedIds.has(p.id)}
+                        onToggleExportSelect={() => toggleExportSelect(p.id)}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </section>

@@ -13,29 +13,22 @@ const pad: CSSProperties = {
   fontFamily: "Arial, Helvetica, sans-serif",
   fontSize: "14px",
   color: "#111111",
-  display: "flex",
-  alignItems: "center",
 };
 
 function ItemCellContent({ item }: { item: ExportItem }) {
   if (item.display.kind === "exchanged") {
     return (
-      <>
+      <span>
         <span style={{ fontWeight: 500 }}>
           {item.display.newNames.join(", ")}
         </span>
-        <span>
-          {" "}
-          (
-          <span style={{ textDecoration: "line-through" }}>
-            {item.display.oldName}
-          </span>
-          )
-        </span>
-      </>
+        {" ("}
+        <span style={{ color: "#c62828" }}>{item.display.oldName}</span>
+        {")"}
+      </span>
     );
   }
-  return <>{item.display.name}</>;
+  return <span>{item.display.name}</span>;
 }
 
 /**
@@ -66,7 +59,6 @@ export function PackingListTable({
       <div
         style={{
           display: "flex",
-          alignItems: "stretch",
           backgroundColor: "#f3f3f3",
           fontWeight: 700,
           border: "1px solid #222222",
@@ -82,13 +74,13 @@ export function PackingListTable({
         >
           {labels.customer}
         </div>
-        <div style={{ display: "flex", flex: 1, minWidth: 0, alignItems: "stretch" }}>
+        <div style={{ display: "flex", flex: 1, minWidth: 0 }}>
           <div style={{ ...pad, flex: 1, minWidth: 0 }}>{labels.item}</div>
           <div
             style={{
               ...pad,
               width: COL_QTY,
-              justifyContent: "flex-end",
+              textAlign: "right",
               flexShrink: 0,
               borderLeft: "1px solid #222222",
             }}
@@ -103,7 +95,6 @@ export function PackingListTable({
           key={group.customerId}
           style={{
             display: "flex",
-            alignItems: "stretch",
             border: "1px solid #222222",
             borderTop: "none",
             backgroundColor: "#ffffff",
@@ -126,7 +117,6 @@ export function PackingListTable({
                 key={`${group.customerId}-${item.key}`}
                 style={{
                   display: "flex",
-                  alignItems: "stretch",
                   borderTop: index > 0 ? "1px solid #222222" : undefined,
                 }}
               >
@@ -137,7 +127,7 @@ export function PackingListTable({
                   style={{
                     ...pad,
                     width: COL_QTY,
-                    justifyContent: "flex-end",
+                    textAlign: "right",
                     flexShrink: 0,
                     borderLeft: "1px solid #222222",
                     fontVariantNumeric: "tabular-nums",

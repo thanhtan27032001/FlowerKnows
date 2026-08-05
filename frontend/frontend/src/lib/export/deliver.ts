@@ -1,7 +1,5 @@
-function isShareCancel(err: unknown): boolean {
-  if (!(err instanceof DOMException)) return false;
-  // User dismissed the share sheet — not a failure (US-36 AC#6).
-  return err.name === "AbortError" || err.name === "NotAllowedError";
+function isShareAbort(err: unknown): boolean {
+  return err instanceof DOMException && err.name === "AbortError";
 }
 
 function downloadBlob(blob: Blob, filename: string): void {
@@ -13,40 +11,87 @@ function downloadBlob(blob: Blob, filename: string): void {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  // Delay revoke so Safari can start the download.
+  window.setTimeout(() => URL.revokeObjectURL(url), 2_000);
+}
+
+/** Probe whether this browser can share image files (iOS Safari, some Android). */
+export function canNativeShareImageFile(): boolean {
+  if (
+    typeof navigator === "undefined" ||
+    typeof navigator.share !== "function" ||
+    typeof navigator.canShare !== "function"
+  ) {
+    return false;
+  }
+  try {
+    const probe = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "probe.png", {
+      type: "image/png",
+    });
+    return navigator.canShare({ files: [probe] });
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Deliver a PNG blob to the user.
+ * Open the native share sheet with a PNG file (iOS → Save Image / Photos).
+ * Must be called directly from a user gesture (click) with a ready File —
+ * do not await heavy work (html2canvas) before calling this.
  *
- * - iOS Safari (and similar): Web Share API with files → native share sheet
- *   ("Save Image" into Photos). Plain `<a download>` does not work there.
- * - Desktop / most Android: `<a download>` fallback.
+ * Returns:
+ * - `shared` — sheet completed or user cancelled (AbortError)
+ * - `unavailable` — share not supported / blocked → caller should download
+ */
+export async function nativeSharePngFile(
+  file: File,
+  title: string
+): Promise<"shared" | "unavailable"> {
+  if (
+    typeof navigator === "undefined" ||
+    typeof navigator.share !== "function"
+  ) {
+    return "unavailable";
+  }
+
+  const payload: ShareData = { files: [file], title };
+  if (
+    typeof navigator.canShare === "function" &&
+    !navigator.canShare(payload)
+  ) {
+    return "unavailable";
+  }
+
+  try {
+    await navigator.share(payload);
+    return "shared";
+  } catch (err) {
+    // User closed the sheet — not an error.
+    if (isShareAbort(err)) return "shared";
+    // NotAllowedError / TypeError / etc. → fall back to download.
+    console.warn("Native share unavailable, falling back to download", err);
+    return "unavailable";
+  }
+}
+
+export function downloadPngBlob(blob: Blob, filename: string): void {
+  downloadBlob(blob, filename);
+}
+
+/**
+ * Deliver a PNG blob: prefer native share when available, else download.
+ * Prefer calling `nativeSharePngFile` from a click handler with a pre-built
+ * File so the user-activation gesture is preserved.
  */
 export async function deliverPngBlob(
   blob: Blob,
   filename: string
 ): Promise<"shared" | "downloaded"> {
   const file = new File([blob], filename, { type: "image/png" });
-
-  const canShareFiles =
-    typeof navigator !== "undefined" &&
-    typeof navigator.canShare === "function" &&
-    typeof navigator.share === "function" &&
-    navigator.canShare({ files: [file] });
-
-  if (canShareFiles) {
-    try {
-      await navigator.share({ files: [file], title: filename });
-      return "shared";
-    } catch (err) {
-      if (isShareCancel(err)) {
-        return "shared";
-      }
-      throw err;
-    }
+  if (canNativeShareImageFile()) {
+    const result = await nativeSharePngFile(file, filename);
+    if (result === "shared") return "shared";
   }
-
-  downloadBlob(blob, filename);
+  downloadPngBlob(blob, filename);
   return "downloaded";
 }

@@ -82,7 +82,7 @@ function OrderStatusSelect({ order }: { order: Order }) {
           disabled={mutation.isPending || order.shippingStatus === "COMPLETED"}
         >
           <SelectTrigger
-            className="h-8 w-[150px] font-medium"
+            className="h-7 w-fit max-w-[8rem] gap-1 px-2 text-xs font-medium"
             style={{
               backgroundColor: colors.bg,
               color: colors.fg,
@@ -298,7 +298,9 @@ function OrderCard({
 export function OrderList({ highlightId }: Props) {
   const t = useTranslations("orders.list");
   const tExport = useTranslations("common.export");
+  const tCommon = useTranslations("common");
   const { isOwner } = useAuth();
+  const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [previewOpen, setPreviewOpen] = useState(false);
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
@@ -312,6 +314,9 @@ export function OrderList({ highlightId }: Props) {
     [data, selectedIds]
   );
 
+  const allSelected =
+    orders.length > 0 && selectedIds.size === orders.length;
+
   const toggleSelect = (orderId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -324,20 +329,54 @@ export function OrderList({ highlightId }: Props) {
     });
   };
 
+  const selectAll = () => {
+    setSelectedIds(new Set(orders.map((order) => order.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const exitSelectMode = () => {
+    setSelecting(false);
+    setSelectedIds(new Set());
+  };
+
   return (
     <div className="relative space-y-4">
       <QueryProgressBar active={isFetching && !isLoading} />
 
       {isOwner && !isLoading && !isError && orders.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            disabled={selectedIds.size === 0}
-            onClick={() => setPreviewOpen(true)}
-          >
-            <ImageIcon data-icon="inline-start" />
-            {tExport("button")}
-          </Button>
+          {!selecting ? (
+            <Button type="button" variant="outline" onClick={() => setSelecting(true)}>
+              {t("enterSelectMode")}
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="button"
+                disabled={selectedIds.size === 0}
+                onClick={() => setPreviewOpen(true)}
+              >
+                <ImageIcon data-icon="inline-start" />
+                {tExport("button")}
+                {selectedIds.size > 0 ? ` (${selectedIds.size})` : null}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={allSelected ? clearSelection : selectAll}
+              >
+                {allSelected
+                  ? tCommon("actions.clear")
+                  : tCommon("actions.selectAll")}
+              </Button>
+              <Button type="button" variant="outline" onClick={exitSelectMode}>
+                {tCommon("actions.cancel")}
+              </Button>
+            </>
+          )}
         </div>
       )}
 
@@ -367,7 +406,7 @@ export function OrderList({ highlightId }: Props) {
               key={order.id}
               order={order}
               highlighted={highlightId === order.id}
-              selectable={isOwner}
+              selectable={isOwner && selecting}
               selected={selectedIds.has(order.id)}
               onToggleSelect={() => toggleSelect(order.id)}
             />

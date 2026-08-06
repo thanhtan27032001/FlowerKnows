@@ -805,7 +805,8 @@
       "shipping": "Giao hàng",
       "itemsCount": "{count, plural, =1 {# món} other {# món}}",
       "costLabel": "Giá vốn/bán: {cost}/{price}",
-      "selectOrder": "Chọn đơn hàng"
+      "selectOrder": "Chọn đơn hàng",
+      "enterSelectMode": "Chọn đơn để xuất"
     },
     "create": {
       "title": "Tạo đơn",

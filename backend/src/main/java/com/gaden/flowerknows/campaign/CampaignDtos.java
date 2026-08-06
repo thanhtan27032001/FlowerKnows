@@ -31,7 +31,8 @@ public final class CampaignDtos {
             @DecimalMin(value = "0", inclusive = false, message = "bagPrice must be positive")
             BigDecimal bagPrice,
             @Min(value = 1, message = "totalBags must be at least 1") int totalBags,
-            @NotEmpty(message = "pool must not be empty")
+            /** May be empty — pool can be filled in later (US-01 v4.4). */
+            @NotNull(message = "pool is required")
             @Valid List<PoolItemRequest> pool
     ) {
     }
@@ -127,6 +128,8 @@ public final class CampaignDtos {
             LocalDate eventDate,
             BigDecimal bagPrice,
             int totalBags,
+            /** Sum of campaign_pool.loaded_quantity — for pool-completeness UI (US-01 AC#5). */
+            int poolQuantityTotal,
             CampaignStatus status,
             long bagsSold,
             Instant createdAt,

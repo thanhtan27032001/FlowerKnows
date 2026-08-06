@@ -67,10 +67,10 @@ public class CampaignService {
     @Transactional
     public CampaignDtos.CampaignDetailResponse createCampaign(CampaignDtos.CreateCampaignRequest request) {
         int poolSum = request.pool().stream().mapToInt(CampaignDtos.PoolItemRequest::loadedQuantity).sum();
-        if (poolSum != request.totalBags()) {
+        if (poolSum > request.totalBags()) {
             throw new BusinessException(
-                    "total_bags (%d) must equal the sum of loaded_quantity (%d)"
-                            .formatted(request.totalBags(), poolSum)
+                    "sum of loaded_quantity (%d) must not exceed total_bags (%d)"
+                            .formatted(poolSum, request.totalBags())
             );
         }
 
@@ -558,6 +558,9 @@ public class CampaignService {
 
     private CampaignDtos.CampaignDetailResponse toDetail(Campaign campaign, boolean includeTokenStats) {
         long bagsSold = participantRepository.sumBagsPurchasedByCampaign(campaign.getId());
+        int poolQuantityTotal = campaign.getPoolItems().stream()
+                .mapToInt(CampaignPool::getLoadedQuantity)
+                .sum();
 
         List<CampaignDtos.PoolItemResponse> pool = campaign.getPoolItems().stream()
                 .map(p -> new CampaignDtos.PoolItemResponse(
@@ -576,6 +579,7 @@ public class CampaignService {
                     campaign.getEventDate(),
                     campaign.getBagPrice(),
                     campaign.getTotalBags(),
+                    poolQuantityTotal,
                     campaign.getStatus(),
                     bagsSold,
                     campaign.getCreatedAt(),
@@ -620,6 +624,7 @@ public class CampaignService {
                 campaign.getEventDate(),
                 campaign.getBagPrice(),
                 campaign.getTotalBags(),
+                poolQuantityTotal,
                 campaign.getStatus(),
                 bagsSold,
                 campaign.getCreatedAt(),

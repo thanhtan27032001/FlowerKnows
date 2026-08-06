@@ -304,9 +304,19 @@ export default function CampaignDetailPage({
             </Card>
 
             <section className="min-w-0 space-y-3">
-              <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
-                {tDetail("poolTitle")}
-              </h2>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
+                  {tDetail("poolTitle")}
+                </h2>
+                {campaign.poolQuantityTotal < campaign.totalBags ? (
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {tDetail("poolLoadedHint", {
+                      loaded: campaign.poolQuantityTotal,
+                      total: campaign.totalBags,
+                    })}
+                  </p>
+                ) : null}
+              </div>
 
               {campaign.pool.length === 0 ? (
                 <Card className="border-border/70 bg-muted/20">

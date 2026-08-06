@@ -13,7 +13,7 @@ export default async function LoginPage() {
       <div className="relative flex min-h-svh flex-col items-center justify-center px-4 py-10">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,color-mix(in_oklch,var(--primary)_18%,transparent),transparent_55%),linear-gradient(165deg,var(--background)_0%,var(--muted)_45%,var(--background)_100%)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,color-mix(in_oklch,var(--primary)_14%,transparent),transparent_55%)] bg-background"
         />
         <div className="relative w-full max-w-sm space-y-6">
           <div className="space-y-2 text-center">

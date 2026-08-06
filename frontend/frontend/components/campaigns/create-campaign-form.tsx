@@ -105,11 +105,11 @@ export function CreateCampaignForm({
   );
 
   const totalBagsNum = Number(totalBags);
-  const quantitiesMatch =
+  const poolWithinLimit =
     totalBags !== "" &&
     Number.isInteger(totalBagsNum) &&
     totalBagsNum > 0 &&
-    poolSum === totalBagsNum;
+    poolSum <= totalBagsNum;
 
   const resetForm = () => {
     setName("");
@@ -158,12 +158,12 @@ export function CreateCampaignForm({
     }
 
     let poolValid = true;
+    const activeRows = poolRows.filter((row) => row.productId);
     const nextRows = poolRows.map((row) => {
-      const qty = Number(row.loadedQuantity);
       if (!row.productId) {
-        poolValid = false;
-        return { ...row, error: t("selectProduct") };
+        return { ...row, error: undefined };
       }
+      const qty = Number(row.loadedQuantity);
       if (
         !row.loadedQuantity ||
         Number.isNaN(qty) ||
@@ -187,11 +187,11 @@ export function CreateCampaignForm({
 
     if (!poolValid) {
       errors.pool = t("fixPool");
-    } else if (bags > 0 && poolSum !== bags) {
-      errors.pool = t("quantitiesMismatch");
+    } else if (bags > 0 && poolSum > bags) {
+      errors.pool = t("quantitiesExceed");
     }
 
-    const productIds = nextRows.map((r) => r.productId).filter(Boolean);
+    const productIds = activeRows.map((r) => r.productId);
     if (new Set(productIds).size !== productIds.length) {
       errors.pool = t("duplicateProduct");
     }
@@ -204,7 +204,7 @@ export function CreateCampaignForm({
       eventDate,
       bagPrice: price,
       totalBags: bags,
-      pool: nextRows.map((row) => ({
+      pool: activeRows.map((row) => ({
         productId: row.productId,
         loadedQuantity: Number(row.loadedQuantity),
       })),
@@ -297,6 +297,7 @@ export function CreateCampaignForm({
           onChange={setPoolRows}
           totalBags={totalBags}
           disabled={locked}
+          requireAtLeastOne={false}
         />
 
         {fieldErrors.pool && (
@@ -327,7 +328,7 @@ export function CreateCampaignForm({
         pending={createMutation.isPending}
         success={succeeded}
         pendingLabel={tCommon("pending.creating")}
-        disabled={!quantitiesMatch}
+        disabled={!poolWithinLimit}
         onClick={submit}
       >
         {t("createButton")}

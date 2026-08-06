@@ -160,6 +160,10 @@
       "OWNER": "Owner",
       "STAFF": "Staff"
     },
+    "password": {
+      "show": "Hiện mật khẩu",
+      "hide": "Ẩn mật khẩu"
+    },
     "login": {
       "title": "Đăng nhập để tiếp tục",
       "username": "Tên đăng nhập",
@@ -268,6 +272,7 @@
       "deleteBlockedTooltip": "Không thể xóa campaign đã có khách tham gia. Hãy đóng campaign thay vì xóa.",
       "closedNotice": "Phiên live đã đóng — chỉ xem và đổi món / đổi tiền; không thể sửa hoặc ghi nhận thêm.",
       "poolTitle": "Pool sản phẩm",
+      "poolLoadedHint": "Pool: {loaded}/{total} túi đã có sản phẩm",
       "loaded": "Đã nạp",
       "remaining": "Còn lại",
       "poolEmpty": "Chưa có sản phẩm trong pool phiên live.",
@@ -330,6 +335,7 @@
       "fixPool": "Sửa pool sản phẩm trước khi tạo",
       "duplicateProduct": "Mỗi sản phẩm chỉ được xuất hiện một lần trong pool",
       "quantitiesMismatch": "Tổng số lượng nạp phải bằng tổng số túi",
+      "quantitiesExceed": "Tổng số lượng nạp không được vượt quá tổng số túi",
       "emptyPoolHint": "Chưa có sản phẩm — thêm dòng hoặc chạy gợi ý.",
       "emptyWishlistHint": "Chưa chọn sản phẩm bắt buộc — thêm nếu cần.",
       "failed": "Không tạo được phiên live"

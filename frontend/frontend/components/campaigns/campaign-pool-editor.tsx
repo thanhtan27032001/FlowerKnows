@@ -85,7 +85,13 @@ export function CampaignPoolEditor({
   );
 
   const totalBagsNum = Number(totalBags);
-  const quantitiesMatch =
+  const poolOverLimit =
+    totalBags !== undefined &&
+    totalBags !== "" &&
+    Number.isInteger(totalBagsNum) &&
+    totalBagsNum > 0 &&
+    poolSum > totalBagsNum;
+  const poolComplete =
     totalBags !== undefined &&
     totalBags !== "" &&
     Number.isInteger(totalBagsNum) &&
@@ -117,9 +123,11 @@ export function CampaignPoolEditor({
           <p className="mt-0.5 text-xs text-muted-foreground">
             <span
               className={
-                quantitiesMatch
-                  ? "font-medium text-foreground"
-                  : "font-medium text-destructive"
+                poolOverLimit
+                  ? "font-medium text-destructive"
+                  : poolComplete
+                    ? "font-medium text-foreground"
+                    : "font-medium text-muted-foreground"
               }
             >
               {poolSum}

@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 4.3 (US-36 iOS Share Sheet fix for image export; adds US-37 — Export Campaign Participant Items as an image, sharing US-36's export utility)
+**Version:** 4.4 (US-01: partial/empty campaign pool allowed; US-21/US-22: case-insensitive username uniqueness & login)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -34,7 +34,7 @@ This is the single source of truth for schema design across the whole document.
 | Field | Type | Description |
 |---|---|---|
 | `id` | PK | |
-| `username` | string, unique | Login identifier |
+| `username` | string, unique (case-insensitive) | Login identifier — stored as entered; uniqueness and login lookup ignore letter case (e.g. `Owner` and `owner` are the same account identity) |
 | `password_hash` | string | BCrypt hash — never store or log plaintext |
 | `full_name` | string | Display name |
 | `role` | enum | `owner` / `staff` |
@@ -190,12 +190,12 @@ This is the single source of truth for schema design across the whole document.
 
 | # | Given | When | Then |
 |---|---|---|---|
-| 1 | Staff is on the "Campaign List" screen | Clicks "Create New Campaign" | A form is shown to enter: `name`, `event_date`, `bag_price`, a `campaign_pool` list (select `product` + `loaded_quantity` per product) |
-| 2 | Staff has selected products & quantities for the pool | The sum of `loaded_quantity` across rows equals the desired `total_bags` (N) | The system allows submission |
+| 1 | Staff is on the "Campaign List" screen | Clicks "Create New Campaign" | A form is shown to enter: `name`, `event_date`, `bag_price`, `total_bags`, and an optional `campaign_pool` list (select `product` + `loaded_quantity` per product). Pool may be empty at creation |
+| 2 | Staff has entered `total_bags` and (optionally) pool rows | The sum of `loaded_quantity` across pool rows is **between 0 and `total_bags` inclusive** | The system allows submission — a partial pool (sum < `total_bags`) or an empty pool is valid |
 | 3 | Staff selects a product with `loaded_quantity` > current `product.stock_quantity` | Clicks submit | The system shows an error "Product X does not have enough stock (Y available, Z requested)" and blocks creation |
-| 4 | The form is valid | Clicks "Create Campaign" | The system: (a) creates the `campaign` with `status = open`, (b) creates the corresponding `campaign_pool` rows with `remaining_quantity = loaded_quantity`, (c) **deducts `product.stock_quantity`** by `loaded_quantity`, (d) shows a success message |
-| 5 | The campaign has been created | Staff views its details | Shows: basic info, `campaign_pool` list (product — loaded_quantity — remaining_quantity), `campaign_participant` list, total bags sold / `total_bags` |
-| 6 | — | Staff enters `total_bags` ≠ the sum of `loaded_quantity` selected | The system shows an error and requires the quantities to match before submission |
+| 4 | The form is valid | Clicks "Create Campaign" | The system: (a) creates the `campaign` with `status = open`, (b) creates the corresponding `campaign_pool` rows (if any) with `remaining_quantity = loaded_quantity`, (c) **deducts `product.stock_quantity`** by `loaded_quantity` for each pool row, (d) shows a success message |
+| 5 | The campaign has been created | Staff views its details | Shows: basic info, `campaign_pool` list (product — loaded_quantity — remaining_quantity), and when `poolQuantityTotal` < `total_bags` an incomplete-pool hint `Pool: {poolQuantityTotal}/{total_bags} túi đã có sản phẩm` (`poolQuantityTotal` = sum of `loaded_quantity`); also `campaign_participant` list and bags sold / `total_bags` |
+| 6 | — | Staff enters a pool whose sum of `loaded_quantity` **exceeds** `total_bags` | The system shows an error and blocks submission. Sums **below** `total_bags` (including zero) are allowed |
 | 7 | Staff attempts to add the same `product` as a second row in the pool (already selected in another row) | — | Not allowed — **each product may appear at most once per `campaign_pool`** (enforced by a `UNIQUE (campaign_id, product_id)` DB constraint as the source of truth). The UI should prevent selecting an already-used product in another row (disable it in the picker); if a duplicate somehow reaches the backend, it's rejected with a clear error rather than silently merged |
 
 **Business Rules applied:** Loading the pool immediately deducts `stock_quantity` (it does not wait until bags are sold).
@@ -873,10 +873,11 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | # | Given | When | Then |
 |---|---|---|---|
 | 1 | No one is logged in | Visits any page | Redirected to `/login` |
-| 2 | Valid `username` + `password` for an `is_active = true` account | Submits login form | Receives a JWT (includes `role` claim), redirected to the default landing page for that role (Owner → Dashboard, Staff → Customer List, since Staff has no Dashboard access) |
+| 2 | Valid `username` + `password` for an `is_active = true` account | Submits login form | Receives a JWT (includes `role` claim), redirected to the default landing page for that role (Owner → Dashboard, Staff → Customer List, since Staff has no Dashboard access). **Username match is case-insensitive** (e.g. stored `Owner` logs in with `owner` / `OWNER`) |
 | 3 | Invalid credentials | Submits | Generic error "Sai tên đăng nhập hoặc mật khẩu" (do not reveal whether the username exists — standard security practice) |
 | 4 | Account `is_active = false` | Submits valid credentials | Same generic error as #3 (do not reveal the account is deactivated) |
 | 5 | Logged in | Clicks "Logout" | JWT cleared client-side, redirected to `/login` |
+| 6 | Login form (or create-account password field) is shown | Clicks the eye icon inside the password input | Input `type` toggles between `password` (masked) and `text` (visible); icon switches between Eye / EyeOff |
 
 ### US-22: Owner creates a new account
 
@@ -887,8 +888,8 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | # | Given | When | Then |
 |---|---|---|---|
 | 1 | Logged in as Owner | Navigates to "Quản lý tài khoản" (Account Management — Owner-only menu item) | Sees a list of existing accounts (`username`, `full_name`, `role`, `is_active`) and a "Tạo tài khoản" button |
-| 2 | Clicks "Tạo tài khoản" | — | Form: `username` (unique, required), `password` (required, minimum length enforced), `full_name` (required), `role` (select: Owner / Staff) |
-| 3 | `username` already exists | Submits | Validation error, blocks submission |
+| 2 | Clicks "Tạo tài khoản" | — | Form: `username` (unique **case-insensitively**, required), `password` (required, minimum length enforced), `full_name` (required), `role` (select: Owner / Staff) |
+| 3 | `username` already exists under any letter casing (e.g. existing `Staff1`, submitted `staff1`) | Submits | Validation error, blocks submission |
 | 4 | Valid form | Submits | New `staff_account` created with `is_active = true`, password stored as BCrypt hash |
 | 5 | Owner wants to disable an account (e.g. staff member left) | Toggles "Active" off on an existing account row | `is_active = false` — account can no longer log in, but historical records they created remain unchanged/attributed |
 

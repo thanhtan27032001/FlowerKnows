@@ -32,7 +32,7 @@ public class AccountService {
     @Transactional
     public AccountDtos.AccountResponse createAccount(AccountDtos.CreateAccountRequest request) {
         String username = request.username().trim();
-        if (staffAccountRepository.existsByUsername(username)) {
+        if (staffAccountRepository.existsByUsernameIgnoreCase(username)) {
             throw new BusinessException("Username already exists: " + username);
         }
         if (request.password().length() < MIN_PASSWORD_LENGTH) {

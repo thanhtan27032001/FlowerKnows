@@ -20,7 +20,8 @@ public class StaffAccount {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, unique = true, length = 100)
+    /** Uniqueness is case-insensitive via DB index on LOWER(username). */
+    @Column(nullable = false, length = 100)
     private String username;
 
     @Column(name = "password_hash", nullable = false)

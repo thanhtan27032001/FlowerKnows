@@ -48,8 +48,7 @@ export function MobileBottomNav() {
   return (
     <>
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/95 backdrop-blur-sm lg:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/25 bg-background/20 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-sm lg:hidden"
         aria-label={tCommon("a11y.primaryNav")}
       >
         <ul className={cn("grid h-16", gridCols)}>
@@ -65,12 +64,15 @@ export function MobileBottomNav() {
                     "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors",
                     active
                       ? "fk-nav-active-mobile"
-                      : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
+                      : "text-muted-foreground/70 hover:bg-sidebar-accent/40 hover:text-foreground"
                   )}
                   aria-current={active ? "page" : undefined}
                 >
                   <Icon
-                    className={cn("size-5", active && "stroke-[2.25px]")}
+                    className={cn(
+                      "size-5",
+                      active && "stroke-[2.25px]"
+                    )}
                     aria-hidden
                   />
                   <span className="truncate">{t(item.shortLabelKey)}</span>
@@ -87,7 +89,7 @@ export function MobileBottomNav() {
                 "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors",
                 moreActive || moreOpen
                   ? "fk-nav-active-mobile"
-                  : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
+                  : "text-muted-foreground/70 hover:bg-sidebar-accent/40 hover:text-foreground"
               )}
               aria-expanded={moreOpen}
               aria-haspopup="dialog"
@@ -95,7 +97,7 @@ export function MobileBottomNav() {
               <MoreIcon
                 className={cn(
                   "size-5",
-                  (moreActive || moreOpen) && "stroke-[2.25px]"
+                  (moreActive || moreOpen) && "text-primary stroke-[2.25px]"
                 )}
                 aria-hidden
               />

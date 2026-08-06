@@ -267,6 +267,91 @@ class CampaignLifecycleServiceTests {
         assertTrue(ex.getMessage().contains("confirmed"));
     }
 
+    @Test
+    void createCampaignSucceedsWhenPoolSumIsLessThanTotalBags() {
+        Product product = product("Lipstick", 100);
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
+        when(campaignRepository.save(any(Campaign.class))).thenAnswer(invocation -> {
+            Campaign campaign = invocation.getArgument(0);
+            if (campaign.getId() == null) {
+                setId(campaign, UUID.randomUUID());
+            }
+            for (CampaignPool poolItem : campaign.getPoolItems()) {
+                if (poolItem.getId() == null) {
+                    setId(poolItem, UUID.randomUUID());
+                }
+            }
+            return campaign;
+        });
+        when(participantRepository.sumBagsPurchasedByCampaign(any())).thenReturn(0L);
+
+        CampaignDtos.CampaignDetailResponse response = campaignService.createCampaign(
+                new CampaignDtos.CreateCampaignRequest(
+                        "Partial Pool",
+                        LocalDate.of(2026, 8, 1),
+                        BigDecimal.valueOf(89_000),
+                        50,
+                        List.of(new CampaignDtos.PoolItemRequest(product.getId(), 12))
+                )
+        );
+
+        assertEquals(50, response.totalBags());
+        assertEquals(12, response.poolQuantityTotal());
+        assertEquals(1, response.pool().size());
+        assertEquals(88, product.getStockQuantity());
+        verify(stockTransactionRepository).save(any(StockTransaction.class));
+    }
+
+    @Test
+    void createCampaignSucceedsWithZeroPoolRows() {
+        when(campaignRepository.save(any(Campaign.class))).thenAnswer(invocation -> {
+            Campaign campaign = invocation.getArgument(0);
+            if (campaign.getId() == null) {
+                setId(campaign, UUID.randomUUID());
+            }
+            return campaign;
+        });
+        when(participantRepository.sumBagsPurchasedByCampaign(any())).thenReturn(0L);
+
+        CampaignDtos.CampaignDetailResponse response = campaignService.createCampaign(
+                new CampaignDtos.CreateCampaignRequest(
+                        "Empty Pool",
+                        LocalDate.of(2026, 8, 1),
+                        BigDecimal.valueOf(89_000),
+                        50,
+                        List.of()
+                )
+        );
+
+        assertEquals(50, response.totalBags());
+        assertEquals(0, response.poolQuantityTotal());
+        assertTrue(response.pool().isEmpty());
+        verify(stockTransactionRepository, never()).save(any(StockTransaction.class));
+        verify(productRepository, never()).findById(any());
+    }
+
+    @Test
+    void createCampaignRejectsWhenPoolSumExceedsTotalBags() {
+        Product product = product("Lipstick", 100);
+
+        BusinessException ex = assertThrows(
+                BusinessException.class,
+                () -> campaignService.createCampaign(
+                        new CampaignDtos.CreateCampaignRequest(
+                                "Overfilled",
+                                LocalDate.of(2026, 8, 1),
+                                BigDecimal.valueOf(89_000),
+                                10,
+                                List.of(new CampaignDtos.PoolItemRequest(product.getId(), 12))
+                        )
+                )
+        );
+
+        assertTrue(ex.getMessage().contains("must not exceed"));
+        verify(campaignRepository, never()).save(any());
+        verify(stockTransactionRepository, never()).save(any(StockTransaction.class));
+    }
+
     private Campaign openCampaign(
             UUID campaignId,
             String name,

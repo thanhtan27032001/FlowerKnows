@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public interface StaffAccountRepository extends JpaRepository<StaffAccount, UUID> {
 
-    Optional<StaffAccount> findByUsername(String username);
+    Optional<StaffAccount> findByUsernameIgnoreCase(String username);
 
-    boolean existsByUsername(String username);
+    boolean existsByUsernameIgnoreCase(String username);
 }

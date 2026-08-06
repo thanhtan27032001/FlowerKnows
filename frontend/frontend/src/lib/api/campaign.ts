@@ -37,6 +37,7 @@ export type ParticipantSummary = {
 };
 
 export type CampaignDetail = CampaignSummary & {
+  poolQuantityTotal: number;
   pool: PoolItem[];
   participants: ParticipantSummary[];
 };

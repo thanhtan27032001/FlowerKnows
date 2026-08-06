@@ -68,7 +68,7 @@
    actually read as a line. Sidebar is now visually separated by a border +
    elevation (shadow), not by a large distinct background color. */
 :root {
-  --background: oklch(0.988 0.004 91.4); /* #FCFBF8 near-neutral, barely warm */
+  --background: #f8f9fa;
   --foreground: oklch(0.33 0.024 90.7);  /* #3A3527 deep olive-brown */
   --card: oklch(1 0 0); /* #FFFFFF */
   --card-foreground: oklch(0.33 0.024 90.7);
@@ -78,7 +78,7 @@
   --primary-foreground: oklch(0.33 0.024 90.7);
   --secondary: oklch(0.75 0.086 65.3); /* #D4A373 terracotta */
   --secondary-foreground: oklch(0.33 0.024 90.7);
-  --muted: oklch(0.952 0.012 91.5); /* #F2EFE6 — much closer to bg now, used sparingly */
+  --muted: oklch(0.975 0.004 95); /* soft gray-white for muted surfaces */
   --muted-foreground: oklch(0.523 0.025 95.5); /* #6E6A5A darkened for legibility */
   --accent: oklch(0.75 0.086 65.3);
   --accent-foreground: oklch(0.33 0.024 90.7);
@@ -207,9 +207,10 @@
   border-left: 3px solid transparent;
 }
 
-/* Mobile bottom tabs — same accent fill as desktop, without the edge bar. */
+/* Mobile bottom tabs — soft primary tint (not warm sidebar-accent, which
+   reads pink against cool gray page backgrounds like #f8f9fa). */
 .fk-nav-active-mobile {
-  background-color: var(--sidebar-accent);
+  background-color: color-mix(in oklch, var(--primary) 28%, transparent);
   font-weight: 600;
   color: var(--sidebar-foreground);
 }

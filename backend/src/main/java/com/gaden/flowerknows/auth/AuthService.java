@@ -28,7 +28,7 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthDtos.LoginResponse login(AuthDtos.LoginRequest request) {
-        StaffAccount account = staffAccountRepository.findByUsername(request.username().trim())
+        StaffAccount account = staffAccountRepository.findByUsernameIgnoreCase(request.username().trim())
                 .filter(StaffAccount::isActive)
                 .filter(a -> passwordEncoder.matches(request.password(), a.getPasswordHash()))
                 .orElseThrow(() -> new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE));

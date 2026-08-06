@@ -93,6 +93,13 @@
   --chart-5: oklch(0.597 0.221 4.8);
   --radius: 0.5rem;
 
+  /* Mobile bottom nav: icon row (h-16) + home-indicator safe area.
+     Use --fk-mobile-bottom-nav-offset for fixed UI that must sit above it. */
+  --fk-mobile-bottom-nav-height: 4rem;
+  --fk-mobile-bottom-nav-offset: calc(
+    var(--fk-mobile-bottom-nav-height) + env(safe-area-inset-bottom, 0px)
+  );
+
   /* Sidebar: same neutral background as content, NOT a separate large color
      zone — visually separated via border-right + shadow instead. */
   --sidebar: oklch(1 0 0); /* white panel, elevated */
@@ -183,6 +190,17 @@
 [data-slot="sheet-content"][data-side="left"] [data-slot="sheet-header"],
 [data-slot="sheet-content"][data-side="right"] [data-slot="sheet-header"] {
   padding-top: max(1rem, env(safe-area-inset-top, 0px));
+}
+
+/* Fixed UI (action bars, etc.) that must clear the mobile bottom nav. */
+.fk-above-mobile-nav {
+  bottom: var(--fk-mobile-bottom-nav-offset);
+}
+
+@media (min-width: 1024px) {
+  .fk-above-mobile-nav {
+    bottom: 0;
+  }
 }
 
 /* ---------------------------------------------------------------------- */

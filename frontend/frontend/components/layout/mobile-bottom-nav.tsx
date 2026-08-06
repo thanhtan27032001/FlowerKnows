@@ -51,7 +51,7 @@ export function MobileBottomNav() {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border/25 bg-white/30 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-sm lg:hidden"
         aria-label={tCommon("a11y.primaryNav")}
       >
-        <ul className={cn("grid h-16", gridCols)}>
+        <ul className={cn("grid h-[var(--fk-mobile-bottom-nav-height)]", gridCols)}>
           {primaryItems.map((item) => {
             const Icon = item.icon;
             const active = isNavActive(pathname, item.href);

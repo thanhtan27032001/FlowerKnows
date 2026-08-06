@@ -31,7 +31,7 @@ export function AppShell({
           <AppSidebar />
 
           <SidebarInset className="min-w-0 bg-transparent">
-            <div className="mx-auto w-full min-w-0 max-w-6xl overflow-x-clip px-4 py-5 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:px-6 md:py-8 lg:pb-8">
+            <div className="mx-auto w-full min-w-0 max-w-6xl overflow-x-clip px-4 py-5 pb-[calc(var(--fk-mobile-bottom-nav-offset)+1.5rem)] md:px-6 md:py-8 lg:pb-8">
               <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex items-start justify-between gap-3">
                   <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight text-foreground md:text-3xl">

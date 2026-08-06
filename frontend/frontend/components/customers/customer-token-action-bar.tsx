@@ -34,8 +34,7 @@ export function CustomerTokenActionBar({
   return (
     <div
       className={cn(
-        "fixed inset-x-0 z-40 p-3 md:p-4",
-        "bottom-16 lg:bottom-0",
+        "fk-above-mobile-nav fixed inset-x-0 z-50 p-3 md:p-4",
         "transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none",
         visible
           ? "translate-y-0 opacity-100"

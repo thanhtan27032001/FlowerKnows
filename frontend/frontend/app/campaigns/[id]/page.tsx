@@ -93,6 +93,7 @@ export default function CampaignDetailPage({
   const [exportSelectedIds, setExportSelectedIds] = useState<Set<string>>(
     new Set()
   );
+  const [exportSelecting, setExportSelecting] = useState(false);
 
   const {
     data: campaign,
@@ -131,6 +132,23 @@ export default function CampaignDetailPage({
       else next.add(participantId);
       return next;
     });
+  };
+
+  const allExportSelected =
+    confirmedParticipants.length > 0 &&
+    confirmedParticipants.every((p) => exportSelectedIds.has(p.id));
+
+  const selectAllExport = () => {
+    setExportSelectedIds(new Set(confirmedParticipants.map((p) => p.id)));
+  };
+
+  const clearExportSelection = () => {
+    setExportSelectedIds(new Set());
+  };
+
+  const exitExportSelectMode = () => {
+    setExportSelecting(false);
+    setExportSelectedIds(new Set());
   };
 
   const canDelete = (campaign?.participants.length ?? 0) === 0;
@@ -376,25 +394,64 @@ export default function CampaignDetailPage({
             </section>
 
             <section className="min-w-0 space-y-3">
-              <div className="flex flex-wrap items-end justify-between gap-2">
+              <div className="space-y-2">
                 <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
                   {tDetail("participantsTitle")}
                 </h2>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {isOwner && participantsByAddedAsc.length > 0 && (
-                    <CampaignParticipantExportBar
-                      campaign={campaign}
-                      selectedIds={exportSelectedIds}
-                    />
-                  )}
+                <div className="flex flex-col items-start gap-2">
                   {campaign.status === "OPEN" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setParticipantOpen(true)}
-                    >
-                      {tDetail("recordParticipant")}
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setParticipantOpen(true)}
+                      >
+                        {tDetail("recordParticipant")}
+                      </Button>
+                    </div>
+                  )}
+                  {isOwner && confirmedParticipants.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {!exportSelecting ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setExportSelecting(true)}
+                        >
+                          {tDetail("enterSelectMode")}
+                        </Button>
+                      ) : (
+                        <>
+                          <CampaignParticipantExportBar
+                            campaign={campaign}
+                            selectedIds={exportSelectedIds}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={
+                              allExportSelected
+                                ? clearExportSelection
+                                : selectAllExport
+                            }
+                          >
+                            {allExportSelected
+                              ? tCommon("actions.clear")
+                              : tCommon("actions.selectAll")}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={exitExportSelectMode}
+                          >
+                            {tCommon("actions.cancel")}
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -418,7 +475,9 @@ export default function CampaignDetailPage({
                           campaign.status === "OPEN" && !isDraft
                         }
                         onRecordItem={() => openRecordItem(p.customerId)}
-                        exportSelectable={isOwner && !isDraft}
+                        exportSelectable={
+                          isOwner && exportSelecting && !isDraft
+                        }
                         exportSelected={exportSelectedIds.has(p.id)}
                         onToggleExportSelect={() => toggleExportSelect(p.id)}
                       />

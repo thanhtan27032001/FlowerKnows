@@ -93,6 +93,7 @@ export function CampaignParticipantExportBar({
             <ImageIcon data-icon="inline-start" />
           )}
           {loading ? tDetail("exportLoading") : t("button")}
+          {!loading && selectedIds.size > 0 ? ` (${selectedIds.size})` : null}
         </Button>
         {error && (
           <span className="text-xs text-destructive sm:text-sm">{error}</span>

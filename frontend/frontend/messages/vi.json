@@ -281,6 +281,7 @@
       "participantsTitle": "Người tham gia",
       "participantsEmpty": "Chưa ghi nhận người tham gia.",
       "selectParticipant": "Chọn người tham gia",
+      "enterSelectMode": "Chọn khách để xuất",
       "exportLoading": "Đang tải món để xuất ảnh…"
     },
     "edit": {

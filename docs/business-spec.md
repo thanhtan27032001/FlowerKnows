@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 4.4 (US-01: partial/empty campaign pool allowed; US-21/US-22: case-insensitive username uniqueness & login)
+**Version:** 4.5 (customer.action_status gains needs_negotiate value + 2 automatic transitions: auto-set on item recording (US-04), auto-reset to undetermined when an order completes and no holding tokens remain)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -34,7 +34,7 @@ This is the single source of truth for schema design across the whole document.
 | Field | Type | Description |
 |---|---|---|
 | `id` | PK | |
-| `username` | string, unique (case-insensitive) | Login identifier — stored as entered; uniqueness and login lookup ignore letter case (e.g. `Owner` and `owner` are the same account identity) |
+| `username` | string, unique (case-insensitive) | Login identifier. Uniqueness and lookup must both be **case-insensitive** — "Owner" and "owner" are the same account, and login must match regardless of case (fixed in v4.4; was previously case-sensitive, which could confuse Staff typing their username with different capitalization) |
 | `password_hash` | string | BCrypt hash — never store or log plaintext |
 | `full_name` | string | Display name |
 | `role` | enum | `owner` / `staff` |
@@ -48,7 +48,7 @@ This is the single source of truth for schema design across the whole document.
 | `name` | string, required | Customer name — the only required field when creating a customer |
 | `phone` | string, nullable | Phone number — **optional at creation** (per v2.1); can be added/edited later via US-20 |
 | `address` | string, nullable | Free-text address (not split into structured fields like street/ward/city) — optional at creation |
-| `action_status` | enum | Staff-managed pre-order interaction status — see US-18. One of: `undetermined` / `negotiating` / `consolidating` / `needs_immediate_order`. Defaults to `undetermined`. Fully manual — both Owner and Staff can set it freely (see Permission Matrix). This field only covers the pre-order negotiation stage; once an Order exists, its lifecycle is tracked separately via `order.shipping_status`. |
+| `action_status` | enum | Pre-order interaction status — see US-18. One of: `undetermined` / `needs_negotiate` / `negotiating` / `consolidating` / `needs_immediate_order`. Defaults to `undetermined`. **No longer fully manual as of v4.5** — Owner/Staff can still set it freely at any time, but 3 automatic transitions now also apply: (1) reset to `undetermined` when a new `campaign_participant` is created (US-03 AC#7), (2) auto-set to `needs_negotiate` whenever an item is recorded (US-04), (3) auto-reset to `undetermined` when an Order reaches `shipping_status = completed` **and** the customer has no other `item_token` still `holding`. See US-18 for full detail. |
 
 ### `product`
 | Field | Type | Description |
@@ -190,17 +190,19 @@ This is the single source of truth for schema design across the whole document.
 
 | # | Given | When | Then |
 |---|---|---|---|
-| 1 | Staff is on the "Campaign List" screen | Clicks "Create New Campaign" | A form is shown to enter: `name`, `event_date`, `bag_price`, `total_bags`, and an optional `campaign_pool` list (select `product` + `loaded_quantity` per product). Pool may be empty at creation |
-| 2 | Staff has entered `total_bags` and (optionally) pool rows | The sum of `loaded_quantity` across pool rows is **between 0 and `total_bags` inclusive** | The system allows submission — a partial pool (sum < `total_bags`) or an empty pool is valid |
+| 1 | Staff is on the "Campaign List" screen | Clicks "Create New Campaign" | A form is shown to enter: `name`, `event_date`, `bag_price`, `total_bags`, and an **optional** `campaign_pool` list (select `product` + `loaded_quantity` per product) |
+| 2 | Staff has selected products & quantities for the pool | The sum of `loaded_quantity` across rows is **anything from 0 up to `total_bags`** — it does **not** need to equal `total_bags` exactly (fixed in v4.4; previously required an exact match at creation) | The system allows submission — Owner/Staff can fill in the rest of the pool later via Edit Campaign (US-24), as long as no items have been recorded yet |
 | 3 | Staff selects a product with `loaded_quantity` > current `product.stock_quantity` | Clicks submit | The system shows an error "Product X does not have enough stock (Y available, Z requested)" and blocks creation |
-| 4 | The form is valid | Clicks "Create Campaign" | The system: (a) creates the `campaign` with `status = open`, (b) creates the corresponding `campaign_pool` rows (if any) with `remaining_quantity = loaded_quantity`, (c) **deducts `product.stock_quantity`** by `loaded_quantity` for each pool row, (d) shows a success message |
-| 5 | The campaign has been created | Staff views its details | Shows: basic info, `campaign_pool` list (product — loaded_quantity — remaining_quantity), and when `poolQuantityTotal` < `total_bags` an incomplete-pool hint `Pool: {poolQuantityTotal}/{total_bags} túi đã có sản phẩm` (`poolQuantityTotal` = sum of `loaded_quantity`); also `campaign_participant` list and bags sold / `total_bags` |
-| 6 | — | Staff enters a pool whose sum of `loaded_quantity` **exceeds** `total_bags` | The system shows an error and blocks submission. Sums **below** `total_bags` (including zero) are allowed |
+| 4 | The form is valid | Clicks "Create Campaign" | The system: (a) creates the `campaign` with `status = open`, (b) creates the corresponding `campaign_pool` rows with `remaining_quantity = loaded_quantity` (possibly zero rows, if the pool is left empty to fill in later), (c) **deducts `product.stock_quantity`** by `loaded_quantity` for whatever was entered, (d) shows a success message |
+| 5 | The campaign has been created | Staff views its details | Shows: basic info, `campaign_pool` list (product — loaded_quantity — remaining_quantity), `campaign_participant` list, total bags sold / `total_bags`, and — **if the pool sum doesn't yet cover `total_bags`** — a visible indicator like "Pool: 12/50 túi đã có sản phẩm" so Owner/Staff can see at a glance that more needs to be added |
+| 6 | ~~Staff enters `total_bags` ≠ the sum of `loaded_quantity` selected~~ **Removed in v4.4** — this exact-match requirement no longer applies at creation. The only remaining requirement is `total_bags` itself being a positive integer entered by Staff |
 | 7 | Staff attempts to add the same `product` as a second row in the pool (already selected in another row) | — | Not allowed — **each product may appear at most once per `campaign_pool`** (enforced by a `UNIQUE (campaign_id, product_id)` DB constraint as the source of truth). The UI should prevent selecting an already-used product in another row (disable it in the picker); if a duplicate somehow reaches the backend, it's rejected with a clear error rather than silently merged |
 
 **Business Rules applied:** Loading the pool immediately deducts `stock_quantity` (it does not wait until bags are sold).
 
-**Dev edge case:** ~~Do not allow editing `campaign_pool`...~~ **Superseded by US-24 (v2.0)** — editing is now formally supported, gated on whether any item has been recorded yet (not on participant existence). See US-24.
+**Dev edge case:** ~~Do not allow editing `campaign_pool`...~~ **Superseded by US-24 (v2.0)** — editing is now formally supported, gated on whether any item has been recorded yet (not on participant existence). See US-24. **As of v4.4, this is now the expected primary way to complete a pool** that was intentionally left partial/empty at creation time — not just an edge-case correction tool anymore.
+
+**⚠️ Known risk (same reasoning as US-24's existing note):** Since the pool no longer has to match `total_bags` at creation, `total_bags` can diverge from actual pool capacity for a while (until Owner/Staff finishes adding products). This does NOT create a double-selling risk — US-04's existing validation still correctly blocks recording more physical items than a pool row actually has. The consequence is the same as already documented in US-24: a customer could be sold (via US-03) more bags than the pool can currently fulfill, discovered only when trying to record their item. The AC #5 indicator exists specifically to make this gap visible so it doesn't happen by surprise.
 
 ---
 
@@ -380,6 +382,8 @@ This is the single source of truth for schema design across the whole document.
 
 **Business Rules applied:** Recording items does NOT affect `product.stock_quantity` (the goods remain physically at the shop).
 
+**Also see US-18 AC #4a:** successfully recording item(s) here auto-sets the customer's `action_status` to `needs_negotiate` — implement that side effect in the same transaction as this US, don't treat it as a separate follow-up call.
+
 ---
 
 ### US-28: Delete a Recorded Item (undo a US-04 mistake)
@@ -480,11 +484,12 @@ This is the single source of truth for schema design across the whole document.
 
 **As** Staff, **I want to** see a customer's pre-order interaction status AND their order's shipping status (if any order exists) together on the Customer Page, **so that** I know at a glance exactly where things stand — both the conversation stage and the fulfillment stage.
 
-**`customer.action_status` values (pre-order stage only — Staff may set any value at any time, no fixed progression enforced):**
+**`customer.action_status` values (pre-order stage — Owner/Staff may set most values freely, but 3 transitions are automatic, see AC #4/#4a/#4b):**
 
 | Value (stored) | Display label | Meaning |
 |---|---|---|
-| `undetermined` | Undetermined | Default state — customer just joined a campaign, no conversation yet about what happens next |
+| `undetermined` | Undetermined | Default/reset state — nothing pending, no conversation needed right now |
+| `needs_negotiate` | Cần trao đổi | **Auto-set** the moment a customer has an item recorded (US-04) — signals Staff needs to reach out and discuss next steps, before an actual conversation has started |
 | `negotiating` | In Discussion | Staff is actively discussing options with the customer (e.g. item exchange, whether to order now or hold items) |
 | `consolidating` | Holding for Later | Customer agreed to hold their items and consolidate into a future order |
 | `needs_immediate_order` | Needs Order Now | Customer wants their order created and shipped right away |
@@ -502,13 +507,15 @@ This is the single source of truth for schema design across the whole document.
 | # | Given | When | Then |
 |---|---|---|---|
 | 1 | Staff is on a Customer Page | Views the top of the page | The current `action_status` is shown prominently as a badge/label near the customer's name |
-| 2 | Staff wants to change the status | Clicks/taps the status badge | A dropdown/selector shows all 4 `action_status` values (per the table above); Staff can pick ANY value freely — the system does not enforce a fixed progression order |
+| 2 | Staff wants to change the status | Clicks/taps the status badge | A dropdown/selector shows all 5 `action_status` values (per the table above); Staff can pick ANY value freely at any time — the system does not enforce a fixed progression order, and a manual choice can always override whatever the last automatic transition set |
 | 3 | Staff selects a new status | Confirms | `customer.action_status` updates immediately; no side effects on tokens, orders, or stock — this is purely an informational/workflow field |
 | 4 | A new `campaign_participant` is created for this customer (per US-03 AC #7) | — | `action_status` auto-resets to `undetermined` |
+| 4a | One or more `item_token`s are successfully recorded for a customer via US-04 (regardless of how many rows/products in that submission) | — | `action_status` auto-sets to `needs_negotiate` — **unconditionally**, overwriting whatever the current value was (even if Staff had already manually set it to something else) |
+| 4b | An `order`'s `shipping_status` transitions to `completed` (US-09 AC #5) | — | The system checks: does this customer have **any other** `item_token` still `status = holding` (from any campaign/exchange, not just this order)? **If none remain**, `action_status` auto-resets to `undetermined`. **If any still exist** (e.g. from a separate campaign not yet resolved), `action_status` is left unchanged — the customer still has pending business |
 | 5 | The customer has at least one `order` | Staff views the Customer Page | Alongside `action_status`, the page also shows each order's `shipping_status` (with its `carrier_order_id` if set) — if the customer has multiple orders over time, show the most recent order's status prominently, with a link/expandable section to see all past orders and their individual statuses |
 | 6 | The customer has no `order` yet | Staff views the Customer Page | Only `action_status` is shown; no shipping status section is displayed (nothing to show yet) |
 
-**Design note:** `action_status` and `shipping_status` no longer overlap in meaning — `action_status` only describes the pre-order conversation stage (reset each time a new campaign engagement begins), while `shipping_status` is owned entirely by the Order entity and reflects fulfillment progress (see US-09). Staff may see both displayed together on the Customer Page, but they are updated through different actions: `action_status` via the badge/dropdown in AC #2, `shipping_status` via the order's own status control (US-09 AC #5).
+**Design note (updated in v4.5):** `action_status` and `shipping_status` remain **separately owned fields** — Staff never directly edits `action_status` through an order's shipping controls, and `shipping_status` is never touched by anything action_status-related. However, as of v4.5 there is now a **one-directional dependency**: a `shipping_status → completed` transition can *trigger* an `action_status` reset (AC #4b), but the reverse never happens (changing `action_status` never affects `shipping_status`). This is a deliberate, narrow coupling — not a merge of the two concepts.
 
 ---
 
@@ -609,7 +616,7 @@ This is the single source of truth for schema design across the whole document.
 | 2 | The customer has tokens from 3 different campaigns, Staff only selects tokens from 2 campaigns | Clicks "Create Order" | The system merges only the selected tokens into the order; the remaining tokens **stay `status = holding`**, and continue to appear on the Customer Page for a future consolidated order |
 | 3 | Staff confirms creation | — | Transaction: (a) create the `order` with `recognized_revenue` = sum of token values, **`total_cost` = sum of token cost_basis, `gross_margin` = recognized_revenue − total_cost**, `shipping_status = order_created`, `carrier_order_id` = whatever Staff entered (or null), (b) create the linking `order_token` rows, (c) all selected tokens → `status = ordered`. **`product.stock_quantity` is NOT touched here** — see the v2.7 bugfix note below |
 | 4 | The order has been created | Staff views the customer's order list | The order is shown with all included tokens, `recognized_revenue`, `total_cost`, `gross_margin`, `shipping_status` (starts as `order_created`), `carrier_order_id` (or "Not set yet") |
-| 5 | The order has been created and the goods have actually been shipped | Staff updates the status | Allows transitioning `shipping_status`: `order_created` → `shipped` → `completed`, and allows adding/editing `carrier_order_id` at this point if it wasn't set at creation — **does not affect tokens/stock/revenue again** (already finalized at order creation). This is fully separate from `customer.action_status` (US-18), which only covers the pre-order stage and is not touched by these transitions. |
+| 5 | The order has been created and the goods have actually been shipped | Staff updates the status | Allows transitioning `shipping_status`: `order_created` → `shipped` → `completed`, and allows adding/editing `carrier_order_id` at this point if it wasn't set at creation — **does not affect tokens/stock/revenue** (already finalized at order creation). **As of v4.5, transitioning to `completed` specifically CAN trigger a `customer.action_status` reset — see US-18 AC #4b** (only if the customer has no other `holding` tokens left); every other transition (`order_created → shipped`) has no effect on `action_status` at all. |
 | 6 | A token is already `status = ordered` | Staff tries to select it for Exchange/Cash Out/Cancel | Not allowed, not shown in the selectable list (per Rule #9 — only applies to `holding` tokens) |
 | 7 | Shipping fees are collected directly from the customer by the shipping carrier | Creating an order | No shipping fee field in the form (out of scope for this system — Rule #8); an optional free-text `shipping_note` field may exist (not used in calculations) |
 
@@ -873,11 +880,11 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | # | Given | When | Then |
 |---|---|---|---|
 | 1 | No one is logged in | Visits any page | Redirected to `/login` |
-| 2 | Valid `username` + `password` for an `is_active = true` account | Submits login form | Receives a JWT (includes `role` claim), redirected to the default landing page for that role (Owner → Dashboard, Staff → Customer List, since Staff has no Dashboard access). **Username match is case-insensitive** (e.g. stored `Owner` logs in with `owner` / `OWNER`) |
+| 2 | Valid `username` + `password` for an `is_active = true` account — **`username` matched case-insensitively** (e.g. typing "OWNER" matches an account created as "owner") | Submits login form | Receives a JWT (includes `role` claim), redirected to the default landing page for that role (Owner → Dashboard, Staff → Customer List, since Staff has no Dashboard access) |
 | 3 | Invalid credentials | Submits | Generic error "Sai tên đăng nhập hoặc mật khẩu" (do not reveal whether the username exists — standard security practice) |
 | 4 | Account `is_active = false` | Submits valid credentials | Same generic error as #3 (do not reveal the account is deactivated) |
 | 5 | Logged in | Clicks "Logout" | JWT cleared client-side, redirected to `/login` |
-| 6 | Login form (or create-account password field) is shown | Clicks the eye icon inside the password input | Input `type` toggles between `password` (masked) and `text` (visible); icon switches between Eye / EyeOff |
+| 6 | Staff/Owner is typing into the password field (login, or the "Tạo tài khoản" form from US-22) | Clicks the eye icon inside the password field | Toggles the field between masked (`•••••`) and plaintext display, so they can verify what they typed before submitting — a small UX convenience, no security implication since this only affects the local input display, never transmitted differently |
 
 ### US-22: Owner creates a new account
 
@@ -888,8 +895,8 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | # | Given | When | Then |
 |---|---|---|---|
 | 1 | Logged in as Owner | Navigates to "Quản lý tài khoản" (Account Management — Owner-only menu item) | Sees a list of existing accounts (`username`, `full_name`, `role`, `is_active`) and a "Tạo tài khoản" button |
-| 2 | Clicks "Tạo tài khoản" | — | Form: `username` (unique **case-insensitively**, required), `password` (required, minimum length enforced), `full_name` (required), `role` (select: Owner / Staff) |
-| 3 | `username` already exists under any letter casing (e.g. existing `Staff1`, submitted `staff1`) | Submits | Validation error, blocks submission |
+| 2 | Clicks "Tạo tài khoản" | — | Form: `username` (unique, required), `password` (required, minimum length enforced), `full_name` (required), `role` (select: Owner / Staff) |
+| 3 | `username` already exists (**case-insensitive check** — e.g. "Staff1" is rejected if "staff1" already exists) | Submits | Validation error, blocks submission |
 | 4 | Valid form | Submits | New `staff_account` created with `is_active = true`, password stored as BCrypt hash |
 | 5 | Owner wants to disable an account (e.g. staff member left) | Toggles "Active" off on an existing account row | `is_active = false` — account can no longer log in, but historical records they created remain unchanged/attributed |
 

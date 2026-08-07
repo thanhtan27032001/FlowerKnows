@@ -104,6 +104,7 @@
       },
       "action": {
         "undetermined": "Chưa xác định",
+        "needsNegotiate": "Cần trao đổi",
         "negotiating": "Đang trao đổi",
         "consolidating": "Dồn đơn",
         "needsImmediateOrder": "Cần đi đơn ngay"

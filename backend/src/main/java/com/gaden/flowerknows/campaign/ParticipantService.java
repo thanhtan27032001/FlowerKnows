@@ -294,6 +294,9 @@ public class ParticipantService {
 
         List<ItemToken> saved = itemTokenRepository.saveAll(tokens);
 
+        // US-18 AC#4a: recording items unconditionally sets needs_negotiate
+        participant.getCustomer().setActionStatus(CustomerActionStatus.NEEDS_NEGOTIATE);
+
         return saved.stream()
                 .map(t -> new TokenRecordResponse(
                         t.getId(),

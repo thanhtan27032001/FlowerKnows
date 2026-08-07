@@ -3,6 +3,7 @@ import type { ShippingStatus } from "@/src/lib/api/order";
 
 export type CustomerActionStatus =
   | "UNDETERMINED"
+  | "NEEDS_NEGOTIATE"
   | "NEGOTIATING"
   | "CONSOLIDATING"
   | "NEEDS_IMMEDIATE_ORDER";
@@ -101,6 +102,7 @@ export type CustomerDetail = {
 /** Backend enum values — display labels live in messages via `common.status.action`. */
 export const ACTION_STATUS_VALUES: CustomerActionStatus[] = [
   "UNDETERMINED",
+  "NEEDS_NEGOTIATE",
   "NEGOTIATING",
   "CONSOLIDATING",
   "NEEDS_IMMEDIATE_ORDER",

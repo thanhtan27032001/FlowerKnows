@@ -3,6 +3,7 @@ package com.gaden.flowerknows.campaign;
 import com.gaden.flowerknows.common.BatchLineException;
 import com.gaden.flowerknows.common.BusinessException;
 import com.gaden.flowerknows.customer.Customer;
+import com.gaden.flowerknows.customer.CustomerActionStatus;
 import com.gaden.flowerknows.customer.CustomerService;
 import com.gaden.flowerknows.exchange.ExchangeTransactionRepository;
 import com.gaden.flowerknows.order.OrderRepository;
@@ -230,6 +231,33 @@ class RecordItemsServiceTests {
 
         assertEquals(1, ex.getLineErrors().size());
         assertTrue(ex.getLineErrors().getFirst().message().contains("not in this campaign pool"));
+    }
+
+    @Test
+    void recordItemsSetsActionStatusToNeedsNegotiateOverwritingPriorValue() {
+        UUID campaignId = UUID.randomUUID();
+        Product product = product("Lipstick", 100);
+        Campaign campaign = openCampaign(campaignId, 5, product, 5);
+        Customer customer = customer("Lan");
+        customer.setActionStatus(CustomerActionStatus.NEEDS_IMMEDIATE_ORDER);
+        CampaignParticipant participant = confirmedParticipant(campaign, customer, 5);
+        setId(participant, UUID.randomUUID());
+
+        when(campaignRepository.findByIdWithPool(campaignId)).thenReturn(Optional.of(campaign));
+        when(participantRepository.findByCampaignIdAndCustomerId(campaignId, customer.getId()))
+                .thenReturn(Optional.of(participant));
+        when(itemTokenRepository.countBySourceTypeAndSourceId(SourceType.CAMPAIGN, participant.getId()))
+                .thenReturn(0L);
+
+        participantService.recordItems(
+                campaignId,
+                new ParticipantService.RecordItemsRequest(
+                        customer.getId(),
+                        List.of(new ParticipantService.RecordItemLine(product.getId(), 1))
+                )
+        );
+
+        assertEquals(CustomerActionStatus.NEEDS_NEGOTIATE, customer.getActionStatus());
     }
 
     // --- helpers ---

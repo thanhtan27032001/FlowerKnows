@@ -19,6 +19,8 @@ public interface ItemTokenRepository extends JpaRepository<ItemToken, UUID> {
 
     long countBySourceTypeAndSourceId(SourceType sourceType, UUID sourceId);
 
+    long countByCustomerIdAndStatus(UUID customerId, TokenStatus status);
+
     List<ItemToken> findByIdInAndCustomerId(Collection<UUID> ids, UUID customerId);
 
     List<ItemToken> findByCustomerIdAndStatusOrderByCreatedAtDesc(UUID customerId, TokenStatus status);

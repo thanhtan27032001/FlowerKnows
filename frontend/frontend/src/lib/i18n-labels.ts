@@ -13,6 +13,7 @@ const TOKEN_STATUS_KEY: Record<TokenStatus, string> = {
 
 const ACTION_STATUS_KEY: Record<CustomerActionStatus, string> = {
   UNDETERMINED: "undetermined",
+  NEEDS_NEGOTIATE: "needsNegotiate",
   NEGOTIATING: "negotiating",
   CONSOLIDATING: "consolidating",
   NEEDS_IMMEDIATE_ORDER: "needsImmediateOrder",

@@ -3,6 +3,7 @@ package com.gaden.flowerknows.order;
 import com.gaden.flowerknows.common.BusinessException;
 import com.gaden.flowerknows.common.ResourceNotFoundException;
 import com.gaden.flowerknows.customer.Customer;
+import com.gaden.flowerknows.customer.CustomerActionStatus;
 import com.gaden.flowerknows.customer.CustomerService;
 import com.gaden.flowerknows.token.ItemToken;
 import com.gaden.flowerknows.token.ItemTokenRepository;
@@ -108,6 +109,19 @@ public class OrderService {
         if (request.carrierOrderId() != null) {
             order.setCarrierOrderId(request.carrierOrderId());
         }
+
+        // US-18 AC#4b / US-09 AC#5: completing an order may reset action_status
+        // when the customer has no other holding tokens left.
+        if (request.shippingStatus() == ShippingStatus.COMPLETED) {
+            Customer customer = order.getCustomer();
+            long holdingCount = itemTokenRepository.countByCustomerIdAndStatus(
+                    customer.getId(), TokenStatus.HOLDING
+            );
+            if (holdingCount == 0) {
+                customer.setActionStatus(CustomerActionStatus.UNDETERMINED);
+            }
+        }
+
         order.getTokens().size();
         return toResponse(order);
     }

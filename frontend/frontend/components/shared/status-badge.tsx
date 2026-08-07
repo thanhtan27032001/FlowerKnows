@@ -59,6 +59,7 @@ export const ACTION_STATUS_COLORS: Record<
   StatusChipColors
 > = {
   UNDETERMINED: { bg: "#f8f9fa", fg: "#212529", border: "#dee2e6" },
+  NEEDS_NEGOTIATE: { bg: "#fff3cd", fg: "#b45309", border: "#f59e0b" },
   NEGOTIATING: { bg: "#212529", fg: "#f8f9fa", border: "#212529" },
   CONSOLIDATING: { bg: "#e4c1f9", fg: "#7209b7", border: "#7209b7" },
   NEEDS_IMMEDIATE_ORDER: { bg: "#fadde1", fg: "#d62828", border: "#d62828" },

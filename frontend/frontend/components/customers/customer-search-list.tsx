@@ -125,15 +125,15 @@ export function CustomerSearchList({
   const t = useTranslations("customers.search");
   const tStatus = useTranslations("common.status");
   const tCommon = useTranslations("common");
-  const [sortBy, setSortBy] = useState<CustomerSortBy | undefined>();
-  const [sortDir, setSortDir] = useState<SortDir | undefined>();
+  const [sortBy, setSortBy] = useState<CustomerSortBy>("updatedAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const searchParams = {
     q: query,
     actionStatus,
     shippingStatus,
     sortBy,
-    sortDir: sortBy ? sortDir : undefined,
+    sortDir,
   };
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({

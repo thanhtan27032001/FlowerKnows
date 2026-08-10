@@ -8,6 +8,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -35,8 +37,13 @@ public class Customer {
     @Column(name = "action_status", nullable = false, length = 30)
     private CustomerActionStatus actionStatus = CustomerActionStatus.UNDETERMINED;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt = Instant.now();
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
 
     protected Customer() {
     }
@@ -46,7 +53,6 @@ public class Customer {
         this.phone = phone;
         this.address = address;
         this.actionStatus = CustomerActionStatus.UNDETERMINED;
-        this.createdAt = Instant.now();
     }
 
     public UUID getId() {
@@ -87,5 +93,9 @@ public class Customer {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 }

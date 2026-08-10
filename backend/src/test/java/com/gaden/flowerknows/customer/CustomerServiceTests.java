@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -125,6 +126,23 @@ class CustomerServiceTests {
     }
 
     @Test
+    void searchDefaultsToUpdatedAtDescending() {
+        Instant older = Instant.parse("2026-01-01T00:00:00Z");
+        Instant newer = Instant.parse("2026-06-01T00:00:00Z");
+        Customer oldCustomer = customer("Old", CustomerActionStatus.UNDETERMINED, older);
+        Customer newCustomer = customer("New", CustomerActionStatus.UNDETERMINED, newer);
+
+        when(customerRepository.findAll()).thenReturn(List.of(oldCustomer, newCustomer));
+        when(orderRepository.findLatestShippingStatusByCustomer()).thenReturn(List.of());
+
+        List<String> names = customerService.search(null, null, null, null, null)
+                .stream()
+                .map(CustomerDtos.CustomerResponse::name)
+                .toList();
+        assertEquals(List.of("New", "Old"), names);
+    }
+
+    @Test
     void actionStatusOrdinalMatchesBusinessSequence() {
         assertEquals(0, CustomerService.actionStatusOrdinal(CustomerActionStatus.UNDETERMINED));
         assertEquals(1, CustomerService.actionStatusOrdinal(CustomerActionStatus.NEEDS_NEGOTIATE));
@@ -150,17 +168,31 @@ class CustomerServiceTests {
     }
 
     private static Customer customer(String name, CustomerActionStatus actionStatus) {
+        return customer(name, actionStatus, Instant.parse("2026-01-01T00:00:00Z"));
+    }
+
+    private static Customer customer(
+            String name,
+            CustomerActionStatus actionStatus,
+            Instant updatedAt
+    ) {
         Customer c = new Customer(name, null, null);
         c.setActionStatus(actionStatus);
         setId(c, UUID.randomUUID());
+        setField(c, "createdAt", updatedAt);
+        setField(c, "updatedAt", updatedAt);
         return c;
     }
 
     private static void setId(Object entity, UUID id) {
+        setField(entity, "id", id);
+    }
+
+    private static void setField(Object entity, String fieldName, Object value) {
         try {
-            Field idField = entity.getClass().getDeclaredField("id");
-            idField.setAccessible(true);
-            idField.set(entity, id);
+            Field field = entity.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(entity, value);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }

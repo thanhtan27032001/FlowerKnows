@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 4.5 (customer.action_status gains needs_negotiate value + 2 automatic transitions: auto-set on item recording (US-04), auto-reset to undetermined when an order completes and no holding tokens remain)
+**Version:** 4.7 (customer entity gains created_at/updated_at, was missing them entirely; US-19 defaults to updated_at desc sort)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -49,6 +49,8 @@ This is the single source of truth for schema design across the whole document.
 | `phone` | string, nullable | Phone number — **optional at creation** (per v2.1); can be added/edited later via US-20 |
 | `address` | string, nullable | Free-text address (not split into structured fields like street/ward/city) — optional at creation |
 | `action_status` | enum | Pre-order interaction status — see US-18. One of: `undetermined` / `needs_negotiate` / `negotiating` / `consolidating` / `needs_immediate_order`. Defaults to `undetermined`. **No longer fully manual as of v4.5** — Owner/Staff can still set it freely at any time, but 3 automatic transitions now also apply: (1) reset to `undetermined` when a new `campaign_participant` is created (US-03 AC#7), (2) auto-set to `needs_negotiate` whenever an item is recorded (US-04), (3) auto-reset to `undetermined` when an Order reaches `shipping_status = completed` **and** the customer has no other `item_token` still `holding`. See US-18 for full detail. |
+| `created_at` | datetime | **Added in v4.7** — this entity was missing timestamps entirely until now |
+| `updated_at` | datetime | **Added in v4.7.** Must auto-update on ANY change to this row — `name`/`phone`/`address` edits (US-20), and every `action_status` change, whether manual (US-18 AC#2/3) or one of the 3 automatic transitions (US-18 AC#4/4a/4b). This is the field US-19's default sort uses. |
 
 ### `product`
 | Field | Type | Description |
@@ -442,6 +444,7 @@ This is the single source of truth for schema design across the whole document.
 | 6 | Mobile (< 768px) | Viewing the list | Each customer renders as a card (not a table row) with both badges clearly visible without needing to scroll horizontally |
 | 7 | Staff taps/clicks a row | — | Navigates to that customer's full Customer Page (US-05) |
 | 8 | Staff (desktop table view) clicks a column header (`Tên`, `SĐT`, `Trạng thái xử lý`, `Trạng thái giao hàng`) | — | The list sorts by that column; clicking again toggles ascending/descending. Sorting happens at the query level (`ORDER BY`), not client-side after fetching everything — same approach already used for Product List (US-32) and Stock Ledger (US-15) |
+| 8a | Staff opens the Customer List with **no sort explicitly chosen yet** | — | **Default sort is `updated_at` descending** (most recently updated customer first) — this surfaces customers with recent activity (a status change, a profile edit, a new item recorded) at the top, matching how Staff actually triages the list day to day |
 | 9 | Sorting by `Trạng thái xử lý` (`action_status`) or `Trạng thái giao hàng` (`shipping_status`) | — | Sorts by the underlying enum's natural/defined order (e.g. `undetermined` → `needs_negotiate` → `negotiating` → `consolidating` → `needs_immediate_order` for action_status), not alphabetically by the raw enum string — otherwise the order would be meaningless to Staff |
 | 10 | Sorting by `Trạng thái giao hàng` for a customer with **no order yet** | — | Customers with no order sort consistently to one end (e.g. always last), same `NULLS LAST`-style handling as the `average_cost_price` sort in US-32 |
 | 11 | Sort, search (AC #5), and filter (AC #4) are all active at once | — | They combine correctly — sort applies to the filtered/searched result set, not the other way around |

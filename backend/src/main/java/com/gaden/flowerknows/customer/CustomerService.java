@@ -93,12 +93,22 @@ public class CustomerService {
             String sortDir,
             Map<UUID, ShippingStatus> latestShippingByCustomer
     ) {
-        boolean ascending = resolveAscending(sortDir);
-        String field = (sortBy == null || sortBy.isBlank()) ? "name" : sortBy;
+        // US-19 AC#8a: default to most recently updated first
+        if (sortBy == null || sortBy.isBlank()) {
+            return Comparator.comparing(Customer::getUpdatedAt).reversed();
+        }
 
-        return switch (field) {
+        boolean ascending = resolveAscending(sortDir);
+
+        return switch (sortBy) {
             case "name" -> comparingFolded(Customer::getName, ascending);
             case "phone" -> comparingFoldedNullable(Customer::getPhone, ascending);
+            case "updatedAt" -> {
+                Comparator<Instant> byUpdated = ascending
+                        ? Comparator.naturalOrder()
+                        : Comparator.reverseOrder();
+                yield Comparator.comparing(Customer::getUpdatedAt, byUpdated);
+            }
             case "actionStatus" -> {
                 Comparator<Integer> ordinalCmp = ascending
                         ? Comparator.naturalOrder()
@@ -120,7 +130,7 @@ public class CustomerService {
                 );
             }
             default -> throw new IllegalArgumentException(
-                    "sortBy must be one of: name, phone, actionStatus, shippingStatus"
+                    "sortBy must be one of: name, phone, actionStatus, shippingStatus, updatedAt"
             );
         };
     }

@@ -112,7 +112,8 @@ export type CustomerSortBy =
   | "name"
   | "phone"
   | "actionStatus"
-  | "shippingStatus";
+  | "shippingStatus"
+  | "updatedAt";
 
 export type SortDir = "asc" | "desc";
 

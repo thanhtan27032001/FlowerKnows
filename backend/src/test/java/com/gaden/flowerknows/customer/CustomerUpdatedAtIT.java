@@ -58,7 +58,7 @@ class CustomerUpdatedAtIT {
         transactionTemplate.executeWithoutResult(status ->
                 customerService.update(
                         id,
-                        new CustomerDtos.UpdateCustomerRequest("UpdatedAt Profile Edit", null, null)
+                        new CustomerDtos.UpdateCustomerRequest("UpdatedAt Profile Edit", null, null, null)
                 )
         );
 

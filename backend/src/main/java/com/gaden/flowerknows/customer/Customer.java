@@ -33,6 +33,10 @@ public class Customer {
     @Column(nullable = true, length = 500)
     private String address;
 
+    /** Free-text internal note (v4.8), optional — not shown to the customer. */
+    @Column(nullable = true, columnDefinition = "TEXT")
+    private String note;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "action_status", nullable = false, length = 30)
     private CustomerActionStatus actionStatus = CustomerActionStatus.UNDETERMINED;
@@ -81,6 +85,14 @@ public class Customer {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 
     public CustomerActionStatus getActionStatus() {

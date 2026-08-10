@@ -181,6 +181,11 @@ export default function CustomerDetailPage({
                       }
                     />
                   </div>
+                  {customer.note?.trim() ? (
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {customer.note}
+                    </p>
+                  ) : null}
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-medium text-muted-foreground">
                       {tDetail("actionStatus")}

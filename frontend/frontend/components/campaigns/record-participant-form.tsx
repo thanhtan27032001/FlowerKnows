@@ -18,6 +18,7 @@ import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +69,7 @@ export function RecordParticipantForm({
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newAddress, setNewAddress] = useState("");
+  const [newNote, setNewNote] = useState("");
   const [bagsPurchased, setBagsPurchased] = useState("1");
   const [isDraft, setIsDraft] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -129,6 +131,7 @@ export function RecordParticipantForm({
     setNewName("");
     setNewPhone("");
     setNewAddress("");
+    setNewNote("");
     setBagsPurchased("1");
     setIsDraft(false);
     setFieldErrors({});
@@ -238,6 +241,7 @@ export function RecordParticipantForm({
               name: newName.trim(),
               phone: newPhone.trim() || undefined,
               address: newAddress.trim() || undefined,
+              note: newNote.trim() || undefined,
             },
             bagsPurchased: bags,
           };
@@ -384,6 +388,15 @@ export function RecordParticipantForm({
               id="new-customer-address"
               value={newAddress}
               onChange={(e) => setNewAddress(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="new-customer-note">{t("note")}</Label>
+            <Textarea
+              id="new-customer-note"
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              rows={3}
             />
           </div>
         </div>

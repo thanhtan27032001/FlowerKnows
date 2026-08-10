@@ -13,6 +13,7 @@ export type Customer = {
   name: string;
   phone: string | null;
   address: string | null;
+  note: string | null;
   actionStatus: CustomerActionStatus;
   latestShippingStatus: ShippingStatus | null;
   createdAt: string;
@@ -22,12 +23,14 @@ export type CreateCustomerInput = {
   name: string;
   phone?: string;
   address?: string;
+  note?: string;
 };
 
 export type UpdateCustomerInput = {
   name: string;
   phone?: string;
   address?: string;
+  note?: string;
 };
 
 export type TokenStatus =
@@ -88,6 +91,7 @@ export type CustomerDetail = {
   name: string;
   phone: string | null;
   address: string | null;
+  note: string | null;
   actionStatus: CustomerActionStatus;
   createdAt: string;
   prepaidBalance: number;
@@ -162,6 +166,7 @@ export const customerApi = {
       name: input.name,
       phone: input.phone ?? null,
       address: input.address ?? null,
+      note: input.note ?? null,
     }),
 
   update: (id: string, input: UpdateCustomerInput) =>
@@ -169,6 +174,7 @@ export const customerApi = {
       name: input.name,
       phone: input.phone ?? null,
       address: input.address ?? null,
+      note: input.note ?? null,
     }),
 
   updateActionStatus: (id: string, actionStatus: CustomerActionStatus) =>

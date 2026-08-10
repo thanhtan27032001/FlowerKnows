@@ -16,14 +16,16 @@ public final class CustomerDtos {
     public record CreateCustomerRequest(
             @NotBlank(message = "name is required") String name,
             String phone,
-            String address
+            String address,
+            String note
     ) {
     }
 
     public record UpdateCustomerRequest(
             @NotBlank(message = "name is required") String name,
             String phone,
-            String address
+            String address,
+            String note
     ) {
     }
 
@@ -37,6 +39,7 @@ public final class CustomerDtos {
             String name,
             String phone,
             String address,
+            String note,
             CustomerActionStatus actionStatus,
             String latestShippingStatus,
             Instant createdAt
@@ -98,6 +101,7 @@ public final class CustomerDtos {
             String name,
             String phone,
             String address,
+            String note,
             CustomerActionStatus actionStatus,
             Instant createdAt,
             BigDecimal prepaidBalance,

@@ -252,6 +252,7 @@ public class CustomerService {
                 customer.getName(),
                 customer.getPhone(),
                 customer.getAddress(),
+                customer.getNote(),
                 customer.getActionStatus(),
                 customer.getCreatedAt(),
                 prepaidBalance,
@@ -266,13 +267,13 @@ public class CustomerService {
 
     @Transactional
     public CustomerDtos.CustomerResponse create(CustomerDtos.CreateCustomerRequest request) {
-        Customer customer = customerRepository.save(
-                new Customer(
-                        request.name().trim(),
-                        blankToNull(request.phone()),
-                        blankToNull(request.address())
-                )
+        Customer customer = new Customer(
+                request.name().trim(),
+                blankToNull(request.phone()),
+                blankToNull(request.address())
         );
+        customer.setNote(blankToNull(request.note()));
+        customer = customerRepository.save(customer);
         return toListResponse(customer, null);
     }
 
@@ -282,6 +283,7 @@ public class CustomerService {
         customer.setName(request.name().trim());
         customer.setPhone(blankToNull(request.phone()));
         customer.setAddress(blankToNull(request.address()));
+        customer.setNote(blankToNull(request.note()));
         return getById(id);
     }
 
@@ -326,6 +328,7 @@ public class CustomerService {
                 customer.getName(),
                 customer.getPhone(),
                 customer.getAddress(),
+                customer.getNote(),
                 customer.getActionStatus(),
                 latestShippingStatus == null ? null : latestShippingStatus.name(),
                 customer.getCreatedAt()

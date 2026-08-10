@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 4.7 (customer entity gains created_at/updated_at, was missing them entirely; US-19 defaults to updated_at desc sort)
+**Version:** 4.8 (customer entity gains a free-text note field, editable via US-20 and settable at quick-create in US-03)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -48,6 +48,7 @@ This is the single source of truth for schema design across the whole document.
 | `name` | string, required | Customer name — the only required field when creating a customer |
 | `phone` | string, nullable | Phone number — **optional at creation** (per v2.1); can be added/edited later via US-20 |
 | `address` | string, nullable | Free-text address (not split into structured fields like street/ward/city) — optional at creation |
+| `note` | text, nullable | **Added in v4.8** — free-text internal note (e.g. "hay đổi ý", "VIP, ưu tiên phản hồi nhanh") for Staff/Owner to jot down anything not captured by the structured fields. Optional at creation, editable via US-20. Not shown to the customer anywhere (this is purely internal) |
 | `action_status` | enum | Pre-order interaction status — see US-18. One of: `undetermined` / `needs_negotiate` / `negotiating` / `consolidating` / `needs_immediate_order`. Defaults to `undetermined`. **No longer fully manual as of v4.5** — Owner/Staff can still set it freely at any time, but 3 automatic transitions now also apply: (1) reset to `undetermined` when a new `campaign_participant` is created (US-03 AC#7), (2) auto-set to `needs_negotiate` whenever an item is recorded (US-04), (3) auto-reset to `undetermined` when an Order reaches `shipping_status = completed` **and** the customer has no other `item_token` still `holding`. See US-18 for full detail. |
 | `created_at` | datetime | **Added in v4.7** — this entity was missing timestamps entirely until now |
 | `updated_at` | datetime | **Added in v4.7.** Must auto-update on ANY change to this row — `name`/`phone`/`address` edits (US-20), and every `action_status` change, whether manual (US-18 AC#2/3) or one of the 3 automatic transitions (US-18 AC#4/4a/4b). This is the field US-19's default sort uses. |
@@ -358,7 +359,7 @@ This is the single source of truth for schema design across the whole document.
 | 3 | The `customer` does **not** yet have a `campaign_participant` in this campaign | Valid submission | A new `campaign_participant` is created: `total_bags_purchased = bags entered`, `prepaid_amount = bags × bag_price` |
 | 4 | The `customer` **already** has a `campaign_participant` in this campaign | Valid submission | **Accumulates**: `total_bags_purchased += new bags`, `prepaid_amount += new bags × bag_price` (no new row is created) |
 | 5 | Successfully recorded | — | The campaign's remaining bags decrease accordingly; the participant list updates |
-| 6 | The `customer` does not exist yet | Staff selects "Create new customer" within the form | Allows quick entry of `name` (required), `phone` and `address` (both optional), creates a new `customer` and uses it immediately |
+| 6 | The `customer` does not exist yet | Staff selects "Create new customer" within the form | Allows quick entry of `name` (required), `phone`, `address`, and `note` (all optional), creates a new `customer` and uses it immediately |
 | 7 | Case 3 above (this is a **new** `campaign_participant` for this customer — their first time in this campaign) | The participant is created | The system also **resets `customer.action_status = undetermined`**, per US-18 — a new campaign engagement restarts the interaction workflow. This reset does NOT happen for case 4 (accumulating bags into an existing participant), since that's not a new engagement. |
 
 **Business Rules applied:** Rule #7 (accumulation). `prepaid_amount` is **not revenue** — it is an internal reconciliation figure only.
@@ -455,16 +456,16 @@ This is the single source of truth for schema design across the whole document.
 
 ### US-20: Edit Customer profile
 
-**As** Staff or Owner, **I want to** update a customer's `name`, `phone`, and `address` after they've already been created, **so that** I can correct mistakes or add missing contact details later.
+**As** Staff or Owner, **I want to** update a customer's `name`, `phone`, `address`, and `note` after they've already been created, **so that** I can correct mistakes or add missing details later.
 
 **Acceptance Criteria:**
 
 | # | Given | When | Then |
 |---|---|---|---|
-| 1 | Viewing a Customer Page or Customer List row | Clicks "Edit" on the customer | A form pre-filled with current `name`, `phone`, `address` is shown |
+| 1 | Viewing a Customer Page or Customer List row | Clicks "Edit" on the customer | A form pre-filled with current `name`, `phone`, `address`, `note` is shown |
 | 2 | Fields edited, `name` still non-empty | Saves | `customer` record updates; no side effects on tokens/campaigns/orders |
 | 3 | `name` left empty | Saves | Validation error, blocks submission (name remains required) |
-| 4 | `phone` and/or `address` left blank | Saves | Allowed — both remain optional on edit, same as at creation (US-03 AC #6) |
+| 4 | `phone`, `address`, and/or `note` left blank | Saves | Allowed — all three remain optional on edit, same as at creation (US-03 AC #6) |
 
 **Access:** Both Owner and Staff can perform this (per the permission matrix in Module 10). This is the same permission level as `action_status` updates (US-18) — Staff has full read/write access to a customer's core profile fields, but not to their tokens/orders (which stay Owner-only per Module 10).
 

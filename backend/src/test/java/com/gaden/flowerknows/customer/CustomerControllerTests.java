@@ -58,6 +58,7 @@ class CustomerControllerTests {
                         "Lan",
                         null,
                         null,
+                        null,
                         CustomerActionStatus.UNDETERMINED,
                         null,
                         createdAt
@@ -90,7 +91,7 @@ class CustomerControllerTests {
                         .header("Authorization", "Bearer " + staffToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Lan Updated","phone":"0901111222","address":null}
+                                {"name":"Lan Updated","phone":"0901111222","address":null,"note":null}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Lan Updated"));
@@ -131,6 +132,7 @@ class CustomerControllerTests {
                 name,
                 phone,
                 address,
+                null,
                 actionStatus,
                 Instant.parse("2026-07-01T00:00:00Z"),
                 BigDecimal.ZERO,

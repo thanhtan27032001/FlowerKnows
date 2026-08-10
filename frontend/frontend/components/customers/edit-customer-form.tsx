@@ -14,6 +14,7 @@ import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +34,7 @@ import {
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useSuccessClose } from "@/hooks/use-success-close";
 
-type EditableCustomer = Pick<Customer, "id" | "name" | "phone" | "address">;
+type EditableCustomer = Pick<Customer, "id" | "name" | "phone" | "address" | "note">;
 
 type Props = {
   open: boolean;
@@ -51,6 +52,7 @@ export function EditCustomerForm({ open, onOpenChange, customer }: Props) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [note, setNote] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -59,13 +61,19 @@ export function EditCustomerForm({ open, onOpenChange, customer }: Props) {
     setName(customer.name);
     setPhone(customer.phone ?? "");
     setAddress(customer.address ?? "");
+    setNote(customer.note ?? "");
     setFieldErrors({});
     setFormError(null);
     reset();
   }, [open, customer, reset]);
 
   const mutation = useMutation({
-    mutationFn: (input: { name: string; phone?: string; address?: string }) => {
+    mutationFn: (input: {
+      name: string;
+      phone?: string;
+      address?: string;
+      note?: string;
+    }) => {
       if (!customer) throw new Error("No customer");
       return customerApi.update(customer.id, input);
     },
@@ -101,6 +109,7 @@ export function EditCustomerForm({ open, onOpenChange, customer }: Props) {
       name: name.trim(),
       phone: phone.trim() || undefined,
       address: address.trim() || undefined,
+      note: note.trim() || undefined,
     });
   };
 
@@ -144,6 +153,17 @@ export function EditCustomerForm({ open, onOpenChange, customer }: Props) {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder={tCreate("addressPlaceholder")}
+          />
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="edit-customer-note">{tCreate("note")}</Label>
+          <Textarea
+            id="edit-customer-note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={tCreate("notePlaceholder")}
+            rows={3}
           />
         </div>
 

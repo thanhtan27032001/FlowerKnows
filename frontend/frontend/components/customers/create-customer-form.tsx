@@ -9,6 +9,7 @@ import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,7 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [note, setNote] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -50,6 +52,7 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
     setName("");
     setPhone("");
     setAddress("");
+    setNote("");
     setFieldErrors({});
     setFormError(null);
   };
@@ -84,6 +87,7 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
       name: name.trim(),
       phone: phone.trim() || undefined,
       address: address.trim() || undefined,
+      note: note.trim() || undefined,
     });
   };
 
@@ -127,6 +131,17 @@ export function CreateCustomerForm({ open, onOpenChange, onCreated }: Props) {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder={t("addressPlaceholder")}
+          />
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="customer-note">{t("note")}</Label>
+          <Textarea
+            id="customer-note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t("notePlaceholder")}
+            rows={3}
           />
         </div>
 

@@ -389,6 +389,7 @@
       "name": "Tên",
       "phone": "Số điện thoại (tuỳ chọn)",
       "address": "Địa chỉ (tuỳ chọn)",
+      "note": "Ghi chú (tuỳ chọn)",
       "bagsPurchased": "Số túi đã mua",
       "isDraft": "Ghi nhận nháp (chưa thu tiền)",
       "isDraftHint": "Bản nháp không trừ túi còn lại — sẽ kiểm tra lại khi xác nhận.",
@@ -506,16 +507,18 @@
       "name": "Tên",
       "phone": "Số điện thoại (tuỳ chọn)",
       "address": "Địa chỉ (tuỳ chọn)",
+      "note": "Ghi chú (tuỳ chọn)",
       "namePlaceholder": "vd. Nguyễn Văn A",
       "phonePlaceholder": "vd. 0901234567",
       "addressPlaceholder": "vd. 123 Nguyễn Huệ, Q.1, TP.HCM",
+      "notePlaceholder": "vd. hay đổi ý, VIP ưu tiên phản hồi nhanh",
       "submit": "Tạo khách hàng",
       "nameRequired": "Tên là bắt buộc",
       "failed": "Không tạo được khách hàng"
     },
     "edit": {
       "title": "Sửa khách hàng",
-      "description": "Cập nhật tên, số điện thoại hoặc địa chỉ. Chỉ tên là bắt buộc.",
+      "description": "Cập nhật tên, số điện thoại, địa chỉ hoặc ghi chú. Chỉ tên là bắt buộc.",
       "submit": "Lưu thay đổi",
       "failed": "Không cập nhật được khách hàng"
     },

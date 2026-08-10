@@ -88,6 +88,7 @@ export type RecordParticipantInput = {
     name: string;
     phone?: string;
     address?: string;
+    note?: string;
   };
   bagsPurchased: number;
 };

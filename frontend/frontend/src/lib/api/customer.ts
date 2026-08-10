@@ -108,10 +108,20 @@ export const ACTION_STATUS_VALUES: CustomerActionStatus[] = [
   "NEEDS_IMMEDIATE_ORDER",
 ];
 
+export type CustomerSortBy =
+  | "name"
+  | "phone"
+  | "actionStatus"
+  | "shippingStatus";
+
+export type SortDir = "asc" | "desc";
+
 export type CustomerSearchParams = {
   q?: string;
   actionStatus?: CustomerActionStatus | "";
   shippingStatus?: ShippingStatus | "";
+  sortBy?: CustomerSortBy;
+  sortDir?: SortDir;
 };
 
 export const customerKeys = {
@@ -123,6 +133,8 @@ export const customerKeys = {
       params.q ?? "",
       params.actionStatus ?? "",
       params.shippingStatus ?? "",
+      params.sortBy ?? "",
+      params.sortDir ?? "",
     ] as const,
   detail: (id: string) => [...customerKeys.all, "detail", id] as const,
 };
@@ -133,6 +145,8 @@ export const customerApi = {
     if (params.q?.trim()) search.set("q", params.q.trim());
     if (params.actionStatus) search.set("actionStatus", params.actionStatus);
     if (params.shippingStatus) search.set("shippingStatus", params.shippingStatus);
+    if (params.sortBy) search.set("sortBy", params.sortBy);
+    if (params.sortDir) search.set("sortDir", params.sortDir);
     const qs = search.toString();
     return apiClient.get<Customer[]>(
       qs ? `/api/customers?${qs}` : "/api/customers"

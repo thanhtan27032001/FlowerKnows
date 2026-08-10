@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowDownIcon, ArrowUpIcon } from "lucide-react";
 import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
@@ -13,6 +15,8 @@ import {
   customerKeys,
   type Customer,
   type CustomerActionStatus,
+  type CustomerSortBy,
+  type SortDir,
 } from "@/src/lib/api/customer";
 import { type ShippingStatus } from "@/src/lib/api/order";
 import {
@@ -37,6 +41,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 const SHIPPING_FILTER_VALUES: ShippingStatus[] = [
   "ORDER_CREATED",
@@ -55,6 +60,58 @@ type Props = {
   onEdit: (customer: Customer) => void;
 };
 
+function nextSort(
+  currentBy: CustomerSortBy | undefined,
+  currentDir: SortDir | undefined,
+  column: CustomerSortBy
+): { sortBy: CustomerSortBy; sortDir: SortDir } {
+  if (currentBy === column) {
+    return { sortBy: column, sortDir: currentDir === "asc" ? "desc" : "asc" };
+  }
+  return { sortBy: column, sortDir: "asc" };
+}
+
+function SortHeader({
+  column,
+  label,
+  sortBy,
+  sortDir,
+  onSort,
+}: {
+  column: CustomerSortBy;
+  label: string;
+  sortBy: CustomerSortBy | undefined;
+  sortDir: SortDir | undefined;
+  onSort: (column: CustomerSortBy) => void;
+}) {
+  const active = sortBy === column;
+  const ariaSort = active
+    ? sortDir === "asc"
+      ? "ascending"
+      : "descending"
+    : "none";
+  return (
+    <TableHead aria-sort={ariaSort}>
+      <button
+        type="button"
+        className={cn(
+          "inline-flex items-center gap-1 font-medium hover:text-foreground",
+          active ? "text-foreground" : "text-muted-foreground"
+        )}
+        onClick={() => onSort(column)}
+      >
+        {label}
+        {active &&
+          (sortDir === "asc" ? (
+            <ArrowUpIcon className="size-3.5 shrink-0" aria-hidden />
+          ) : (
+            <ArrowDownIcon className="size-3.5 shrink-0" aria-hidden />
+          ))}
+      </button>
+    </TableHead>
+  );
+}
+
 export function CustomerSearchList({
   query,
   onQueryChange,
@@ -68,10 +125,15 @@ export function CustomerSearchList({
   const t = useTranslations("customers.search");
   const tStatus = useTranslations("common.status");
   const tCommon = useTranslations("common");
+  const [sortBy, setSortBy] = useState<CustomerSortBy | undefined>();
+  const [sortDir, setSortDir] = useState<SortDir | undefined>();
+
   const searchParams = {
     q: query,
     actionStatus,
     shippingStatus,
+    sortBy,
+    sortDir: sortBy ? sortDir : undefined,
   };
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -81,6 +143,12 @@ export function CustomerSearchList({
 
   const customers = data ?? [];
   const hasFilters = !!actionStatus || !!shippingStatus;
+
+  const handleSort = (column: CustomerSortBy) => {
+    const next = nextSort(sortBy, sortDir, column);
+    setSortBy(next.sortBy);
+    setSortDir(next.sortDir);
+  };
 
   return (
     <div className="relative space-y-4">
@@ -273,10 +341,34 @@ export function CustomerSearchList({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("columns.name")}</TableHead>
-                  <TableHead>{t("columns.phone")}</TableHead>
-                  <TableHead>{t("columns.actionStatus")}</TableHead>
-                  <TableHead>{t("columns.shippingStatus")}</TableHead>
+                  <SortHeader
+                    column="name"
+                    label={t("columns.name")}
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortHeader
+                    column="phone"
+                    label={t("columns.phone")}
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortHeader
+                    column="actionStatus"
+                    label={t("columns.actionStatus")}
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortHeader
+                    column="shippingStatus"
+                    label={t("columns.shippingStatus")}
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    onSort={handleSort}
+                  />
                   <TableHead className="w-[1%] text-right">
                     {tCommon("actions.edit")}
                   </TableHead>

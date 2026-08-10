@@ -441,8 +441,12 @@ This is the single source of truth for schema design across the whole document.
 | 5 | Staff searches by name/phone | Types in the search box | The list filters by the search term AND respects any active status filter at the same time |
 | 6 | Mobile (< 768px) | Viewing the list | Each customer renders as a card (not a table row) with both badges clearly visible without needing to scroll horizontally |
 | 7 | Staff taps/clicks a row | — | Navigates to that customer's full Customer Page (US-05) |
+| 8 | Staff (desktop table view) clicks a column header (`Tên`, `SĐT`, `Trạng thái xử lý`, `Trạng thái giao hàng`) | — | The list sorts by that column; clicking again toggles ascending/descending. Sorting happens at the query level (`ORDER BY`), not client-side after fetching everything — same approach already used for Product List (US-32) and Stock Ledger (US-15) |
+| 9 | Sorting by `Trạng thái xử lý` (`action_status`) or `Trạng thái giao hàng` (`shipping_status`) | — | Sorts by the underlying enum's natural/defined order (e.g. `undetermined` → `needs_negotiate` → `negotiating` → `consolidating` → `needs_immediate_order` for action_status), not alphabetically by the raw enum string — otherwise the order would be meaningless to Staff |
+| 10 | Sorting by `Trạng thái giao hàng` for a customer with **no order yet** | — | Customers with no order sort consistently to one end (e.g. always last), same `NULLS LAST`-style handling as the `average_cost_price` sort in US-32 |
+| 11 | Sort, search (AC #5), and filter (AC #4) are all active at once | — | They combine correctly — sort applies to the filtered/searched result set, not the other way around |
 
-**Note:** Badge colors should visually distinguish urgency — e.g. `needs_immediate_order` (action_status) and `order_created` (shipping_status, meaning not yet shipped) are the two states most likely to need Staff follow-up, and should stand out from calmer states like `undetermined` or `completed`.
+**Note:** Badge colors should visually distinguish urgency — e.g. `needs_immediate_order`/`needs_negotiate` (action_status) and `order_created` (shipping_status, meaning not yet shipped) are the states most likely to need Staff follow-up, and should stand out from calmer states like `undetermined` or `completed`.
 
 ---
 

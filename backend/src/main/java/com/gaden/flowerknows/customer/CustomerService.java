@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -61,22 +62,19 @@ public class CustomerService {
     public List<CustomerDtos.CustomerResponse> search(
             String query,
             CustomerActionStatus actionStatus,
-            ShippingStatus shippingStatus
+            ShippingStatus shippingStatus,
+            String sortBy,
+            String sortDir
     ) {
         String foldedQuery = TextSearch.fold(query);
-        List<Customer> customers = customerRepository.findAll().stream()
+        Map<UUID, ShippingStatus> latestShippingByCustomer = latestShippingStatusByCustomer();
+        Comparator<Customer> sort = resolveSortComparator(sortBy, sortDir, latestShippingByCustomer);
+
+        // Filter first (search + status), then sort — US-19 AC#11
+        return customerRepository.findAll().stream()
                 .filter(c -> foldedQuery.isEmpty()
                         || TextSearch.containsFolded(c.getName(), foldedQuery)
                         || TextSearch.containsFolded(c.getPhone(), foldedQuery))
-                .sorted(Comparator.comparing(
-                        c -> TextSearch.fold(c.getName()),
-                        String.CASE_INSENSITIVE_ORDER
-                ))
-                .toList();
-
-        Map<UUID, ShippingStatus> latestShippingByCustomer = latestShippingStatusByCustomer();
-
-        return customers.stream()
                 .filter(c -> actionStatus == null || c.getActionStatus() == actionStatus)
                 .filter(c -> {
                     if (shippingStatus == null) {
@@ -84,8 +82,107 @@ public class CustomerService {
                     }
                     return shippingStatus == latestShippingByCustomer.get(c.getId());
                 })
+                .sorted(sort)
                 .map(c -> toListResponse(c, latestShippingByCustomer.get(c.getId())))
                 .toList();
+    }
+
+    /** US-19 AC#8–#10: accent-folded name/phone; business ordinals for statuses; shipping nulls last. */
+    static Comparator<Customer> resolveSortComparator(
+            String sortBy,
+            String sortDir,
+            Map<UUID, ShippingStatus> latestShippingByCustomer
+    ) {
+        boolean ascending = resolveAscending(sortDir);
+        String field = (sortBy == null || sortBy.isBlank()) ? "name" : sortBy;
+
+        return switch (field) {
+            case "name" -> comparingFolded(Customer::getName, ascending);
+            case "phone" -> comparingFoldedNullable(Customer::getPhone, ascending);
+            case "actionStatus" -> {
+                Comparator<Integer> ordinalCmp = ascending
+                        ? Comparator.naturalOrder()
+                        : Comparator.reverseOrder();
+                yield Comparator.comparing(c -> actionStatusOrdinal(c.getActionStatus()), ordinalCmp);
+            }
+            case "shippingStatus" -> {
+                // nullsLast keeps "no order" last for both directions (US-19 AC#10)
+                Comparator<Integer> byOrdinal = ascending
+                        ? Comparator.naturalOrder()
+                        : Comparator.reverseOrder();
+                Comparator<Integer> ordinalCmp = Comparator.nullsLast(byOrdinal);
+                yield Comparator.comparing(
+                        c -> {
+                            ShippingStatus status = latestShippingByCustomer.get(c.getId());
+                            return status == null ? null : Integer.valueOf(shippingStatusOrdinal(status));
+                        },
+                        ordinalCmp
+                );
+            }
+            default -> throw new IllegalArgumentException(
+                    "sortBy must be one of: name, phone, actionStatus, shippingStatus"
+            );
+        };
+    }
+
+    static boolean resolveAscending(String sortDir) {
+        if (sortDir == null || sortDir.isBlank()) {
+            return true;
+        }
+        if ("asc".equalsIgnoreCase(sortDir)) {
+            return true;
+        }
+        if ("desc".equalsIgnoreCase(sortDir)) {
+            return false;
+        }
+        throw new IllegalArgumentException("sortDir must be asc or desc");
+    }
+
+    /** Business sequence for action_status (US-19 AC#9) — not alphabetical. */
+    static int actionStatusOrdinal(CustomerActionStatus status) {
+        return switch (status) {
+            case UNDETERMINED -> 0;
+            case NEEDS_NEGOTIATE -> 1;
+            case NEGOTIATING -> 2;
+            case CONSOLIDATING -> 3;
+            case NEEDS_IMMEDIATE_ORDER -> 4;
+        };
+    }
+
+    /** Business sequence for shipping_status (US-19 AC#9). */
+    static int shippingStatusOrdinal(ShippingStatus status) {
+        return switch (status) {
+            case ORDER_CREATED -> 0;
+            case SHIPPED -> 1;
+            case COMPLETED -> 2;
+        };
+    }
+
+    private static Comparator<Customer> comparingFolded(
+            Function<Customer, String> getter,
+            boolean ascending
+    ) {
+        Comparator<String> keyCmp = ascending
+                ? String.CASE_INSENSITIVE_ORDER
+                : String.CASE_INSENSITIVE_ORDER.reversed();
+        return Comparator.comparing(c -> TextSearch.fold(getter.apply(c)), keyCmp);
+    }
+
+    private static Comparator<Customer> comparingFoldedNullable(
+            Function<Customer, String> getter,
+            boolean ascending
+    ) {
+        Comparator<String> byFolded = ascending
+                ? String.CASE_INSENSITIVE_ORDER
+                : String.CASE_INSENSITIVE_ORDER.reversed();
+        Comparator<String> keyCmp = Comparator.nullsLast(byFolded);
+        return Comparator.comparing(c -> {
+            String raw = getter.apply(c);
+            if (raw == null || raw.isBlank()) {
+                return null;
+            }
+            return TextSearch.fold(raw);
+        }, keyCmp);
     }
 
     @Transactional(readOnly = true)

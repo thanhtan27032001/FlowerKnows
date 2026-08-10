@@ -73,14 +73,14 @@ class NPlusOneQueryCountIT {
         // Warmup
         campaignService.getCampaign(campaignId);
         participantService.listParticipantTokens(campaignId, exchangedParticipantId);
-        customerService.search(null, null, null);
+        customerService.search(null, null, null, null, null);
 
         long camp = measure(stats, () -> campaignService.getCampaign(campaignId));
         long tokensExchanged = measure(stats, () ->
                 participantService.listParticipantTokens(campaignId, exchangedParticipantId));
         long tokensHolding = measure(stats, () ->
                 participantService.listParticipantTokens(campaignId, holdingParticipantId));
-        long customers = measure(stats, () -> customerService.search(null, null, null));
+        long customers = measure(stats, () -> customerService.search(null, null, null, null, null));
 
         System.out.printf(
                 """

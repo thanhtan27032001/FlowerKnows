@@ -32,9 +32,11 @@ public class CustomerController {
     public List<CustomerDtos.CustomerResponse> search(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) CustomerActionStatus actionStatus,
-            @RequestParam(required = false) ShippingStatus shippingStatus
+            @RequestParam(required = false) ShippingStatus shippingStatus,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir
     ) {
-        return customerService.search(q, actionStatus, shippingStatus);
+        return customerService.search(q, actionStatus, shippingStatus, sortBy, sortDir);
     }
 
     @GetMapping("/{id}")

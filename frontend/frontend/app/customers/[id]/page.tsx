@@ -183,6 +183,7 @@ export default function CustomerDetailPage({
                   </div>
                   {customer.note?.trim() ? (
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      <span className="font-semibold">Note:</span>{" "}
                       {customer.note}
                     </p>
                   ) : null}

@@ -308,6 +308,12 @@ export function CustomerSearchList({
                       <CardTitle className="text-base leading-snug">
                         {customer.name}
                       </CardTitle>
+                      {customer.note?.trim() ? (
+                        <p className="line-clamp-2 text-[10px] font-light leading-tight text-muted-foreground">
+                          <span className="font-semibold">Note:</span>{" "}
+                          {customer.note}
+                        </p>
+                      ) : null}
                       <p className="text-sm text-muted-foreground">
                         {customer.phone || tCommon("fallback.noPhone")}
                       </p>
@@ -378,12 +384,20 @@ export function CustomerSearchList({
                 {customers.map((customer) => (
                   <TableRow key={customer.id}>
                     <TableCell>
-                      <Link
-                        href={`/customers/${customer.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {customer.name}
-                      </Link>
+                      <div className="min-w-0 space-y-0.5">
+                        <Link
+                          href={`/customers/${customer.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {customer.name}
+                        </Link>
+                        {customer.note?.trim() ? (
+                          <p className="line-clamp-2 text-[10px] font-light leading-tight text-muted-foreground">
+                            <span className="font-semibold">Note:</span>{" "}
+                            {customer.note}
+                          </p>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {customer.phone || tCommon("fallback.emDash")}

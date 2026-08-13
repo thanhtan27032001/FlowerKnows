@@ -18,6 +18,7 @@ import {
   poolRowsFromItems,
   type CampaignPoolRow,
 } from "@/components/campaigns/campaign-pool-editor";
+import { useCampaignPoolOverlays } from "@/components/campaigns/campaign-pool-overlays";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +66,7 @@ export function CreateCampaignForm({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { succeeded, runSuccess, reset } = useSuccessClose(250);
+  const { overlayButtons, overlays, closeOverlays } = useCampaignPoolOverlays();
 
   const [name, setName] = useState("");
   const [eventDate, setEventDate] = useState("");
@@ -310,12 +312,14 @@ export function CreateCampaignForm({
   );
 
   const footer = (
-    <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+    <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+      {overlayButtons(locked)}
       <Button
         type="button"
         variant="outline"
         disabled={locked}
         onClick={() => {
+          closeOverlays();
           onOpenChange(false);
           reset();
           resetForm();
@@ -339,11 +343,14 @@ export function CreateCampaignForm({
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
     if (!next) {
+      closeOverlays();
       reset();
       resetForm();
     }
   };
 
+  // Nested inside Dialog/Sheet root so Base UI stacks overlays correctly
+  // without closing or resetting Campaign form state (US-01 AC#8/#9).
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -358,6 +365,7 @@ export function CreateCampaignForm({
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
         </SheetContent>
+        {overlays}
       </Sheet>
     );
   }
@@ -372,6 +380,7 @@ export function CreateCampaignForm({
         {formBody}
         <DialogFooter>{footer}</DialogFooter>
       </DialogContent>
+      {overlays}
     </Dialog>
   );
 }

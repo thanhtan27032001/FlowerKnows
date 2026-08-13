@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 4.8 (customer entity gains a free-text note field, editable via US-20 and settable at quick-create in US-03)
+**Version:** 4.9 (US-01/US-24: Campaign pool builder gains inline "Tạo sản phẩm mới" / "Nhập kho" overlay buttons, extending the v4.1 pattern from the Stock In form)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -200,6 +200,8 @@ This is the single source of truth for schema design across the whole document.
 | 5 | The campaign has been created | Staff views its details | Shows: basic info, `campaign_pool` list (product — loaded_quantity — remaining_quantity), `campaign_participant` list, total bags sold / `total_bags`, and — **if the pool sum doesn't yet cover `total_bags`** — a visible indicator like "Pool: 12/50 túi đã có sản phẩm" so Owner/Staff can see at a glance that more needs to be added |
 | 6 | ~~Staff enters `total_bags` ≠ the sum of `loaded_quantity` selected~~ **Removed in v4.4** — this exact-match requirement no longer applies at creation. The only remaining requirement is `total_bags` itself being a positive integer entered by Staff |
 | 7 | Staff attempts to add the same `product` as a second row in the pool (already selected in another row) | — | Not allowed — **each product may appear at most once per `campaign_pool`** (enforced by a `UNIQUE (campaign_id, product_id)` DB constraint as the source of truth). The UI should prevent selecting an already-used product in another row (disable it in the picker); if a duplicate somehow reaches the backend, it's rejected with a clear error rather than silently merged |
+| 8 | Staff is building the `campaign_pool` and needs a product that doesn't exist yet | Clicks "Tạo sản phẩm mới" (placed in the form's action bar, same pattern as the Stock In form's v4.1 feature) | The Create Product form (US-12) opens as an **overlay on top of** the still-open Create/Edit Campaign form — in-progress pool rows and other fields are preserved underneath. On success, the overlay closes, the product search/autocomplete refreshes, and Staff manually selects the new product in whichever pool row needs it |
+| 9 | Staff is building the `campaign_pool` and an existing product doesn't have **enough `stock_quantity`** for the `loaded_quantity` they want | Clicks "Nhập kho" (same action bar) | The Stock In form (US-13) opens as an overlay the same way — on success, `product.stock_quantity` is updated and immediately reflected if Staff re-checks that product's available quantity in the pool row, without ever leaving the Campaign form |
 
 **Business Rules applied:** Loading the pool immediately deducts `stock_quantity` (it does not wait until bags are sold).
 
@@ -242,7 +244,9 @@ This is the single source of truth for schema design across the whole document.
 
 **Access:** Owner only.
 
----### US-24: Edit Campaign
+---
+
+### US-24: Edit Campaign
 
 **As** Owner, **I want to** edit an existing campaign's details, **so that** I can correct mistakes or adjust plans without having to close and recreate the whole campaign.
 
@@ -254,6 +258,7 @@ This is the single source of truth for schema design across the whole document.
 | 2 | Any campaign | Owner edits `total_bags` | **Always allowed, no restriction** (per explicit decision) — see the warning below |
 | 3 | No `item_token` has ever been recorded for this campaign yet (i.e. every `campaign_pool` row's `remaining_quantity` still equals its `loaded_quantity`) | Owner edits the `campaign_pool` (add/remove a product row, or change a `loaded_quantity`) | Allowed. The system re-validates `stock_quantity` availability and re-applies the `campaign_lock` stock deduction/return delta accordingly (same mechanics as US-01 creation, just adjusting the diff instead of the full amount) |
 | 4 | At least one `item_token` has already been recorded for this campaign (any `campaign_pool` row has `remaining_quantity` < `loaded_quantity`) | Owner attempts to edit the `campaign_pool` | Blocked — "Pool sản phẩm đã bị khóa vì đã có món được ghi nhận. Không thể sửa." Only `name`, `event_date`, `total_bags` remain editable at this point |
+| 5 | Owner is editing the `campaign_pool` (AC #3 applies) | — | The same "Tạo sản phẩm mới" / "Nhập kho" inline overlay buttons from US-01 AC #8/#9 are available here too — this is the same pool-editing UI component, so the capability comes for free rather than needing separate implementation |
 
 **⚠️ Known risk (accepted, not blocked):** Because `total_bags` can be freely edited but `campaign_pool` locks once items are recorded, `total_bags` can end up **not matching** the actual sum of `loaded_quantity` in the pool. This does NOT create a double-selling risk — US-04's existing validation (quantity requested must not exceed a pool row's `remaining_quantity`) still correctly prevents recording more physical items than were actually loaded. The only real consequence is a customer could be sold (via US-03) more bags than the pool can physically fulfill, discovered only when Staff tries to record their item and finds no stock left. Owner is responsible for keeping `total_bags` sensible after the pool locks.
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { InfoIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { InfoIcon } from "lucide-react";
 import { ApiError } from "@/src/lib/api/client";
 import {
   campaignApi,
@@ -13,7 +13,12 @@ import {
   type UpdateCampaignInput,
 } from "@/src/lib/api/campaign";
 import { productApi, productKeys } from "@/src/lib/api/product";
-import { ProductTypeahead } from "@/components/products/product-typeahead";
+import {
+  CampaignPoolEditor,
+  poolRowsFromItems,
+  type CampaignPoolRow,
+} from "@/components/campaigns/campaign-pool-editor";
+import { useCampaignPoolOverlays } from "@/components/campaigns/campaign-pool-overlays";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,15 +46,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useSuccessClose } from "@/hooks/use-success-close";
-import { createClientId } from "@/lib/utils";
-
-type PoolRow = {
-  key: string;
-  productId: string;
-  loadedQuantity: string;
-  originalLoaded: number;
-  error?: string;
-};
 
 type Props = {
   open: boolean;
@@ -68,15 +64,24 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { succeeded, runSuccess, reset } = useSuccessClose(250);
+  const { overlayButtons, overlays, closeOverlays } = useCampaignPoolOverlays();
 
   const poolLocked = isPoolLocked(campaign);
 
   const [name, setName] = useState(campaign.name);
   const [eventDate, setEventDate] = useState(campaign.eventDate);
   const [totalBags, setTotalBags] = useState(String(campaign.totalBags));
-  const [poolRows, setPoolRows] = useState<PoolRow[]>([]);
+  const [poolRows, setPoolRows] = useState<CampaignPoolRow[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+
+  const originalLoadedByProductId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of campaign.pool) {
+      map.set(item.productId, item.loadedQuantity);
+    }
+    return map;
+  }, [campaign.pool]);
 
   useEffect(() => {
     if (!open) return;
@@ -84,12 +89,14 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
     setEventDate(campaign.eventDate);
     setTotalBags(String(campaign.totalBags));
     setPoolRows(
-      campaign.pool.map((item) => ({
-        key: item.id,
-        productId: item.productId,
-        loadedQuantity: String(item.loadedQuantity),
-        originalLoaded: item.loadedQuantity,
-      }))
+      campaign.pool.length === 0
+        ? []
+        : poolRowsFromItems(
+            campaign.pool.map((item) => ({
+              productId: item.productId,
+              loadedQuantity: item.loadedQuantity,
+            }))
+          )
     );
     setFieldErrors({});
     setFormError(null);
@@ -142,14 +149,6 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
 
   const locked = updateMutation.isPending || succeeded;
 
-  const updateRow = (key: string, patch: Partial<PoolRow>) => {
-    setPoolRows((prev) =>
-      prev.map((row) =>
-        row.key === key ? { ...row, ...patch, error: undefined } : row
-      )
-    );
-  };
-
   const validate = (): {
     details: UpdateCampaignInput;
     pool?: PoolItemInput[];
@@ -183,7 +182,8 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
           return { ...row, error: tCreate("loadedQtyInvalid") };
         }
         const product = products.find((p) => p.id === row.productId);
-        const delta = qty - row.originalLoaded;
+        const originalLoaded = originalLoadedByProductId.get(row.productId) ?? 0;
+        const delta = qty - originalLoaded;
         if (product && delta > product.stockQuantity) {
           poolValid = false;
           return { ...row, error: t("stockInsufficient") };
@@ -312,105 +312,14 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
               {t("poolLockedNotice")}
             </p>
           ) : (
-            <>
-              {poolRows.map((row, index) => {
-                const selected = products.find((p) => p.id === row.productId);
-                return (
-                  <div
-                    key={row.key}
-                    className="grid gap-3 rounded-xl border border-border/80 bg-muted/20 p-3"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        {tCommon("fields.product")} {index + 1}
-                      </p>
-                      {poolRows.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() =>
-                            setPoolRows((prev) =>
-                              prev.filter((r) => r.key !== row.key)
-                            )
-                          }
-                          aria-label={tCommon("actions.removeRow")}
-                        >
-                          <Trash2Icon />
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label htmlFor={`edit-campaign-pool-product-${row.key}`}>
-                        {tCommon("fields.product")}
-                      </Label>
-                      <ProductTypeahead
-                        id={`edit-campaign-pool-product-${row.key}`}
-                        products={products}
-                        productId={row.productId}
-                        showStock
-                        showAverageCost
-                        placeholder={tCreate("productSearchPlaceholder")}
-                        aria-invalid={!!row.error}
-                        onSelect={(product) =>
-                          updateRow(row.key, {
-                            productId: product?.id ?? "",
-                            originalLoaded: 0,
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label>{tCreate("loadedQuantity")}</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        inputMode="numeric"
-                        value={row.loadedQuantity}
-                        onChange={(e) =>
-                          updateRow(row.key, {
-                            loadedQuantity: e.target.value,
-                          })
-                        }
-                        aria-invalid={!!row.error}
-                      />
-                      {selected && (
-                        <p className="text-xs text-muted-foreground">
-                          {t("availableStock", {
-                            stock: selected.stockQuantity,
-                          })}
-                        </p>
-                      )}
-                    </div>
-
-                    {row.error && (
-                      <p className="text-xs text-destructive">{row.error}</p>
-                    )}
-                  </div>
-                );
-              })}
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  setPoolRows((prev) => [
-                    ...prev,
-                    {
-                      key: createClientId(),
-                      productId: "",
-                      loadedQuantity: "1",
-                      originalLoaded: 0,
-                    },
-                  ])
-                }
-              >
-                <PlusIcon />
-                {tCommon("actions.addProduct")}
-              </Button>
-            </>
+            <CampaignPoolEditor
+              products={products}
+              rows={poolRows}
+              onChange={setPoolRows}
+              disabled={locked}
+              requireAtLeastOne={false}
+              title={null}
+            />
           )}
 
           {fieldErrors.pool && (
@@ -424,12 +333,14 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
   );
 
   const footer = (
-    <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+    <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+      {!poolLocked ? overlayButtons(locked) : null}
       <Button
         type="button"
         variant="outline"
         disabled={locked}
         onClick={() => {
+          closeOverlays();
           onOpenChange(false);
           reset();
         }}
@@ -450,9 +361,14 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
-    if (!next) reset();
+    if (!next) {
+      closeOverlays();
+      reset();
+    }
   };
 
+  // Nested inside Dialog/Sheet root so Base UI stacks overlays correctly
+  // without closing or resetting Campaign form state (US-24 AC#5).
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -464,6 +380,7 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
         </SheetContent>
+        {!poolLocked ? overlays : null}
       </Sheet>
     );
   }
@@ -478,6 +395,7 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
         {formBody}
         <DialogFooter>{footer}</DialogFooter>
       </DialogContent>
+      {!poolLocked ? overlays : null}
     </Dialog>
   );
 }

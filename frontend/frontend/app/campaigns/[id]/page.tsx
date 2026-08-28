@@ -19,7 +19,7 @@ import { RecordParticipantForm } from "@/components/campaigns/record-participant
 import { ReopenCampaignDialog } from "@/components/campaigns/reopen-campaign-dialog";
 import { campaignApi, campaignKeys, campaignLiveQueryOptions } from "@/src/lib/api/campaign";
 import { campaignStatusLabel } from "@/src/lib/i18n-labels";
-import { formatDate, formatDateTime, vnd } from "@/src/lib/format";
+import { formatDate, formatDateTime, vnd, vndCost } from "@/src/lib/format";
 import { useAuth } from "@/components/providers/auth-provider";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
@@ -247,6 +247,29 @@ export default function CampaignDetailPage({
                     </p>
                     <p className="font-medium tabular-nums">
                       {campaign.totalBags - campaign.bagsSold}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {tDetail("totalPoolCostValue")}
+                    </p>
+                    <p className="font-medium tabular-nums">
+                      {vndCost.format(campaign.totalPoolCostValue)}
+                    </p>
+                    {campaign.excludedFromCostCount > 0 && (
+                      <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-500">
+                        {tDetail("excludedFromCostWarning", {
+                          count: campaign.excludedFromCostCount,
+                        })}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {tDetail("totalBagsSoldValue")}
+                    </p>
+                    <p className="font-medium tabular-nums">
+                      {vnd.format(campaign.totalBagsSoldValue)}
                     </p>
                   </div>
                 </div>

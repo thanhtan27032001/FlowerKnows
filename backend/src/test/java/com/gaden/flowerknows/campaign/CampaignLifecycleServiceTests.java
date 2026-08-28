@@ -334,6 +334,47 @@ class CampaignLifecycleServiceTests {
     }
 
     @Test
+    void createCampaignComputesPoolCostValueExcludingNullCostProducts() {
+        Product priced = product("Lipstick", 100);
+        priced.setAverageCostPrice(BigDecimal.valueOf(50_000));
+        Product unpriced = product("Blush", 100);
+
+        when(productRepository.findById(priced.getId())).thenReturn(Optional.of(priced));
+        when(productRepository.findById(unpriced.getId())).thenReturn(Optional.of(unpriced));
+        when(campaignRepository.save(any(Campaign.class))).thenAnswer(invocation -> {
+            Campaign campaign = invocation.getArgument(0);
+            if (campaign.getId() == null) {
+                setId(campaign, UUID.randomUUID());
+            }
+            for (CampaignPool poolItem : campaign.getPoolItems()) {
+                if (poolItem.getId() == null) {
+                    setId(poolItem, UUID.randomUUID());
+                }
+            }
+            return campaign;
+        });
+        when(participantRepository.sumBagsPurchasedByCampaign(any())).thenReturn(0L);
+        when(participantRepository.sumPrepaidAmountByCampaign(any())).thenReturn(BigDecimal.valueOf(890_000));
+
+        CampaignDtos.CampaignDetailResponse response = campaignService.createCampaign(
+                new CampaignDtos.CreateCampaignRequest(
+                        "Mixed Cost Pool",
+                        LocalDate.of(2026, 8, 1),
+                        BigDecimal.valueOf(89_000),
+                        50,
+                        List.of(
+                                new CampaignDtos.PoolItemRequest(priced.getId(), 10),
+                                new CampaignDtos.PoolItemRequest(unpriced.getId(), 5)
+                        )
+                )
+        );
+
+        assertEquals(BigDecimal.valueOf(500_000), response.totalPoolCostValue());
+        assertEquals(1, response.excludedFromCostCount());
+        assertEquals(BigDecimal.valueOf(890_000), response.totalBagsSoldValue());
+    }
+
+    @Test
     void createCampaignRejectsWhenPoolSumExceedsTotalBags() {
         Product product = product("Lipstick", 100);
 

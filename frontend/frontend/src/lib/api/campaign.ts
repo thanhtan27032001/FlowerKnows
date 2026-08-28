@@ -40,6 +40,9 @@ export type CampaignDetail = CampaignSummary & {
   poolQuantityTotal: number;
   pool: PoolItem[];
   participants: ParticipantSummary[];
+  totalPoolCostValue: number;
+  excludedFromCostCount: number;
+  totalBagsSoldValue: number;
 };
 
 export type PoolItemInput = {

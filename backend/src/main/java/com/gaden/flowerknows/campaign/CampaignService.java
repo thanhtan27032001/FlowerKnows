@@ -572,6 +572,19 @@ public class CampaignService {
                 ))
                 .toList();
 
+        BigDecimal totalPoolCostValue = BigDecimal.ZERO;
+        int excludedFromCostCount = 0;
+        for (CampaignPool p : campaign.getPoolItems()) {
+            BigDecimal costPrice = p.getProduct().getAverageCostPrice();
+            if (costPrice == null) {
+                excludedFromCostCount++;
+                continue;
+            }
+            totalPoolCostValue = totalPoolCostValue.add(costPrice.multiply(BigDecimal.valueOf(p.getLoadedQuantity())));
+        }
+
+        BigDecimal totalBagsSoldValue = participantRepository.sumPrepaidAmountByCampaign(campaign.getId());
+
         if (!includeTokenStats) {
             return new CampaignDtos.CampaignDetailResponse(
                     campaign.getId(),
@@ -584,7 +597,10 @@ public class CampaignService {
                     bagsSold,
                     campaign.getCreatedAt(),
                     pool,
-                    List.of()
+                    List.of(),
+                    totalPoolCostValue,
+                    excludedFromCostCount,
+                    totalBagsSoldValue
             );
         }
 
@@ -629,7 +645,10 @@ public class CampaignService {
                 bagsSold,
                 campaign.getCreatedAt(),
                 pool,
-                participants
+                participants,
+                totalPoolCostValue,
+                excludedFromCostCount,
+                totalBagsSoldValue
         );
     }
 

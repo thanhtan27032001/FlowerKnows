@@ -151,7 +151,13 @@ public final class CampaignDtos {
             long bagsSold,
             Instant createdAt,
             List<PoolItemResponse> pool,
-            List<ParticipantSummaryResponse> participants
+            List<ParticipantSummaryResponse> participants,
+            /** Sum of loaded_quantity * product.average_cost_price, skipping null-cost products (US-01 AC#5a). */
+            BigDecimal totalPoolCostValue,
+            /** Count of pool rows skipped from totalPoolCostValue due to a null average_cost_price. */
+            int excludedFromCostCount,
+            /** Sum of total_bags_purchased * bag_price for CONFIRMED participants — same figure as US-11's prepaid_amount total (AC#5a). */
+            BigDecimal totalBagsSoldValue
     ) {
     }
 

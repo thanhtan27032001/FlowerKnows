@@ -126,10 +126,40 @@ export type ParticipantTurn = {
   turnNumber: number;
   bagCount: number;
   note: string | null;
+  /** Added in v5.4 — informational only, never blocks a save. See US-38 AC #13. */
+  isBalanced: boolean;
+  /** Added in v5.4 — Σ bag_count minus total_bags_purchased for this row's participant. */
+  difference: number;
+};
+
+/** Added in v5.4 — returned by DELETE since the row itself is gone. */
+export type ParticipantTurnBalance = {
+  campaignParticipantId: string;
+  isBalanced: boolean;
+  difference: number;
+};
+
+/** Shared shape for surfacing a v5.4 non-blocking balance mismatch to the turns table
+ * banner, regardless of which of the 3 mutating endpoints (create/edit/delete) produced it. */
+export type BalanceResult = {
+  isBalanced: boolean;
+  difference: number;
+  campaignParticipantId: string;
+  customerName: string;
 };
 
 export type UpdateParticipantTurnNoteInput = {
   note: string | null;
+};
+
+export type CreateParticipantTurnInput = {
+  campaignParticipantId: string;
+  bagCount: number;
+  note?: string | null;
+};
+
+export type UpdateParticipantTurnBagCountInput = {
+  bagCount: number;
 };
 
 export type ParticipantToken = {
@@ -284,4 +314,22 @@ export const campaignApi = {
       `/api/participant-turns/${turnId}`,
       input
     ),
+
+  createParticipantTurn: (campaignId: string, input: CreateParticipantTurnInput) =>
+    apiClient.post<ParticipantTurn>(
+      `/api/campaigns/${campaignId}/participant-turns`,
+      input
+    ),
+
+  updateParticipantTurnBagCount: (
+    turnId: string,
+    input: UpdateParticipantTurnBagCountInput
+  ) =>
+    apiClient.patch<ParticipantTurn>(
+      `/api/participant-turns/${turnId}/bag-count`,
+      input
+    ),
+
+  deleteParticipantTurn: (turnId: string) =>
+    apiClient.delete<ParticipantTurnBalance>(`/api/participant-turns/${turnId}`),
 };

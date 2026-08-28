@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 5.1 (US-01: Campaign detail page now shows Tổng giá vốn pool and Tổng giá túi đã bán summary figures)
+**Version:** 5.4 (US-38 REVERSAL: removed v5.3's blocking validation -- manual edits to the turn table now always save, mismatch vs total_bags_purchased is a non-blocking warning only; this table has zero effect on financial calculations elsewhere)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -115,9 +115,9 @@ This is the single source of truth for schema design across the whole document.
 | `campaign_participant_id` | FK → campaign_participant | |
 | `turn_number` | int | Sequential, campaign-scoped (1, 2, 3...) — represents the Nth participation event in this campaign's session, not per-customer numbering |
 | `bag_count` | int | Number of bags for this specific turn |
-| `note` | string, nullable | **The only field directly/manually editable by Staff/Owner** — see US-38. `bag_count` and which participant a turn belongs to are only ever changed automatically by US-03/US-26/US-27, never edited by hand |
+| `note` | string, nullable | Manually editable, no restriction. **As of v5.3**, `bag_count` and even whole new rows can also be created/edited manually by Owner (US-38 AC #10-#13) — subject to the strict per-participant sum validation described in the entity note below. Only which `campaign_participant` a row belongs to stays fixed once created (no reassigning a row to a different customer — delete and recreate instead). |
 
-**Note:** This table is a **reference/tracking breakdown**, not a strict source of truth — its `bag_count` sum per participant is kept reasonably in sync with `campaign_participant.total_bags_purchased` by the automatic rules in US-38, but there is **no hard invariant check or blocking validation** enforcing they always match exactly (a deliberate simplification — this table exists for visibility into play order, not for financial reconciliation, which remains entirely owned by `campaign_participant`/`prepaid_amount` as before).
+**Note:** ~~This table is a reference/tracking breakdown, not a strict source of truth...~~ ~~Superseded in v5.3 (strict blocking invariant)~~ **Superseded again in v5.4** — the strict blocking validation from v5.3 was removed. This table is purely a **session-order note/reference** for Owner/Staff — Owner can freely add, edit `bag_count`, and delete rows (US-38 AC #10-#13) without any blocking constraint. A mismatch between `Σ bag_count` and `campaign_participant.total_bags_purchased` only triggers a **non-blocking warning**, never a rejected save — this table has **no effect whatsoever** on `prepaid_amount`, revenue, or any other financial calculation elsewhere in the system. The automatic rules (US-03/US-26/US-27) still keep it reasonably in sync by default when `total_bags_purchased` changes; manual edits are simply unconstrained on top of that.
 
 ### `item_token` (Token — core entity of the system)
 | Field | Type | Description |
@@ -384,7 +384,7 @@ This is the single source of truth for schema design across the whole document.
 
 ---
 
-### US-38: Track Campaign Participant turn order
+### US-38: Track & manually manage Campaign Participant turn order
 
 **As** Owner or Staff, **I want to** see the order in which customers participated during a Campaign's live session — including cases where the same customer bought bags in more than one separate turn — **so that** I have a clear record of session play-order, useful for replaying/reviewing a livestream sale.
 
@@ -400,9 +400,15 @@ This is the single source of truth for schema design across the whole document.
 | 4 | Owner edits `total_bags_purchased` **upward** via US-26 | Edit succeeds | Same AC #1/#2 merge-or-append logic applies to the increased amount |
 | 5 | Owner edits `total_bags_purchased` **downward** via US-26 (reducing by some amount D) | Edit succeeds | The reduction cascades through this customer's own turns **starting from their most recent turn backward** (LIFO): reduce the most recent turn's `bag_count` by up to D; if that turn's `bag_count` reaches 0, delete that turn row entirely and continue subtracting the remainder from the next-most-recent turn; repeat until D is fully applied |
 | 6 | A `campaign_participant` is deleted (currently only possible via US-27 AC #6, "Hủy nháp" on a draft) | Deletion succeeds | All `campaign_participant_turn` rows belonging to that participant are deleted too |
-| 7 | Owner/Staff views the turn table | Clicks into the `Note` cell of any row | Editable inline — **only `note` is directly editable**; `bag_count` and which customer a turn belongs to can only change via the automatic rules above (US-03/US-26/US-27), never by hand |
+| 7 | Owner/Staff views the turn table | Clicks into the `Note` cell of any row | Editable inline — `bag_count` and which customer a turn belongs to can only change via the automatic rules above (US-03/US-26/US-27), never by hand |
+| 8 | **Added in v5.2.** Owner views the turn table | Drags a row to a new position (or uses up/down reorder controls) | The table's row **order** can be manually adjusted — e.g. to correct a mistake in how the session was originally recorded, or to reflect the actual real-world order more accurately. On drop/confirm, the system **renumbers `turn_number` sequentially (1, 2, 3...)** for the whole campaign according to the new row order — this only ever changes `turn_number` values, never `bag_count` or which participant a row belongs to |
+| 9 | Turn rows have just been manually reordered | A **later** `campaign_participant_turn` row is subsequently created (per AC #1/#2, e.g. a new US-03 recording) | The "current last turn" check in AC #2 uses whatever `turn_number` is now highest **after** the reorder — the merge-or-append logic is always based on live data, never a stale/cached order, so it keeps working correctly post-reorder |
+| 10 | **Added in v5.3.** Owner is on the turn table | Clicks "Thêm lượt thủ công" (Add turn manually) | A form: select an existing **`confirmed`** `campaign_participant` in this campaign (cannot create a turn for a customer with no participant record), `bag_count`, optional `note`. New row is appended (or positioned via the existing reorder feature, AC #8) |
+| 11 | Owner is on the turn table | Clicks into a `bag_count` cell of any row | Directly editable, same inline pattern as `note` |
+| 12 | Owner wants to remove a row entirely (not just reduce it to 0) | Clicks "Xóa" on a turn row | The row is deleted — this is now available as a direct manual action, not only as a side effect of the LIFO auto-decrease (AC #5) or participant deletion (AC #6) |
+| 13 | Owner adds a row (AC #10), edits a `bag_count` (AC #11), or deletes a row (AC #12) | Saves the change | **Superseded in v5.4 — no longer blocking.** The save **always succeeds**. After saving, the system checks: does `Σ bag_count` of this `campaign_participant`'s turn rows equal their `total_bags_purchased`? If not, a **non-blocking warning** is shown (e.g. "Tổng số túi các lượt (5) không khớp số túi đã mua (4) của Khách hàng X — chênh lệch 1") — informational only, does not prevent saving or revert the edit. This table exists purely for session-order **notes/reference**, not financial reconciliation — a mismatch has no effect on `prepaid_amount`, revenue, or any other calculation elsewhere in the system |
 
-**Access:** View — same as Campaign detail visibility (both Owner and Staff, per Module 10). Editing `note` — both Owner and Staff (low-risk informational field, same reasoning as `action_status`).
+**Access:** View — same as Campaign detail visibility (both Owner and Staff, per Module 10). Editing `note` — both Owner and Staff (low-risk informational field, same reasoning as `action_status`). **Manually reordering (AC #8), adding/editing `bag_count`/deleting rows (AC #10-#13) — Owner only** (structural edits to the recorded history, higher-risk than a note, matching the pattern used elsewhere for Owner-only corrections).
 
 **Note:** As stated in the `campaign_participant_turn` entity definition, this table's totals are **not** strictly guaranteed to match `campaign_participant.total_bags_purchased` at all times — it's a best-effort session-order tracking log, not a financial reconciliation source.
 

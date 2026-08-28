@@ -510,7 +510,7 @@ export default function CampaignDetailPage({
               )}
             </section>
 
-            <ParticipantTurnsTable campaignId={campaign.id} />
+            <ParticipantTurnsTable campaign={campaign} />
 
             {isOwner ? (
               <>

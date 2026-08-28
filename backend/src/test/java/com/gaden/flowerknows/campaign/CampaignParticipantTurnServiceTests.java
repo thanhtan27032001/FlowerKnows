@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -124,6 +125,27 @@ class CampaignParticipantTurnServiceTests {
                 turns.add(turn);
             }
             return turn;
+        });
+        lenient().when(turnRepository.saveAndFlush(any(CampaignParticipantTurn.class))).thenAnswer(inv -> {
+            CampaignParticipantTurn turn = inv.getArgument(0);
+            if (turn.getId() == null) {
+                setId(turn, UUID.randomUUID());
+            }
+            if (!turns.contains(turn)) {
+                turns.add(turn);
+            }
+            return turn;
+        });
+        lenient().when(turnRepository.findByIdWithCustomer(any())).thenAnswer(inv -> {
+            UUID turnId = inv.getArgument(0);
+            return turns.stream().filter(t -> t.getId().equals(turnId)).findFirst();
+        });
+        lenient().when(turnRepository.sumBagCountByCampaignParticipantId(any())).thenAnswer(inv -> {
+            UUID participantId = inv.getArgument(0);
+            return turns.stream()
+                    .filter(t -> t.getCampaignParticipant().getId().equals(participantId))
+                    .mapToInt(CampaignParticipantTurn::getBagCount)
+                    .sum();
         });
         lenient().when(turnRepository.findByCampaignParticipantIdOrderByTurnNumberDesc(any())).thenAnswer(inv -> {
             UUID participantId = inv.getArgument(0);
@@ -268,6 +290,156 @@ class CampaignParticipantTurnServiceTests {
         participantService.deleteParticipant(campaignId, draft.id());
 
         assertTrue(turns.isEmpty());
+    }
+
+    @Test
+    void manualAddThatKeepsSumCorrectSucceedsAndReportsBalanced() {
+        UUID campaignId = UUID.randomUUID();
+        Campaign campaign = openCampaign(campaignId, 20);
+        Customer lan = customer("Lan");
+
+        when(campaignRepository.findById(campaignId)).thenReturn(Optional.of(campaign));
+        when(customerService.requireCustomer(lan.getId())).thenReturn(lan);
+
+        participantService.recordParticipant(
+                campaignId, new ParticipantService.RecordParticipantRequest(lan.getId(), null, 5)
+        );
+        UUID lanParticipantId = participantsById.values().iterator().next().getId();
+        // Simulate a pre-existing gap between the recorded turns and the total (e.g. from data
+        // entered before this feature existed) so a manual add can fill it exactly.
+        turns.getFirst().setBagCount(3);
+
+        CampaignDtos.ParticipantTurnResponse created = turnService.createManualTurn(
+                campaignId,
+                new CampaignDtos.CreateParticipantTurnRequest(lanParticipantId, 2, "bù thủ công")
+        );
+
+        assertEquals(2, turns.size());
+        assertEquals(2, created.bagCount());
+        assertEquals("bù thủ công", created.note());
+        assertEquals(5, turnRepository.sumBagCountByCampaignParticipantId(lanParticipantId));
+        assertTrue(created.isBalanced());
+        assertEquals(0, created.difference());
+    }
+
+    /**
+     * v5.4: US-38 AC #13 no longer blocks — a bag_count edit that puts the participant's
+     * turns out of sync with total_bags_purchased still saves, and the response just
+     * reports the mismatch as a non-blocking signal.
+     */
+    @Test
+    void manualBagCountEditThatBreaksSumStillSucceedsAndReportsMismatch() {
+        UUID campaignId = UUID.randomUUID();
+        Campaign campaign = openCampaign(campaignId, 20);
+        Customer lan = customer("Lan");
+
+        when(campaignRepository.findById(campaignId)).thenReturn(Optional.of(campaign));
+        when(customerService.requireCustomer(lan.getId())).thenReturn(lan);
+
+        participantService.recordParticipant(
+                campaignId, new ParticipantService.RecordParticipantRequest(lan.getId(), null, 5)
+        );
+        UUID turnId = turns.getFirst().getId();
+
+        CampaignDtos.ParticipantTurnResponse updated = turnService.updateBagCount(turnId, 4);
+
+        assertEquals(4, updated.bagCount());
+        assertEquals(4, turns.getFirst().getBagCount());
+        assertFalse(updated.isBalanced());
+        assertEquals(-1, updated.difference());
+    }
+
+    /**
+     * v5.4: US-38 AC #13 no longer blocks — a delete that puts the participant's turns out
+     * of sync with total_bags_purchased still succeeds, and the balance response reports it.
+     */
+    @Test
+    void deleteThatBreaksSumStillSucceedsAndReportsMismatch() {
+        UUID campaignId = UUID.randomUUID();
+        Campaign campaign = openCampaign(campaignId, 20);
+        Customer lan = customer("Lan");
+        Customer mai = customer("Mai");
+
+        when(campaignRepository.findById(campaignId)).thenReturn(Optional.of(campaign));
+        when(customerService.requireCustomer(lan.getId())).thenReturn(lan);
+        when(customerService.requireCustomer(mai.getId())).thenReturn(mai);
+
+        participantService.recordParticipant(
+                campaignId, new ParticipantService.RecordParticipantRequest(lan.getId(), null, 3)
+        );
+        participantService.recordParticipant(
+                campaignId, new ParticipantService.RecordParticipantRequest(mai.getId(), null, 2)
+        );
+        participantService.recordParticipant(
+                campaignId, new ParticipantService.RecordParticipantRequest(lan.getId(), null, 3)
+        );
+
+        UUID lanParticipantId = participantsById.values().stream()
+                .filter(p -> p.getCustomer().getId().equals(lan.getId()))
+                .findFirst()
+                .orElseThrow()
+                .getId();
+        UUID lanSecondTurnId = turns.stream()
+                .filter(t -> t.getCampaignParticipant().getId().equals(lanParticipantId))
+                .max(Comparator.comparingInt(CampaignParticipantTurn::getTurnNumber))
+                .orElseThrow()
+                .getId();
+
+        CampaignDtos.ParticipantTurnBalanceResponse result = turnService.deleteTurn(lanSecondTurnId);
+
+        assertTrue(turns.stream().noneMatch(t -> t.getId().equals(lanSecondTurnId)));
+        assertEquals(lanParticipantId, result.campaignParticipantId());
+        assertFalse(result.isBalanced());
+        assertEquals(-3, result.difference());
+    }
+
+    @Test
+    void sequenceOfEditsThatNetsToZeroSucceeds() {
+        UUID campaignId = UUID.randomUUID();
+        Campaign campaign = openCampaign(campaignId, 20);
+        Customer lan = customer("Lan");
+        Customer mai = customer("Mai");
+
+        when(campaignRepository.findById(campaignId)).thenReturn(Optional.of(campaign));
+        when(customerService.requireCustomer(lan.getId())).thenReturn(lan);
+        when(customerService.requireCustomer(mai.getId())).thenReturn(mai);
+
+        participantService.recordParticipant(
+                campaignId, new ParticipantService.RecordParticipantRequest(lan.getId(), null, 5)
+        );
+        participantService.recordParticipant(
+                campaignId, new ParticipantService.RecordParticipantRequest(mai.getId(), null, 2)
+        );
+        participantService.recordParticipant(
+                campaignId, new ParticipantService.RecordParticipantRequest(lan.getId(), null, 3)
+        );
+        // Lan now has two turns (5 and 3) summing to her total of 8.
+
+        UUID lanParticipantId = participantsById.values().stream()
+                .filter(p -> p.getCustomer().getId().equals(lan.getId()))
+                .findFirst()
+                .orElseThrow()
+                .getId();
+        List<CampaignParticipantTurn> lanTurns = turns.stream()
+                .filter(t -> t.getCampaignParticipant().getId().equals(lanParticipantId))
+                .sorted(Comparator.comparingInt(CampaignParticipantTurn::getTurnNumber))
+                .toList();
+        CampaignParticipantTurn firstTurn = lanTurns.get(0);
+        CampaignParticipantTurn secondTurn = lanTurns.get(1);
+
+        // +2 on the first row is applied directly here to represent the other half of this
+        // redistribution having already landed; the -2 below is the one validated call under
+        // test, and it must see the aggregate (not just its own row) reconcile to the total.
+        firstTurn.setBagCount(firstTurn.getBagCount() + 2);
+
+        CampaignDtos.ParticipantTurnResponse updated = turnService.updateBagCount(
+                secondTurn.getId(), secondTurn.getBagCount() - 2
+        );
+
+        assertEquals(1, updated.bagCount());
+        assertEquals(8, turnRepository.sumBagCountByCampaignParticipantId(lanParticipantId));
+        assertTrue(updated.isBalanced());
+        assertEquals(0, updated.difference());
     }
 
     private Campaign openCampaign(UUID campaignId, int totalBags) {

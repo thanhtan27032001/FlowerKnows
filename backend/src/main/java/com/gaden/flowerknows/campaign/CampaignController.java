@@ -188,4 +188,14 @@ public class CampaignController {
     public List<CampaignDtos.ParticipantTurnResponse> listParticipantTurns(@PathVariable UUID id) {
         return participantTurnService.listTurns(id);
     }
+
+    @PostMapping("/{id}/participant-turns")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('OWNER')")
+    public CampaignDtos.ParticipantTurnResponse createParticipantTurn(
+            @PathVariable UUID id,
+            @Valid @RequestBody CampaignDtos.CreateParticipantTurnRequest request
+    ) {
+        return participantTurnService.createManualTurn(id, request);
+    }
 }

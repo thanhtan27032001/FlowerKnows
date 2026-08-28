@@ -34,4 +34,10 @@ public interface CampaignParticipantTurnRepository extends JpaRepository<Campaig
     Optional<CampaignParticipantTurn> findByIdWithCustomer(@Param("id") UUID id);
 
     void deleteByCampaignParticipantId(UUID campaignParticipantId);
+
+    @Query("""
+            SELECT COALESCE(SUM(t.bagCount), 0) FROM CampaignParticipantTurn t
+            WHERE t.campaignParticipant.id = :campaignParticipantId
+            """)
+    int sumBagCountByCampaignParticipantId(@Param("campaignParticipantId") UUID campaignParticipantId);
 }

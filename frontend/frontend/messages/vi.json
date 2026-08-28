@@ -296,7 +296,17 @@
       "turnBagCount": "Số túi",
       "turnNote": "Note",
       "turnNotePlaceholder": "Thêm ghi chú…",
-      "turnNoteUpdateFailed": "Không lưu được ghi chú"
+      "turnNoteUpdateFailed": "Không lưu được ghi chú",
+      "addTurnManually": "Thêm lượt thủ công",
+      "turnActions": "Thao tác",
+      "turnDelete": "Xóa lượt",
+      "turnDeleteTitle": "Xóa lượt chơi này?",
+      "turnDeleteDescription": "Xóa lượt của {name} ({bagCount} túi). Không thể hoàn tác.",
+      "turnDeleteConfirm": "Xóa lượt",
+      "turnDeleteFailed": "Không xóa được lượt chơi",
+      "turnBagCountUpdateFailed": "Không lưu được số túi",
+      "turnMismatchWarning": "Tổng số túi các lượt ({sum}) không khớp số túi đã mua ({expected}) của Khách hàng {name} — chênh lệch {diff}",
+      "turnWarningDismiss": "Đóng cảnh báo"
     },
     "edit": {
       "title": "Sửa phiên live",
@@ -328,6 +338,18 @@
       "remainingHint": "Còn tối đa {remaining} túi (đã trừ các người tham gia đã xác nhận khác).",
       "draftHint": "Bản nháp không chiếm túi còn lại của phiên live.",
       "recordedFloor": "Đã khui {count} túi"
+    },
+    "addTurn": {
+      "title": "Thêm lượt thủ công",
+      "description": "Thêm một lượt chơi mới. Tổng số túi các lượt của khách hàng phải khớp chính xác số túi đã mua.",
+      "participant": "Khách hàng",
+      "participantPlaceholder": "Chọn khách hàng",
+      "participantRequired": "Vui lòng chọn khách hàng",
+      "bagCount": "Số túi",
+      "bagCountInvalid": "Số túi phải là số nguyên hợp lệ",
+      "note": "Note",
+      "save": "Lưu",
+      "failed": "Không thêm được lượt chơi"
     },
     "create": {
       "title": "Tạo phiên live",

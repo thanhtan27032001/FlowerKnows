@@ -63,6 +63,18 @@ public final class CampaignDtos {
     ) {
     }
 
+    public record CreateParticipantTurnRequest(
+            @NotNull(message = "campaignParticipantId is required") UUID campaignParticipantId,
+            @Min(value = 1, message = "bagCount must be at least 1") int bagCount,
+            @Size(max = 500, message = "note must be at most 500 characters") String note
+    ) {
+    }
+
+    public record UpdateParticipantTurnBagCountRequest(
+            @Min(value = 1, message = "bagCount must be at least 1") int bagCount
+    ) {
+    }
+
     public record ParticipantTurnResponse(
             UUID id,
             UUID campaignParticipantId,
@@ -70,7 +82,21 @@ public final class CampaignDtos {
             String customerName,
             int turnNumber,
             int bagCount,
-            String note
+            String note,
+            /** Added in v5.4 — Σ bag_count across this participant's turns equals
+             * total_bags_purchased. Informational only; never blocks a save. */
+            boolean isBalanced,
+            /** Added in v5.4 — Σ bag_count minus total_bags_purchased (can be negative). */
+            int difference
+    ) {
+    }
+
+    /** Added in v5.4 — returned by DELETE /api/participant-turns/{id} since the row itself
+     * is gone; reports the affected participant's post-delete balance. */
+    public record ParticipantTurnBalanceResponse(
+            UUID campaignParticipantId,
+            boolean isBalanced,
+            int difference
     ) {
     }
 

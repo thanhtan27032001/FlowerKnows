@@ -283,7 +283,17 @@
       "participantsEmpty": "Chưa ghi nhận người tham gia.",
       "selectParticipant": "Chọn người tham gia",
       "enterSelectMode": "Chọn khách để xuất",
-      "exportLoading": "Đang tải món để xuất ảnh…"
+      "exportLoading": "Đang tải món để xuất ảnh…",
+      "turnsTitle": "Thứ tự lượt chơi",
+      "turnsLoading": "Đang tải lượt chơi…",
+      "turnsLoadError": "Không tải được thứ tự lượt chơi",
+      "turnsEmpty": "Chưa có lượt chơi nào được ghi nhận.",
+      "turnNumber": "Lượt",
+      "turnCustomer": "Khách hàng",
+      "turnBagCount": "Số túi",
+      "turnNote": "Note",
+      "turnNotePlaceholder": "Thêm ghi chú…",
+      "turnNoteUpdateFailed": "Không lưu được ghi chú"
     },
     "edit": {
       "title": "Sửa phiên live",

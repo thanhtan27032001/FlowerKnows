@@ -189,6 +189,9 @@ export function ParticipantItemsPanel({
         }
       );
       void queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
+      void queryClient.invalidateQueries({
+        queryKey: campaignKeys.participantTurns(campaignId),
+      });
       await runConfirmSuccess(() => undefined);
     },
     onError: (err: unknown) => {
@@ -219,6 +222,9 @@ export function ParticipantItemsPanel({
         }
       );
       void queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
+      void queryClient.invalidateQueries({
+        queryKey: campaignKeys.participantTurns(campaignId),
+      });
       await runDeleteSuccess(() => setDeleteOpen(false));
     },
     onError: (err: unknown) => {

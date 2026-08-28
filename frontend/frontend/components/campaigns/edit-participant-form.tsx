@@ -108,6 +108,9 @@ export function EditParticipantForm({
         }
       );
       void queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
+      void queryClient.invalidateQueries({
+        queryKey: campaignKeys.participantTurns(campaign.id),
+      });
       await runSuccess(() => onOpenChange(false));
     },
     onError: (err: unknown) => {

@@ -183,6 +183,9 @@ export function RecordParticipantForm({
       );
       void queryClient.invalidateQueries({ queryKey: campaignKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: customerKeys.all });
+      void queryClient.invalidateQueries({
+        queryKey: campaignKeys.participantTurns(campaign.id),
+      });
       await runSuccess(() => {
         onOpenChange(false);
         resetForm();

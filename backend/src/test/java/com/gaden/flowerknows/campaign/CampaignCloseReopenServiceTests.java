@@ -53,6 +53,8 @@ class CampaignCloseReopenServiceTests {
     private ExchangeTransactionRepository exchangeRepository;
     @Mock
     private OrderRepository orderRepository;
+    @Mock
+    private CampaignParticipantTurnService participantTurnService;
 
     private CampaignService campaignService;
     private ParticipantService participantService;
@@ -73,7 +75,8 @@ class CampaignCloseReopenServiceTests {
                 customerService,
                 itemTokenRepository,
                 exchangeRepository,
-                orderRepository
+                orderRepository,
+                participantTurnService
         );
         lenient().when(stockTransactionRepository.save(any(StockTransaction.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

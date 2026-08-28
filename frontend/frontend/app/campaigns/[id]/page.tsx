@@ -13,6 +13,7 @@ import { CloseCampaignDialog } from "@/components/campaigns/close-campaign-dialo
 import { DeleteCampaignDialog } from "@/components/campaigns/delete-campaign-dialog";
 import { EditCampaignForm } from "@/components/campaigns/edit-campaign-form";
 import { ParticipantItemsPanel } from "@/components/campaigns/participant-items-panel";
+import { ParticipantTurnsTable } from "@/components/campaigns/participant-turns-table";
 import { RecordItemForm } from "@/components/campaigns/record-item-form";
 import { RecordParticipantForm } from "@/components/campaigns/record-participant-form";
 import { ReopenCampaignDialog } from "@/components/campaigns/reopen-campaign-dialog";
@@ -399,8 +400,8 @@ export default function CampaignDetailPage({
                   {tDetail("participantsTitle")}
                 </h2>
                 <div className="flex flex-col items-start gap-2">
-                  {campaign.status === "OPEN" && (
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {campaign.status === "OPEN" && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -408,11 +409,10 @@ export default function CampaignDetailPage({
                       >
                         {tDetail("recordParticipant")}
                       </Button>
-                    </div>
-                  )}
-                  {isOwner && confirmedParticipants.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {!exportSelecting ? (
+                    )}
+                    {isOwner &&
+                      confirmedParticipants.length > 0 &&
+                      !exportSelecting && (
                         <Button
                           type="button"
                           size="sm"
@@ -421,36 +421,36 @@ export default function CampaignDetailPage({
                         >
                           {tDetail("enterSelectMode")}
                         </Button>
-                      ) : (
-                        <>
-                          <CampaignParticipantExportBar
-                            campaign={campaign}
-                            selectedIds={exportSelectedIds}
-                          />
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={
-                              allExportSelected
-                                ? clearExportSelection
-                                : selectAllExport
-                            }
-                          >
-                            {allExportSelected
-                              ? tCommon("actions.clear")
-                              : tCommon("actions.selectAll")}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={exitExportSelectMode}
-                          >
-                            {tCommon("actions.cancel")}
-                          </Button>
-                        </>
                       )}
+                  </div>
+                  {isOwner && confirmedParticipants.length > 0 && exportSelecting && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CampaignParticipantExportBar
+                        campaign={campaign}
+                        selectedIds={exportSelectedIds}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={
+                          allExportSelected
+                            ? clearExportSelection
+                            : selectAllExport
+                        }
+                      >
+                        {allExportSelected
+                          ? tCommon("actions.clear")
+                          : tCommon("actions.selectAll")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={exitExportSelectMode}
+                      >
+                        {tCommon("actions.cancel")}
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -486,6 +486,8 @@ export default function CampaignDetailPage({
                 </div>
               )}
             </section>
+
+            <ParticipantTurnsTable campaignId={campaign.id} />
 
             {isOwner ? (
               <>

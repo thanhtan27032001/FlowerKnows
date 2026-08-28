@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -54,6 +55,22 @@ public final class CampaignDtos {
 
     public record UpdateParticipantRequest(
             @Min(value = 1, message = "totalBagsPurchased must be at least 1") int totalBagsPurchased
+    ) {
+    }
+
+    public record UpdateParticipantTurnNoteRequest(
+            @Size(max = 500, message = "note must be at most 500 characters") String note
+    ) {
+    }
+
+    public record ParticipantTurnResponse(
+            UUID id,
+            UUID campaignParticipantId,
+            UUID customerId,
+            String customerName,
+            int turnNumber,
+            int bagCount,
+            String note
     ) {
     }
 

@@ -44,6 +44,7 @@ class RecordItemsServiceTests {
     @Mock private CustomerService customerService;
     @Mock private ExchangeTransactionRepository exchangeRepository;
     @Mock private OrderRepository orderRepository;
+    @Mock private CampaignParticipantTurnService participantTurnService;
 
     private ParticipantService participantService;
 
@@ -56,7 +57,8 @@ class RecordItemsServiceTests {
         );
         participantService = new ParticipantService(
                 campaignService, participantRepository, customerService,
-                itemTokenRepository, exchangeRepository, orderRepository
+                itemTokenRepository, exchangeRepository, orderRepository,
+                participantTurnService
         );
         lenient().when(stockTransactionRepository.save(any(StockTransaction.class)))
                 .thenAnswer(inv -> inv.getArgument(0));

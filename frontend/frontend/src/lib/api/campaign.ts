@@ -115,6 +115,20 @@ export type TokenRecord = {
   createdAt: string;
 };
 
+export type ParticipantTurn = {
+  id: string;
+  campaignParticipantId: string;
+  customerId: string;
+  customerName: string;
+  turnNumber: number;
+  bagCount: number;
+  note: string | null;
+};
+
+export type UpdateParticipantTurnNoteInput = {
+  note: string | null;
+};
+
 export type ParticipantToken = {
   id: string;
   productId: string;
@@ -163,6 +177,8 @@ export const campaignKeys = {
     [...campaignKeys.all, "close-preview", id] as const,
   participantTokens: (campaignId: string, participantId: string) =>
     [...campaignKeys.all, "participant-tokens", campaignId, participantId] as const,
+  participantTurns: (campaignId: string) =>
+    [...campaignKeys.all, "participant-turns", campaignId] as const,
 };
 
 /** Near-realtime polling for Campaign list/detail only (not app-wide). */
@@ -250,5 +266,19 @@ export const campaignApi = {
   listParticipantTokens: (campaignId: string, participantId: string) =>
     apiClient.get<ParticipantToken[]>(
       `/api/campaigns/${campaignId}/participants/${participantId}/tokens`
+    ),
+
+  listParticipantTurns: (campaignId: string) =>
+    apiClient.get<ParticipantTurn[]>(
+      `/api/campaigns/${campaignId}/participant-turns`
+    ),
+
+  updateParticipantTurnNote: (
+    turnId: string,
+    input: UpdateParticipantTurnNoteInput
+  ) =>
+    apiClient.patch<ParticipantTurn>(
+      `/api/participant-turns/${turnId}`,
+      input
     ),
 };

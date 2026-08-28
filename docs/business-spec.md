@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 4.9 (US-01/US-24: Campaign pool builder gains inline "Tạo sản phẩm mới" / "Nhập kho" overlay buttons, extending the v4.1 pattern from the Stock In form)
+**Version:** 5.0 (Adds MODULE-adjacent US-38 and campaign_participant_turn entity — tracks live-session play order per Campaign, with auto append/merge on increase and LIFO auto-decrement on decrease; reference-only, not a strict financial invariant)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -106,6 +106,18 @@ This is the single source of truth for schema design across the whole document.
 | `total_bags_purchased` | int | Cumulative if purchased multiple times |
 | `prepaid_amount` | decimal | Amount prepaid (= total_bags_purchased × bag_price). **`0` while `status = draft`** — no money has actually been collected yet |
 | `status` | enum | `draft` / `confirmed`. Default `confirmed` (existing rows and the normal US-03 flow). See US-27 — `draft` rows do NOT count against the campaign's sold/remaining bag count, and do not appear in prepaid/revenue reconciliation until confirmed |
+
+### `campaign_participant_turn` (Added in v5.0 — tracks play-order within a Campaign)
+| Field | Type | Description |
+|---|---|---|
+| `id` | PK | |
+| `campaign_id` | FK → campaign | Turn numbering is scoped globally per campaign, across all participants — matches a live-selling session's actual chronological order |
+| `campaign_participant_id` | FK → campaign_participant | |
+| `turn_number` | int | Sequential, campaign-scoped (1, 2, 3...) — represents the Nth participation event in this campaign's session, not per-customer numbering |
+| `bag_count` | int | Number of bags for this specific turn |
+| `note` | string, nullable | **The only field directly/manually editable by Staff/Owner** — see US-38. `bag_count` and which participant a turn belongs to are only ever changed automatically by US-03/US-26/US-27, never edited by hand |
+
+**Note:** This table is a **reference/tracking breakdown**, not a strict source of truth — its `bag_count` sum per participant is kept reasonably in sync with `campaign_participant.total_bags_purchased` by the automatic rules in US-38, but there is **no hard invariant check or blocking validation** enforcing they always match exactly (a deliberate simplification — this table exists for visibility into play order, not for financial reconciliation, which remains entirely owned by `campaign_participant`/`prepaid_amount` as before).
 
 ### `item_token` (Token — core entity of the system)
 | Field | Type | Description |
@@ -368,6 +380,30 @@ This is the single source of truth for schema design across the whole document.
 | 7 | Case 3 above (this is a **new** `campaign_participant` for this customer — their first time in this campaign) | The participant is created | The system also **resets `customer.action_status = undetermined`**, per US-18 — a new campaign engagement restarts the interaction workflow. This reset does NOT happen for case 4 (accumulating bags into an existing participant), since that's not a new engagement. |
 
 **Business Rules applied:** Rule #7 (accumulation). `prepaid_amount` is **not revenue** — it is an internal reconciliation figure only.
+
+---
+
+### US-38: Track Campaign Participant turn order
+
+**As** Owner or Staff, **I want to** see the order in which customers participated during a Campaign's live session — including cases where the same customer bought bags in more than one separate turn — **so that** I have a clear record of session play-order, useful for replaying/reviewing a livestream sale.
+
+**UI:** On the Campaign detail page, an additional table is shown: **Lượt** (turn_number) | **Khách hàng** (customer name) | **Số túi** (bag_count) | **Note**, ordered by `turn_number` ascending.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Staff records a participant (US-03) for a `customer` with **no existing `campaign_participant_turn` row** in this campaign yet | Recording succeeds | A new `campaign_participant_turn` row is created: `turn_number` = this campaign's current max `turn_number` + 1 (or `1` if none exist yet), `bag_count` = bags just entered |
+| 2 | Staff records **more bags** for a `customer` who already has at least one turn in this campaign | Recording succeeds | Check whether this campaign's **current last turn** (the row with the highest `turn_number` campaign-wide) belongs to **this same customer**: (a) **if yes** — merge, simply add the new bag count into that existing last turn's `bag_count`, no new row; (b) **if no** — someone else's turn is currently last (or there's a gap), so create a **new** turn row (`turn_number` = max + 1) for this customer with the newly entered bag count, even though they've played before |
+| 3 | A Draft Participant (US-27) is **confirmed** | Confirmation succeeds | The same AC #1/#2 merge-or-append logic applies at confirmation time (a draft doesn't get a turn row while still a draft — only once it becomes a real, paid participation event) |
+| 4 | Owner edits `total_bags_purchased` **upward** via US-26 | Edit succeeds | Same AC #1/#2 merge-or-append logic applies to the increased amount |
+| 5 | Owner edits `total_bags_purchased` **downward** via US-26 (reducing by some amount D) | Edit succeeds | The reduction cascades through this customer's own turns **starting from their most recent turn backward** (LIFO): reduce the most recent turn's `bag_count` by up to D; if that turn's `bag_count` reaches 0, delete that turn row entirely and continue subtracting the remainder from the next-most-recent turn; repeat until D is fully applied |
+| 6 | A `campaign_participant` is deleted (currently only possible via US-27 AC #6, "Hủy nháp" on a draft) | Deletion succeeds | All `campaign_participant_turn` rows belonging to that participant are deleted too |
+| 7 | Owner/Staff views the turn table | Clicks into the `Note` cell of any row | Editable inline — **only `note` is directly editable**; `bag_count` and which customer a turn belongs to can only change via the automatic rules above (US-03/US-26/US-27), never by hand |
+
+**Access:** View — same as Campaign detail visibility (both Owner and Staff, per Module 10). Editing `note` — both Owner and Staff (low-risk informational field, same reasoning as `action_status`).
+
+**Note:** As stated in the `campaign_participant_turn` entity definition, this table's totals are **not** strictly guaranteed to match `campaign_participant.total_bags_purchased` at all times — it's a best-effort session-order tracking log, not a financial reconciliation source.
 
 ---
 
@@ -981,6 +1017,7 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | US-25 Delete Campaign | ✅ | ❌ |
 | US-26 Edit Participant | ✅ | ❌ |
 | US-27 Draft Participant (create/confirm/cancel) | ✅ | ❌ |
+| US-38 View/Edit-note Participant Turn table | ✅ | ✅ |
 | US-03 Record Campaign Participant | ✅ | ✅ |
 | US-04 Record Item (open bag) | ✅ | ✅ |
 | US-28 Delete Recorded Item (undo mistake) | ✅ | ❌ |

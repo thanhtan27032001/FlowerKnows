@@ -54,6 +54,8 @@ class CampaignLifecycleServiceTests {
     private ExchangeTransactionRepository exchangeRepository;
     @Mock
     private OrderRepository orderRepository;
+    @Mock
+    private CampaignParticipantTurnService participantTurnService;
 
     private StockService stockService;
     private CampaignService campaignService;
@@ -75,7 +77,8 @@ class CampaignLifecycleServiceTests {
                 customerService,
                 itemTokenRepository,
                 exchangeRepository,
-                orderRepository
+                orderRepository,
+                participantTurnService
         );
         lenient().when(stockTransactionRepository.save(any(StockTransaction.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

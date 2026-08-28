@@ -48,6 +48,7 @@ public class ParticipantService {
     private final ItemTokenRepository itemTokenRepository;
     private final ExchangeTransactionRepository exchangeRepository;
     private final OrderRepository orderRepository;
+    private final CampaignParticipantTurnService participantTurnService;
 
     public ParticipantService(
             CampaignService campaignService,
@@ -55,7 +56,8 @@ public class ParticipantService {
             CustomerService customerService,
             ItemTokenRepository itemTokenRepository,
             ExchangeTransactionRepository exchangeRepository,
-            OrderRepository orderRepository
+            OrderRepository orderRepository,
+            CampaignParticipantTurnService participantTurnService
     ) {
         this.campaignService = campaignService;
         this.participantRepository = participantRepository;
@@ -63,6 +65,7 @@ public class ParticipantService {
         this.itemTokenRepository = itemTokenRepository;
         this.exchangeRepository = exchangeRepository;
         this.orderRepository = orderRepository;
+        this.participantTurnService = participantTurnService;
     }
 
     @Transactional
@@ -107,6 +110,7 @@ public class ParticipantService {
         }
 
         CampaignParticipant saved = participantRepository.save(participant);
+        participantTurnService.applyTurnIncrease(campaignId, saved.getId(), request.bagsPurchased());
         if (isNew) {
             return toSummaryResponse(saved, 0, List.of());
         }
@@ -163,6 +167,9 @@ public class ParticipantService {
         participant.setPrepaidAmount(
                 campaign.getBagPrice().multiply(BigDecimal.valueOf(participant.getTotalBagsPurchased()))
         );
+        participantTurnService.applyTurnIncrease(
+                campaignId, participant.getId(), participant.getTotalBagsPurchased()
+        );
 
         return toSummaryResponse(participant, 0, List.of());
     }
@@ -181,6 +188,7 @@ public class ParticipantService {
             );
         }
 
+        participantTurnService.deleteTurnsForParticipant(participant.getId());
         participant.getCampaign().getParticipants().remove(participant);
         participantRepository.delete(participant);
     }
@@ -203,6 +211,9 @@ public class ParticipantService {
             );
         }
 
+        int previousBags = participant.getTotalBagsPurchased();
+        int delta = request.totalBagsPurchased() - previousBags;
+
         if (participant.getStatus() == ParticipantStatus.CONFIRMED) {
             long bagsSoldExcludingSelf = participantRepository.sumBagsPurchasedByCampaign(campaignId)
                     - participant.getTotalBagsPurchased();
@@ -214,6 +225,11 @@ public class ParticipantService {
             participant.setPrepaidAmount(
                     campaign.getBagPrice().multiply(BigDecimal.valueOf(request.totalBagsPurchased()))
             );
+            if (delta > 0) {
+                participantTurnService.applyTurnIncrease(campaignId, participant.getId(), delta);
+            } else if (delta < 0) {
+                participantTurnService.applyTurnDecrease(participant.getId(), -delta);
+            }
         } else {
             participant.setTotalBagsPurchased(request.totalBagsPurchased());
             participant.setPrepaidAmount(BigDecimal.ZERO);

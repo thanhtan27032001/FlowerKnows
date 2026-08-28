@@ -23,10 +23,16 @@ public class CampaignController {
 
     private final CampaignService campaignService;
     private final ParticipantService participantService;
+    private final CampaignParticipantTurnService participantTurnService;
 
-    public CampaignController(CampaignService campaignService, ParticipantService participantService) {
+    public CampaignController(
+            CampaignService campaignService,
+            ParticipantService participantService,
+            CampaignParticipantTurnService participantTurnService
+    ) {
         this.campaignService = campaignService;
         this.participantService = participantService;
+        this.participantTurnService = participantTurnService;
     }
 
     @GetMapping
@@ -175,5 +181,11 @@ public class CampaignController {
             @PathVariable UUID participantId
     ) {
         return participantService.listParticipantTokens(id, participantId);
+    }
+
+    @GetMapping("/{id}/participant-turns")
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
+    public List<CampaignDtos.ParticipantTurnResponse> listParticipantTurns(@PathVariable UUID id) {
+        return participantTurnService.listTurns(id);
     }
 }

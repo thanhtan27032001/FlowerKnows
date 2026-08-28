@@ -37,6 +37,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ProductTypeahead } from "@/components/products/product-typeahead";
+import type { Product } from "@/src/lib/api/product";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useSuccessClose } from "@/hooks/use-success-close";
 import { createClientId } from "@/lib/utils";
@@ -82,6 +84,19 @@ export function RecordItemForm({
   const availableProducts = useMemo(
     () => campaign.pool.filter((p) => p.remainingQuantity > 0),
     [campaign.pool],
+  );
+
+  const availableProductOptions: Product[] = useMemo(
+    () =>
+      availableProducts.map((p) => ({
+        id: p.productId,
+        name: p.productName,
+        listPrice: 0,
+        stockQuantity: p.remainingQuantity,
+        averageCostPrice: null,
+        lowStock: false,
+      })),
+    [availableProducts],
   );
 
   const confirmedParticipants = useMemo(
@@ -292,34 +307,15 @@ export function RecordItemForm({
 
               <div className="grid gap-2">
                 <Label>{t("product")}</Label>
-                <Select
-                  value={row.productId || undefined}
-                  onValueChange={(value) =>
-                    updateRow(row.key, { productId: String(value ?? "") })
+                <ProductTypeahead
+                  products={availableProductOptions}
+                  productId={row.productId}
+                  onSelect={(product) =>
+                    updateRow(row.key, { productId: product?.id ?? "" })
                   }
-                >
-                  <SelectTrigger className="w-full min-w-0">
-                    <SelectValue placeholder={t("selectProduct")}>
-                      {row.productId
-                        ? (() => {
-                            const p = availableProducts.find(
-                              (ap) => ap.productId === row.productId,
-                            );
-                            return p
-                              ? `${p.productName} (${p.remainingQuantity})`
-                              : "";
-                          })()
-                        : ""}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableProducts.map((p) => (
-                      <SelectItem key={p.productId} value={p.productId}>
-                        {p.productName} ({p.remainingQuantity})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder={t("selectProduct")}
+                  showStock
+                />
               </div>
 
               <div className="grid gap-2">

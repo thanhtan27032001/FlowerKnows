@@ -29,13 +29,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ProductTypeahead } from "@/components/products/product-typeahead";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useSuccessClose } from "@/hooks/use-success-close";
 import { createClientId } from "@/lib/utils";
@@ -261,23 +255,15 @@ export function ItemExchangeForm({
 
               <div className="grid gap-2">
                 <Label>{t("product")}</Label>
-                <Select
-                  value={row.productId || undefined}
-                  onValueChange={(value) =>
-                    updateRow(row.key, { productId: String(value ?? "") })
+                <ProductTypeahead
+                  products={inStockProducts}
+                  productId={row.productId}
+                  onSelect={(product) =>
+                    updateRow(row.key, { productId: product?.id ?? "" })
                   }
-                >
-                  <SelectTrigger className="w-full min-w-0">
-                    <SelectValue placeholder={t("selectProduct")}>{selected ? `${selected.name} (${selected.stockQuantity})` : ""}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {inStockProducts.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name} ({product.stockQuantity})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder={t("selectProduct")}
+                  showStock
+                />
               </div>
 
               <div className="grid gap-2">

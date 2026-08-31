@@ -65,7 +65,12 @@ export function EditCustomerForm({ open, onOpenChange, customer }: Props) {
     setFieldErrors({});
     setFormError(null);
     reset();
-  }, [open, customer, reset]);
+    // Keyed on id (not the whole object) so a content-only update to `customer`
+    // (e.g. this form's own mutation writing the fresh data back into the query
+    // cache while the success-close delay is still running) doesn't retrigger
+    // this effect and cancel the in-flight success-close timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, customer?.id, reset]);
 
   const mutation = useMutation({
     mutationFn: (input: {

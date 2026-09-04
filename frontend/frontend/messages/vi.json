@@ -310,11 +310,10 @@
     },
     "edit": {
       "title": "Sửa phiên live",
-      "description": "Cập nhật tên, ngày sự kiện, tổng số túi và pool (nếu chưa ghi nhận món).",
+      "description": "Cập nhật tên, ngày sự kiện, tổng số túi và pool sản phẩm.",
       "save": "Lưu thay đổi",
       "failed": "Không cập nhật được phiên live",
-      "poolLockedNotice": "Pool sản phẩm đã bị khóa vì đã có món được ghi nhận. Không thể sửa.",
-      "poolLockedTooltip": "Pool sản phẩm đã bị khóa vì đã có món được ghi nhận. Không thể sửa.",
+      "rowLocked": "Đã có món được ghi nhận từ sản phẩm này",
       "poolSumHint": "Tổng số lượng nạp hiện tại: {sum} (không bắt buộc khớp tổng số túi sau khi sửa).",
       "availableStock": "Tồn kho còn lại: {stock}",
       "stockInsufficient": "Không đủ tồn kho để tăng số lượng nạp"

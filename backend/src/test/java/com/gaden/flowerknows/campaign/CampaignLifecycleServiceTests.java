@@ -85,26 +85,177 @@ class CampaignLifecycleServiceTests {
     }
 
     @Test
-    void updatePoolIsBlockedOnceAnyItemHasBeenRecorded() {
+    void updatePoolAllowsIncreasingRowEvenWhenSiblingRowsConsumed() {
         UUID campaignId = UUID.randomUUID();
-        Product product = product("Lipstick", 100);
-        Campaign campaign = openCampaign(campaignId, "Spring", 10, product, 10);
-        campaign.getPoolItems().getFirst().setRemainingQuantity(9);
+        Product productA = product("Lipstick", 100);
+        Product productB = product("Blush", 100);
+        Campaign campaign = openCampaign(campaignId, "Spring", 20, productA, 10);
+        campaign.addPoolItem(new CampaignPool(productB, 5));
+        setId(campaign.getPoolItems().get(1), UUID.randomUUID());
+        // 7 items already recorded from productA's row: remaining 3 of loaded 10.
+        campaign.getPoolItems().getFirst().setRemainingQuantity(3);
 
         when(campaignRepository.findByIdWithPool(campaignId)).thenReturn(Optional.of(campaign));
 
-        IllegalStateException ex = assertThrows(
-                IllegalStateException.class,
-                () -> campaignService.updatePool(
-                        campaignId,
-                        new CampaignDtos.UpdatePoolRequest(
-                                List.of(new CampaignDtos.PoolItemRequest(product.getId(), 12))
+        // Increase productA's row from 10 -> 15 even though it has already had items recorded.
+        CampaignDtos.CampaignDetailResponse response = campaignService.updatePool(
+                campaignId,
+                new CampaignDtos.UpdatePoolRequest(
+                        List.of(
+                                new CampaignDtos.PoolItemRequest(productA.getId(), 15),
+                                new CampaignDtos.PoolItemRequest(productB.getId(), 5)
                         )
                 )
         );
 
-        assertTrue(ex.getMessage().contains("đã bị khóa"));
+        assertTrue(response.poolWarnings().isEmpty());
+        assertEquals(15, campaign.getPoolItems().getFirst().getLoadedQuantity());
+        assertEquals(8, campaign.getPoolItems().getFirst().getRemainingQuantity());
+        assertEquals(95, productA.getStockQuantity());
+    }
+
+    @Test
+    void updatePoolBlocksDecreaseWhenRowHasBeenConsumed() {
+        UUID campaignId = UUID.randomUUID();
+        Product product = product("Lipstick", 100);
+        Campaign campaign = openCampaign(campaignId, "Spring", 10, product, 10);
+        // 7 items already recorded: remaining 3 of loaded 10.
+        campaign.getPoolItems().getFirst().setRemainingQuantity(3);
+
+        when(campaignRepository.findByIdWithPool(campaignId)).thenReturn(Optional.of(campaign));
+
+        CampaignDtos.CampaignDetailResponse response = campaignService.updatePool(
+                campaignId,
+                new CampaignDtos.UpdatePoolRequest(
+                        List.of(new CampaignDtos.PoolItemRequest(product.getId(), 5))
+                )
+        );
+
+        assertEquals(1, response.poolWarnings().size());
+        assertTrue(response.poolWarnings().getFirst().contains("Lipstick"));
+        assertEquals(10, campaign.getPoolItems().getFirst().getLoadedQuantity());
+        assertEquals(3, campaign.getPoolItems().getFirst().getRemainingQuantity());
+        assertEquals(100, product.getStockQuantity());
         verify(stockTransactionRepository, never()).save(any(StockTransaction.class));
+    }
+
+    @Test
+    void updatePoolBlocksRemovalWhenRowHasBeenConsumed() {
+        UUID campaignId = UUID.randomUUID();
+        Product productA = product("Lipstick", 100);
+        Product productB = product("Blush", 100);
+        Campaign campaign = openCampaign(campaignId, "Spring", 20, productA, 10);
+        campaign.addPoolItem(new CampaignPool(productB, 5));
+        setId(campaign.getPoolItems().get(1), UUID.randomUUID());
+        campaign.getPoolItems().getFirst().setRemainingQuantity(3);
+
+        when(campaignRepository.findByIdWithPool(campaignId)).thenReturn(Optional.of(campaign));
+
+        // Submission omits productA's row entirely (attempted removal), keeps productB unchanged.
+        CampaignDtos.CampaignDetailResponse response = campaignService.updatePool(
+                campaignId,
+                new CampaignDtos.UpdatePoolRequest(
+                        List.of(new CampaignDtos.PoolItemRequest(productB.getId(), 5))
+                )
+        );
+
+        assertEquals(1, response.poolWarnings().size());
+        assertTrue(response.poolWarnings().getFirst().contains("Lipstick"));
+        assertEquals(2, campaign.getPoolItems().size());
+        assertEquals(10, campaign.getPoolItems().getFirst().getLoadedQuantity());
+        assertEquals(3, campaign.getPoolItems().getFirst().getRemainingQuantity());
+        assertEquals(100, productA.getStockQuantity());
+    }
+
+    @Test
+    void updatePoolAllowsDecreaseWhenRowUntouchedDespiteSiblingConsumed() {
+        UUID campaignId = UUID.randomUUID();
+        Product productA = product("Lipstick", 100);
+        Product productB = product("Blush", 100);
+        Campaign campaign = openCampaign(campaignId, "Spring", 20, productA, 10);
+        campaign.addPoolItem(new CampaignPool(productB, 5));
+        setId(campaign.getPoolItems().get(1), UUID.randomUUID());
+        // productA has had items recorded; productB has not.
+        campaign.getPoolItems().getFirst().setRemainingQuantity(3);
+
+        when(campaignRepository.findByIdWithPool(campaignId)).thenReturn(Optional.of(campaign));
+
+        CampaignDtos.CampaignDetailResponse response = campaignService.updatePool(
+                campaignId,
+                new CampaignDtos.UpdatePoolRequest(
+                        List.of(
+                                new CampaignDtos.PoolItemRequest(productA.getId(), 10),
+                                new CampaignDtos.PoolItemRequest(productB.getId(), 2)
+                        )
+                )
+        );
+
+        assertTrue(response.poolWarnings().isEmpty());
+        CampaignPool rowB = campaign.getPoolItems().get(1);
+        assertEquals(2, rowB.getLoadedQuantity());
+        assertEquals(2, rowB.getRemainingQuantity());
+        assertEquals(103, productB.getStockQuantity());
+    }
+
+    @Test
+    void updatePoolAllowsRemovalWhenRowUntouchedDespiteSiblingConsumed() {
+        UUID campaignId = UUID.randomUUID();
+        Product productA = product("Lipstick", 100);
+        Product productB = product("Blush", 100);
+        Campaign campaign = openCampaign(campaignId, "Spring", 20, productA, 10);
+        campaign.addPoolItem(new CampaignPool(productB, 5));
+        setId(campaign.getPoolItems().get(1), UUID.randomUUID());
+        campaign.getPoolItems().getFirst().setRemainingQuantity(3);
+
+        when(campaignRepository.findByIdWithPool(campaignId)).thenReturn(Optional.of(campaign));
+
+        CampaignDtos.CampaignDetailResponse response = campaignService.updatePool(
+                campaignId,
+                new CampaignDtos.UpdatePoolRequest(
+                        List.of(new CampaignDtos.PoolItemRequest(productA.getId(), 10))
+                )
+        );
+
+        assertTrue(response.poolWarnings().isEmpty());
+        assertEquals(1, campaign.getPoolItems().size());
+        assertEquals(105, productB.getStockQuantity());
+    }
+
+    @Test
+    void updatePoolMixesBlockedDecreaseWithAllowedIncreaseInSameSubmission() {
+        UUID campaignId = UUID.randomUUID();
+        Product productA = product("Lipstick", 100);
+        Product productB = product("Blush", 100);
+        Campaign campaign = openCampaign(campaignId, "Spring", 20, productA, 10);
+        campaign.addPoolItem(new CampaignPool(productB, 5));
+        setId(campaign.getPoolItems().get(1), UUID.randomUUID());
+        // productA has had items recorded; attempting to decrease it should be blocked.
+        campaign.getPoolItems().getFirst().setRemainingQuantity(3);
+
+        when(campaignRepository.findByIdWithPool(campaignId)).thenReturn(Optional.of(campaign));
+
+        CampaignDtos.CampaignDetailResponse response = campaignService.updatePool(
+                campaignId,
+                new CampaignDtos.UpdatePoolRequest(
+                        List.of(
+                                new CampaignDtos.PoolItemRequest(productA.getId(), 5),
+                                new CampaignDtos.PoolItemRequest(productB.getId(), 8)
+                        )
+                )
+        );
+
+        assertEquals(1, response.poolWarnings().size());
+        assertTrue(response.poolWarnings().getFirst().contains("Lipstick"));
+
+        // Blocked row (A) is untouched.
+        assertEquals(10, campaign.getPoolItems().getFirst().getLoadedQuantity());
+        assertEquals(3, campaign.getPoolItems().getFirst().getRemainingQuantity());
+
+        // Allowed row (B) is still applied in the same submission.
+        CampaignPool rowB = campaign.getPoolItems().get(1);
+        assertEquals(8, rowB.getLoadedQuantity());
+        assertEquals(8, rowB.getRemainingQuantity());
+        assertEquals(97, productB.getStockQuantity());
     }
 
     @Test

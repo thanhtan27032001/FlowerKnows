@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,8 +25,8 @@ import java.util.UUID;
 @Service
 public class CampaignService {
 
-    private static final String POOL_LOCKED_MESSAGE =
-            "Pool sản phẩm đã bị khóa vì đã có món được ghi nhận. Không thể sửa.";
+    private static final String ROW_LOCKED_MESSAGE_TEMPLATE =
+            "Không thể giảm/xóa SP %s vì đã có món được ghi nhận từ dòng này.";
     private static final String DELETE_BLOCKED_MESSAGE =
             "Không thể xóa campaign đã có khách tham gia. Hãy đóng campaign thay vì xóa.";
 
@@ -116,26 +115,32 @@ public class CampaignService {
         campaign.setEventDate(request.eventDate());
         campaign.setTotalBags(request.totalBags());
 
+        List<String> poolWarnings = List.of();
         if (request.pool() != null) {
             if (request.pool().isEmpty()) {
                 throw new BusinessException("pool must not be empty");
             }
-            applyPoolUpdate(campaign, request.pool());
+            poolWarnings = applyPoolUpdate(campaign, request.pool());
         }
 
-        return toMutationDetail(campaign);
+        return toMutationDetail(campaign, poolWarnings);
     }
 
     @Transactional
     public CampaignDtos.CampaignDetailResponse updatePool(UUID id, CampaignDtos.UpdatePoolRequest request) {
         Campaign campaign = requireOpenCampaignWithPool(id);
-        applyPoolUpdate(campaign, request.pool());
-        return toMutationDetail(campaign);
+        List<String> poolWarnings = applyPoolUpdate(campaign, request.pool());
+        return toMutationDetail(campaign, poolWarnings);
     }
 
-    private void applyPoolUpdate(Campaign campaign, List<CampaignDtos.PoolItemRequest> pool) {
-        ensurePoolEditable(campaign);
-
+    /**
+     * US-24 v5.6 — per-row pool edit. A row's loaded_quantity may always be increased (or a
+     * brand-new row added), regardless of what has been recorded elsewhere in the pool. A
+     * row may only be decreased/removed if nothing has been recorded from THAT row yet
+     * (remaining_quantity == loaded_quantity). Rows that fail this check are skipped and
+     * reported as warnings — every other valid row in the same submission is still applied.
+     */
+    private List<String> applyPoolUpdate(Campaign campaign, List<CampaignDtos.PoolItemRequest> pool) {
         Set<UUID> seenProductIds = new HashSet<>();
         for (CampaignDtos.PoolItemRequest item : pool) {
             if (!seenProductIds.add(item.productId())) {
@@ -153,23 +158,32 @@ public class CampaignService {
             desiredByProduct.put(item.productId(), item.loadedQuantity());
         }
 
-        // Return stock for removed products
-        Iterator<CampaignPool> iterator = campaign.getPoolItems().iterator();
-        while (iterator.hasNext()) {
-            CampaignPool poolItem = iterator.next();
+        List<String> warnings = new ArrayList<>();
+
+        // Removed rows: only allowed if nothing has been recorded from that row yet.
+        List<CampaignPool> toRemove = new ArrayList<>();
+        for (CampaignPool poolItem : campaign.getPoolItems()) {
             UUID productId = poolItem.getProduct().getId();
-            if (!desiredByProduct.containsKey(productId)) {
-                stockService.applyStockChange(
-                        poolItem.getProduct(),
-                        poolItem.getLoadedQuantity(),
-                        StockTransactionType.CAMPAIGN_RETURN,
-                        "Returned from campaign pool edit: " + campaign.getName()
-                );
-                iterator.remove();
+            if (desiredByProduct.containsKey(productId)) {
+                continue;
             }
+            if (poolItem.getRemainingQuantity() != poolItem.getLoadedQuantity()) {
+                warnings.add(ROW_LOCKED_MESSAGE_TEMPLATE.formatted(poolItem.getProduct().getName()));
+                continue;
+            }
+            toRemove.add(poolItem);
+        }
+        for (CampaignPool poolItem : toRemove) {
+            stockService.applyStockChange(
+                    poolItem.getProduct(),
+                    poolItem.getLoadedQuantity(),
+                    StockTransactionType.CAMPAIGN_RETURN,
+                    "Returned from campaign pool edit: " + campaign.getName()
+            );
+            campaign.getPoolItems().remove(poolItem);
         }
 
-        // Update existing / add new with stock deltas
+        // Update existing / add new rows.
         for (CampaignDtos.PoolItemRequest item : pool) {
             CampaignPool existing = existingByProduct.get(item.productId());
             if (existing != null && campaign.getPoolItems().contains(existing)) {
@@ -191,16 +205,23 @@ public class CampaignService {
                             StockTransactionType.CAMPAIGN_LOCK,
                             "Additional lock for campaign pool edit: " + campaign.getName()
                     );
+                    existing.setLoadedQuantity(item.loadedQuantity());
+                    existing.setRemainingQuantity(existing.getRemainingQuantity() + delta);
                 } else if (delta < 0) {
+                    if (existing.getRemainingQuantity() != existing.getLoadedQuantity()) {
+                        warnings.add(ROW_LOCKED_MESSAGE_TEMPLATE.formatted(existing.getProduct().getName()));
+                        continue;
+                    }
                     stockService.applyStockChange(
                             existing.getProduct(),
                             -delta,
                             StockTransactionType.CAMPAIGN_RETURN,
                             "Returned from campaign pool edit: " + campaign.getName()
                     );
+                    existing.setLoadedQuantity(item.loadedQuantity());
+                    existing.setRemainingQuantity(item.loadedQuantity());
                 }
-                existing.setLoadedQuantity(item.loadedQuantity());
-                existing.setRemainingQuantity(item.loadedQuantity());
+                // delta == 0: nothing to do.
             } else {
                 Product product = productRepository.findById(item.productId())
                         .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + item.productId()));
@@ -223,6 +244,8 @@ public class CampaignService {
                 );
             }
         }
+
+        return warnings;
     }
 
     @Transactional
@@ -519,14 +542,6 @@ public class CampaignService {
                 .orElseThrow(() -> new ResourceNotFoundException("Campaign not found: " + id));
     }
 
-    private void ensurePoolEditable(Campaign campaign) {
-        boolean anyItemRecorded = campaign.getPoolItems().stream()
-                .anyMatch(p -> p.getRemainingQuantity() != p.getLoadedQuantity());
-        if (anyItemRecorded) {
-            throw new IllegalStateException(POOL_LOCKED_MESSAGE);
-        }
-    }
-
     private CampaignDtos.CampaignSummaryResponse toSummary(Campaign campaign) {
         long bagsSold = participantRepository.sumBagsPurchasedByCampaign(campaign.getId());
         return new CampaignDtos.CampaignSummaryResponse(
@@ -545,7 +560,7 @@ public class CampaignService {
      * Full detail for GET — includes participant token counts / preview names.
      */
     CampaignDtos.CampaignDetailResponse toDetail(Campaign campaign) {
-        return toDetail(campaign, true);
+        return toDetail(campaign, true, List.of());
     }
 
     /**
@@ -553,10 +568,18 @@ public class CampaignService {
      * (names/counts) when merging, since those fields are unchanged by header/pool edits.
      */
     CampaignDtos.CampaignDetailResponse toMutationDetail(Campaign campaign) {
-        return toDetail(campaign, false);
+        return toDetail(campaign, false, List.of());
     }
 
-    private CampaignDtos.CampaignDetailResponse toDetail(Campaign campaign, boolean includeTokenStats) {
+    private CampaignDtos.CampaignDetailResponse toMutationDetail(Campaign campaign, List<String> poolWarnings) {
+        return toDetail(campaign, false, poolWarnings);
+    }
+
+    private CampaignDtos.CampaignDetailResponse toDetail(
+            Campaign campaign,
+            boolean includeTokenStats,
+            List<String> poolWarnings
+    ) {
         long bagsSold = participantRepository.sumBagsPurchasedByCampaign(campaign.getId());
         int poolQuantityTotal = campaign.getPoolItems().stream()
                 .mapToInt(CampaignPool::getLoadedQuantity)
@@ -600,7 +623,8 @@ public class CampaignService {
                     List.of(),
                     totalPoolCostValue,
                     excludedFromCostCount,
-                    totalBagsSoldValue
+                    totalBagsSoldValue,
+                    poolWarnings
             );
         }
 
@@ -648,7 +672,8 @@ public class CampaignService {
                 participants,
                 totalPoolCostValue,
                 excludedFromCostCount,
-                totalBagsSoldValue
+                totalBagsSoldValue,
+                poolWarnings
         );
     }
 

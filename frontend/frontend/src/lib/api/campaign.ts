@@ -43,6 +43,10 @@ export type CampaignDetail = CampaignSummary & {
   totalPoolCostValue: number;
   excludedFromCostCount: number;
   totalBagsSoldValue: number;
+  /** Added in v5.6 — per-row messages for pool edit rows rejected because the row
+   * already had items recorded from it (US-24 AC#4). Other rows in the same
+   * submission are still applied; empty outside a pool-edit mutation. */
+  poolWarnings: string[];
 };
 
 export type PoolItemInput = {

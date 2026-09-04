@@ -2,13 +2,18 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { PlusIcon, Trash2Icon } from "lucide-react";
+import { InfoIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import type { Product } from "@/src/lib/api/product";
 import { formatCostPrice } from "@/src/lib/format";
 import { ProductTypeahead } from "@/components/products/product-typeahead";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { createClientId } from "@/lib/utils";
 
 export type CampaignPoolRow = {
@@ -16,6 +21,18 @@ export type CampaignPoolRow = {
   productId: string;
   loadedQuantity: string;
   error?: string;
+};
+
+/**
+ * US-24 v5.6 — per-row edit lock. A row this describes already has items
+ * recorded from it (remaining_quantity < loaded_quantity): its quantity can
+ * only be increased (never below `minLoadedQuantity`, its current loaded
+ * quantity) and it cannot be removed. Rows with no lock (new rows, or rows
+ * where remaining_quantity === loaded_quantity) are fully editable.
+ */
+export type CampaignPoolRowLock = {
+  minLoadedQuantity: number;
+  removeDisabled: boolean;
 };
 
 export function newCampaignPoolRow(
@@ -57,6 +74,13 @@ type Props = {
    * `wishlist` — product picker only, no quantity (suggest wishlist).
    */
   variant?: "cards" | "list" | "wishlist";
+  /**
+   * US-24 v5.6 — per-row edit lock (Edit Campaign only). Returns undefined for
+   * rows that are fully editable. Only honored by the `cards` variant.
+   */
+  getRowLock?: (row: CampaignPoolRow) => CampaignPoolRowLock | undefined;
+  /** Tooltip/hint text shown on a locked row's quantity field and disabled remove button. */
+  rowLockedReason?: string;
 };
 
 export function CampaignPoolEditor({
@@ -70,6 +94,8 @@ export function CampaignPoolEditor({
   quantityLabel,
   productSearchPlaceholder,
   variant = "cards",
+  getRowLock,
+  rowLockedReason,
 }: Props) {
   const t = useTranslations("campaigns.create");
   const tCommon = useTranslations("common");
@@ -326,6 +352,9 @@ export function CampaignPoolEditor({
 
       {rows.map((row, index) => {
         const selected = products.find((p) => p.id === row.productId);
+        const rowLock = getRowLock?.(row);
+        const removeLocked = !!rowLock?.removeDisabled;
+        const minQty = rowLock?.minLoadedQuantity ?? 1;
         return (
           <div
             key={row.key}
@@ -335,7 +364,7 @@ export function CampaignPoolEditor({
               <p className="text-xs font-medium text-muted-foreground">
                 {tCommon("fields.product")} {index + 1}
               </p>
-              {canRemove ? (
+              {canRemove && !removeLocked ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -348,6 +377,25 @@ export function CampaignPoolEditor({
                 >
                   <Trash2Icon />
                 </Button>
+              ) : canRemove && removeLocked ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <span className="inline-flex cursor-not-allowed">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled
+                          aria-label={tCommon("actions.removeRow")}
+                        >
+                          <Trash2Icon />
+                        </Button>
+                      </span>
+                    }
+                  />
+                  <TooltipContent>{rowLockedReason}</TooltipContent>
+                </Tooltip>
               ) : null}
             </div>
 
@@ -384,16 +432,43 @@ export function CampaignPoolEditor({
             </div>
 
             <div className="grid gap-2">
-              <Label>{qtyLabel}</Label>
+              <div className="flex items-center gap-1.5">
+                <Label>{qtyLabel}</Label>
+                {rowLock ? (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="button"
+                          className="inline-flex text-muted-foreground"
+                          aria-label={rowLockedReason}
+                        >
+                          <InfoIcon className="size-3.5" />
+                        </button>
+                      }
+                    />
+                    <TooltipContent>{rowLockedReason}</TooltipContent>
+                  </Tooltip>
+                ) : null}
+              </div>
               <Input
                 type="number"
-                min={1}
+                min={minQty}
                 inputMode="numeric"
                 value={row.loadedQuantity}
                 disabled={disabled}
                 onChange={(e) =>
                   updateRow(row.key, { loadedQuantity: e.target.value })
                 }
+                onBlur={() => {
+                  if (!rowLock) return;
+                  const qty = Number(row.loadedQuantity);
+                  if (Number.isFinite(qty) && qty < rowLock.minLoadedQuantity) {
+                    updateRow(row.key, {
+                      loadedQuantity: String(rowLock.minLoadedQuantity),
+                    });
+                  }
+                }}
                 aria-invalid={!!row.error}
               />
             </div>

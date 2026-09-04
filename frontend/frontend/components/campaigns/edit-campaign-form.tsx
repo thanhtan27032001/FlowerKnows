@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { InfoIcon } from "lucide-react";
 import { ApiError } from "@/src/lib/api/client";
 import {
   campaignApi,
@@ -17,6 +16,7 @@ import {
   CampaignPoolEditor,
   poolRowsFromItems,
   type CampaignPoolRow,
+  type CampaignPoolRowLock,
 } from "@/components/campaigns/campaign-pool-editor";
 import { useCampaignPoolOverlays } from "@/components/campaigns/campaign-pool-overlays";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -39,11 +39,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useSuccessClose } from "@/hooks/use-success-close";
 
@@ -53,8 +48,23 @@ type Props = {
   campaign: CampaignDetail;
 };
 
-function isPoolLocked(campaign: CampaignDetail) {
-  return campaign.pool.some((p) => p.remainingQuantity !== p.loadedQuantity);
+/**
+ * US-24 v5.6 — a row is locked (increase-only, non-removable) once something
+ * has been recorded from it (remaining_quantity < loaded_quantity). Rows
+ * where remaining_quantity === loaded_quantity, and brand-new rows, are
+ * fully editable regardless of what's happened elsewhere in the pool.
+ */
+function poolRowLocksByProductId(campaign: CampaignDetail) {
+  const map = new Map<string, CampaignPoolRowLock>();
+  for (const item of campaign.pool) {
+    if (item.remainingQuantity < item.loadedQuantity) {
+      map.set(item.productId, {
+        minLoadedQuantity: item.loadedQuantity,
+        removeDisabled: true,
+      });
+    }
+  }
+  return map;
 }
 
 export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
@@ -65,8 +75,6 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
   const queryClient = useQueryClient();
   const { succeeded, runSuccess, reset } = useSuccessClose(250);
   const { overlayButtons, overlays, closeOverlays } = useCampaignPoolOverlays();
-
-  const poolLocked = isPoolLocked(campaign);
 
   const [name, setName] = useState(campaign.name);
   const [eventDate, setEventDate] = useState(campaign.eventDate);
@@ -82,6 +90,13 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
     }
     return map;
   }, [campaign.pool]);
+
+  const rowLocksByProductId = useMemo(
+    () => poolRowLocksByProductId(campaign),
+    [campaign]
+  );
+  const getRowLock = (row: CampaignPoolRow) =>
+    rowLocksByProductId.get(row.productId);
 
   useEffect(() => {
     if (!open) return;
@@ -105,7 +120,7 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
   const { data: products = [] } = useQuery({
     queryKey: productKeys.lists(),
     queryFn: () => productApi.list(),
-    enabled: open && !poolLocked,
+    enabled: open,
   });
 
   const poolSum = useMemo(
@@ -140,6 +155,21 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
       if (variables.pool) {
         void queryClient.invalidateQueries({ queryKey: productKeys.all });
       }
+      if (updatedCampaign.poolWarnings.length > 0) {
+        // A row raced past client-side validation (e.g. another session recorded
+        // an item on it between load and submit) and was rejected server-side —
+        // keep the dialog open, resync rows to what was actually saved (US-24 AC#4).
+        setFormError(updatedCampaign.poolWarnings.join(" "));
+        setPoolRows(
+          poolRowsFromItems(
+            updatedCampaign.pool.map((item) => ({
+              productId: item.productId,
+              loadedQuantity: item.loadedQuantity,
+            }))
+          )
+        );
+        return;
+      }
       await runSuccess(() => onOpenChange(false));
     },
     onError: (err: unknown) => {
@@ -164,7 +194,7 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
     }
 
     let pool: PoolItemInput[] | undefined;
-    if (!poolLocked) {
+    {
       let poolValid = true;
       const nextRows = poolRows.map((row) => {
         const qty = Number(row.loadedQuantity);
@@ -181,6 +211,11 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
           poolValid = false;
           return { ...row, error: tCreate("loadedQtyInvalid") };
         }
+        const rowLock = getRowLock(row);
+        if (rowLock && qty < rowLock.minLoadedQuantity) {
+          poolValid = false;
+          return { ...row, error: t("rowLocked") };
+        }
         const product = products.find((p) => p.id === row.productId);
         const originalLoaded = originalLoadedByProductId.get(row.productId) ?? 0;
         const delta = qty - originalLoaded;
@@ -190,9 +225,20 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
         }
         return { ...row, error: undefined };
       });
+
+      // A locked row (already had items recorded from it) must still be present —
+      // its remove button is disabled in the UI, but guard here too.
+      const remainingProductIds = new Set(nextRows.map((r) => r.productId));
+      for (const [productId] of rowLocksByProductId) {
+        if (!remainingProductIds.has(productId)) {
+          poolValid = false;
+          errors.pool = t("rowLocked");
+        }
+      }
+
       setPoolRows(nextRows);
 
-      if (!poolValid || nextRows.length === 0) {
+      if ((!poolValid || nextRows.length === 0) && !errors.pool) {
         errors.pool = tCreate("fixPool");
       }
 
@@ -279,48 +325,24 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
           {fieldErrors.totalBags && (
             <p className="text-xs text-destructive">{fieldErrors.totalBags}</p>
           )}
-          {!poolLocked && (
-            <p className="text-xs text-muted-foreground">
-              {t("poolSumHint", { sum: poolSum })}
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">
+            {t("poolSumHint", { sum: poolSum })}
+          </p>
         </div>
 
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Label>{tCreate("productPool")}</Label>
-            {poolLocked && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      className="inline-flex text-muted-foreground"
-                      aria-label={t("poolLockedTooltip")}
-                    >
-                      <InfoIcon className="size-3.5" />
-                    </button>
-                  }
-                />
-                <TooltipContent>{t("poolLockedTooltip")}</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
+          <Label>{tCreate("productPool")}</Label>
 
-          {poolLocked ? (
-            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
-              {t("poolLockedNotice")}
-            </p>
-          ) : (
-            <CampaignPoolEditor
-              products={products}
-              rows={poolRows}
-              onChange={setPoolRows}
-              disabled={locked}
-              requireAtLeastOne={false}
-              title={null}
-            />
-          )}
+          <CampaignPoolEditor
+            products={products}
+            rows={poolRows}
+            onChange={setPoolRows}
+            disabled={locked}
+            requireAtLeastOne={false}
+            title={null}
+            getRowLock={getRowLock}
+            rowLockedReason={t("rowLocked")}
+          />
 
           {fieldErrors.pool && (
             <p className="text-sm text-destructive">{fieldErrors.pool}</p>
@@ -334,7 +356,7 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
 
   const footer = (
     <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-      {!poolLocked ? overlayButtons(locked) : null}
+      {overlayButtons(locked)}
       <Button
         type="button"
         variant="outline"
@@ -380,7 +402,7 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
           <div className="px-4 pb-2">{formBody}</div>
           <SheetFooter>{footer}</SheetFooter>
         </SheetContent>
-        {!poolLocked ? overlays : null}
+        {overlays}
       </Sheet>
     );
   }
@@ -395,7 +417,7 @@ export function EditCampaignForm({ open, onOpenChange, campaign }: Props) {
         {formBody}
         <DialogFooter>{footer}</DialogFooter>
       </DialogContent>
-      {!poolLocked ? overlays : null}
+      {overlays}
     </Dialog>
   );
 }

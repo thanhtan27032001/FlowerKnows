@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 5.4 (US-38 REVERSAL: removed v5.3's blocking validation -- manual edits to the turn table now always save, mismatch vs total_bags_purchased is a non-blocking warning only; this table has zero effect on financial calculations elsewhere)
+**Version:** 5.6 (US-24: campaign_pool editing lock is now per-row, not whole-pool — Owner can always increase/add rows even after items are recorded; only decreasing/removing an already-consumed row is blocked, fixing the under-provisioned-pool problem)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -69,6 +69,7 @@ This is the single source of truth for schema design across the whole document.
 | `product_id` | FK → product | |
 | `type` | enum | `stock_in` / `stock_adjustment` / `campaign_lock` / `campaign_return` / `exchange_in` / `exchange_out` / `cash_out_return` / `token_cancel_return` / `order_fulfillment` / `exchange_undo_return` / `exchange_undo_remove` / `direct_sale` |
 | `quantity_change` | int | Positive = stock added/returned, negative = stock removed/locked |
+| `stock_count_id` | FK → stock_count, nullable | **Added in v5.5** — set only when a `stock_adjustment` row originates from completing a Stocktake session (US-40), for traceability back to that session. Null for all other adjustments (e.g. a standalone US-14 ad-hoc adjustment) and all other transaction types. |
 | `cost_price` | decimal, nullable | **Required when `type = stock_in`** — the cost price of this specific batch. Null for all other transaction types (they don't introduce new cost, only move existing stock). |
 | `average_cost_price_before` | decimal, nullable | **Set only when `type = stock_in`** — a snapshot of `product.average_cost_price` immediately *before* this transaction was applied (null if this was the product's very first-ever stock-in). Exists solely to make US-33 (Undo Stock In) possible without needing to recompute the weighted average backward through history. |
 | `note` | string, nullable | Required for `stock_adjustment` (reason); optional for other types |
@@ -193,6 +194,24 @@ This is the single source of truth for schema design across the whole document.
 | `unit_price` | decimal | Price actually charged per unit — defaults to `product.list_price` but editable (e.g. for a discount), unlike the blind bag flow where `token_value` is fixed by `bag_price` |
 | `cost_price_snapshot` | decimal, nullable | `product.average_cost_price` at the moment of sale (may be null if never stocked in with a cost) |
 
+### `stock_count` (Added in v5.5 — a Stocktake session)
+| Field | Type | Description |
+|---|---|---|
+| `id` | PK | |
+| `created_at` | datetime | |
+| `completed_at` | datetime, nullable | Null while in progress; set once finalized (US-40) — a completed session becomes read-only/historical |
+| `note` | string, nullable | Free-text note for the whole session (e.g. "Kiểm kê cuối tháng 8") |
+
+### `stock_count_line`
+| Field | Type | Description |
+|---|---|---|
+| `id` | PK | |
+| `stock_count_id` | FK → stock_count | |
+| `product_id` | FK → product | |
+| `system_quantity_at_add` | int | Snapshot of `product.stock_quantity` at the moment this line was added to the session — **for display during counting only**, NOT used as the basis for the final adjustment calculation (see US-40 AC #5) |
+| `counted_quantity` | int, nullable | The physically counted amount. Null means "not yet counted" (distinct from `0`, which means "counted, and there are zero") |
+| `note` | string, nullable | Per-line note (e.g. "hàng hỏng", "để nhầm kệ khác") |
+
 ---
 
 ## MODULE 1 — Campaign Management
@@ -218,7 +237,7 @@ This is the single source of truth for schema design across the whole document.
 
 **Business Rules applied:** Loading the pool immediately deducts `stock_quantity` (it does not wait until bags are sold).
 
-**Dev edge case:** ~~Do not allow editing `campaign_pool`...~~ **Superseded by US-24 (v2.0)** — editing is now formally supported, gated on whether any item has been recorded yet (not on participant existence). See US-24. **As of v4.4, this is now the expected primary way to complete a pool** that was intentionally left partial/empty at creation time — not just an edge-case correction tool anymore.
+**Dev edge case:** ~~Do not allow editing `campaign_pool`...~~ **Superseded by US-24 (v2.0), further refined in v5.6** — editing is now supported at a **per-row** granularity: increasing a row or adding a new one is always allowed regardless of what's already been recorded elsewhere in the pool; decreasing/removing a specific row is only blocked if *that row* has already had something recorded from it. This is the expected way to fix an under-provisioned pool (e.g. Owner forgot to add enough of a product) even after the campaign has already started recording items — see US-24 AC #3/#4/#4a.
 
 **⚠️ Known risk (same reasoning as US-24's existing note):** Since the pool no longer has to match `total_bags` at creation, `total_bags` can diverge from actual pool capacity for a while (until Owner/Staff finishes adding products). This does NOT create a double-selling risk — US-04's existing validation still correctly blocks recording more physical items than a pool row actually has. The consequence is the same as already documented in US-24: a customer could be sold (via US-03) more bags than the pool can currently fulfill, discovered only when trying to record their item. The AC #5 indicator exists specifically to make this gap visible so it doesn't happen by surprise.
 
@@ -269,11 +288,12 @@ This is the single source of truth for schema design across the whole document.
 |---|---|---|---|
 | 1 | Any campaign, any status, any point in its lifecycle | Owner edits `name` or `event_date` | Always allowed — these are cosmetic/informational fields with no downstream effect on stock or tokens |
 | 2 | Any campaign | Owner edits `total_bags` | **Always allowed, no restriction** (per explicit decision) — see the warning below |
-| 3 | No `item_token` has ever been recorded for this campaign yet (i.e. every `campaign_pool` row's `remaining_quantity` still equals its `loaded_quantity`) | Owner edits the `campaign_pool` (add/remove a product row, or change a `loaded_quantity`) | Allowed. The system re-validates `stock_quantity` availability and re-applies the `campaign_lock` stock deduction/return delta accordingly (same mechanics as US-01 creation, just adjusting the diff instead of the full amount) |
-| 4 | At least one `item_token` has already been recorded for this campaign (any `campaign_pool` row has `remaining_quantity` < `loaded_quantity`) | Owner attempts to edit the `campaign_pool` | Blocked — "Pool sản phẩm đã bị khóa vì đã có món được ghi nhận. Không thể sửa." Only `name`, `event_date`, `total_bags` remain editable at this point |
-| 5 | Owner is editing the `campaign_pool` (AC #3 applies) | — | The same "Tạo sản phẩm mới" / "Nhập kho" inline overlay buttons from US-01 AC #8/#9 are available here too — this is the same pool-editing UI component, so the capability comes for free rather than needing separate implementation |
+| 3 | **Superseded in v5.6 — no longer an all-or-nothing pool lock.** Owner **increases** an existing `campaign_pool` row's `loaded_quantity`, or **adds a brand-new product row** to the pool | Owner edits the `campaign_pool` | **Always allowed, regardless of whether items have already been recorded elsewhere in this campaign** — an increase never retroactively affects any already-issued `item_token`. The system validates `stock_quantity` availability and applies the `campaign_lock` deduction for the added amount (same mechanics as US-01 creation, just for the delta), incrementing that row's `remaining_quantity` by the same amount |
+| 4 | Owner attempts to **decrease** a `campaign_pool` row's `loaded_quantity`, or **remove** the row entirely, for a product where `remaining_quantity < loaded_quantity` (i.e. **at least one item has already been recorded from this specific row**) | Owner edits the `campaign_pool` | **Blocked for that row specifically** — "Không thể giảm/xóa SP X vì đã có món được ghi nhận từ dòng này." This is now a **per-row** restriction, not a whole-pool lock — Owner can still freely increase/add other rows in the same edit |
+| 4a | Owner attempts to decrease or remove a `campaign_pool` row where `remaining_quantity == loaded_quantity` (i.e. **nothing has been recorded from this specific row yet**, even if other rows in the same pool have) | Owner edits the `campaign_pool` | Allowed — this row is untouched so far, safe to reduce/remove regardless of what's happened elsewhere in the pool. Reducing/removing returns the corresponding amount to `product.stock_quantity` (`campaign_return`), same as before |
+| 5 | Owner is editing the `campaign_pool` (any of AC #3/#4/#4a) | — | The same "Tạo sản phẩm mới" / "Nhập kho" inline overlay buttons from US-01 AC #8/#9 are available here too — this is the same pool-editing UI component, so the capability comes for free rather than needing separate implementation |
 
-**⚠️ Known risk (accepted, not blocked):** Because `total_bags` can be freely edited but `campaign_pool` locks once items are recorded, `total_bags` can end up **not matching** the actual sum of `loaded_quantity` in the pool. This does NOT create a double-selling risk — US-04's existing validation (quantity requested must not exceed a pool row's `remaining_quantity`) still correctly prevents recording more physical items than were actually loaded. The only real consequence is a customer could be sold (via US-03) more bags than the pool can physically fulfill, discovered only when Staff tries to record their item and finds no stock left. Owner is responsible for keeping `total_bags` sensible after the pool locks.
+**⚠️ Known risk (accepted, not blocked; now much less likely in practice since v5.6):** Because `total_bags` can be freely edited independently of the pool, `total_bags` can still temporarily not match the actual sum of `loaded_quantity` in the pool. This does NOT create a double-selling risk — US-04's existing validation (quantity requested must not exceed a pool row's `remaining_quantity`) still correctly prevents recording more physical items than were actually loaded. As of v5.6, this gap is now easy for Owner to close at any time (increasing pool rows / adding new ones is never blocked), so an under-provisioned pool should be a brief, self-correctable state rather than a lasting problem.
 
 ---
 
@@ -693,17 +713,17 @@ This is the single source of truth for schema design across the whole document.
 | # | Given | When | Then |
 |---|---|---|---|
 | 1 | Owner is on the Order list screen | Views the list | Each order row/card has a selection checkbox |
-| 2 | Owner selects one or more orders | — | An "Xuất ảnh" (Export Image) button becomes active. **Owner only** -- this button is not shown to Staff |
+| 2 | Owner selects one or more orders | — | An "Xuất ảnh" (Export Image) button becomes active. **Owner only** — this button is not shown to Staff |
 | 3 | >= 1 order selected | Clicks "Xuất ảnh" | The system aggregates the selected orders' contents: for every included `item_token`, look up its `product` and the order's `customer`. Group rows by `customer` (merging cells visually the same way as the reference layout); within each customer's group, group by `product` name and **sum quantity** if the same product appears more than once (e.g. across multiple selected orders for that same customer, or multiple tokens of the same product in one order) |
 | 4 | Aggregated data is ready | — | Renders as an HTML table matching the reference format exactly: **Customer** column (cell spans/merges across all of that customer's item rows) | **Item** column (product name) | **Quantity** column (summed count) |
-| 5 | Table is rendered | — | Converted client-side into a downloadable image (PNG) -- this is a **frontend-only** feature, no backend endpoint needed, since all the underlying order/token/product data is already available from existing APIs. Use a DOM-to-image library (e.g. `html2canvas` or equivalent) to capture the rendered table |
+| 5 | Table is rendered | — | Converted client-side into a downloadable image (PNG) — this is a **frontend-only** feature, no backend endpoint needed, since all the underlying order/token/product data is already available from existing APIs. Use a DOM-to-image library (e.g. `html2canvas` or equivalent) to capture the rendered table |
 | 6 | Image is generated | On a browser/device that supports the **Web Share API with file attachments** (`navigator.canShare({ files: [...] })` returns true — this is how iOS Safari behaves) | Opens the native **share sheet** (`navigator.share()` with the PNG as a file) instead of a plain download — this is the only reliable way to get "Save Image" into the iOS Photos library; a standard `<a download>` link does **not** trigger a proper save on iOS Safari (known platform limitation, this was the bug being fixed in v4.3) |
 | 6b | Image is generated | On a browser/device **without** Web Share API file support (desktop browsers, most Android browsers) | Falls back to the standard `<a download="orders-export-YYYY-MM-DD.png">` browser download — this already works correctly on those platforms, no change needed there |
 | 7 | No orders are selected | — | The "Xuất ảnh" button stays disabled |
 
 **Access:** Owner only.
 
-**Note:** This is purely a client-side rendering/export feature -- no new entity, no new API endpoint. It reuses the existing Order list data (already includes customer, tokens, and product info per the current Order screen, per the shop's own reference screenshot). **The image-generation + share/download logic (html2canvas capture + Web Share API/fallback from AC #6/#6b) should be built as a shared, reusable utility** -- US-37 below needs the exact same export mechanism, just fed different source data.
+**Note:** This is purely a client-side rendering/export feature — no new entity, no new API endpoint. It reuses the existing Order list data (already includes customer, tokens, and product info per the current Order screen, per the shop's own reference screenshot). **The image-generation + share/download logic (html2canvas capture + Web Share API/fallback from AC #6/#6b) should be built as a shared, reusable utility** — US-37 below needs the exact same export mechanism, just fed different source data.
 
 ---
 
@@ -716,12 +736,12 @@ This is the single source of truth for schema design across the whole document.
 | # | Given | When | Then |
 |---|---|---|---|
 | 1 | Owner is on a Campaign's participant view (US-16) | Views the participant list | Each participant row has a selection checkbox |
-| 2 | Owner selects one or more participants | -- | An "Xuất ảnh" (Export Image) button becomes active. **Owner only** -- not shown to Staff |
-| 3 | >= 1 participant selected | Clicks "Xuất ảnh" | The system uses each selected participant's item_token list exactly as already displayed in US-16 (including the "new item (~~old item~~)" formatting for exchanged tokens per US-16 AC #3) -- no new data-fetching logic, reuse what's already loaded on that screen |
-| 4 | Data is ready | -- | Renders the same table format as US-36: **Customer** column (participant's customer name, cell spans across their item rows) \| **Item** column \| **Quantity** column (grouped/summed by product name per customer, same aggregation rule as US-36) |
-| 5 | Table is rendered | -- | Uses the **same shared export utility** built for US-36 (html2canvas capture, Web Share API on iOS per AC #6/#6b of US-36, standard download fallback elsewhere) -- do not duplicate this logic |
-| 6 | Image is generated | -- | Filename like `campaign-{campaign-name}-export-YYYY-MM-DD.png` |
-| 7 | No participants selected | -- | The "Xuất ảnh" button stays disabled |
+| 2 | Owner selects one or more participants | — | An "Xuất ảnh" (Export Image) button becomes active. **Owner only** — not shown to Staff |
+| 3 | >= 1 participant selected | Clicks "Xuất ảnh" | The system uses each selected participant's item_token list exactly as already displayed in US-16 (including the "new item (~~old item~~)" formatting for exchanged tokens per US-16 AC #3) — no new data-fetching logic, reuse what's already loaded on that screen |
+| 4 | Data is ready | — | Renders the same table format as US-36: **Customer** column (participant's customer name, cell spans across their item rows) \| **Item** column \| **Quantity** column (grouped/summed by product name per customer, same aggregation rule as US-36) |
+| 5 | Table is rendered | — | Uses the **same shared export utility** built for US-36 (html2canvas capture, Web Share API on iOS per AC #6/#6b of US-36, standard download fallback elsewhere) — do not duplicate this logic |
+| 6 | Image is generated | — | Filename like `campaign-{campaign-name}-export-YYYY-MM-DD.png` |
+| 7 | No participants selected | — | The "Xuất ảnh" button stays disabled |
 
 **Access:** Owner only.
 
@@ -1012,6 +1032,49 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 
 ---
 
+## MODULE 12 — Inventory Stocktake
+
+> Distinct from US-14 (Manual Stock Adjustment, a single ad-hoc correction). A Stocktake is a structured session covering many products at once — staff physically counts what's on the shelf, compares against the system, then applies all discrepancies in one batch with a clear audit trail.
+
+### US-39: Start and conduct a Stocktake session
+
+**As** Owner or Staff, **I want to** start a Stocktake session and record physically-counted quantities for products, **so that** I can compare them against what the system thinks is in stock before applying any correction.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | Staff/Owner is on the Stocktake screen | Clicks "Bắt đầu kiểm kê" | A new `stock_count` session is created (`completed_at = null`), with an optional session-level `note` |
+| 2 | An in-progress session is open | Adds a product to count | Select `product` (search, reusing the existing accent-insensitive search utility) — a `stock_count_line` is created, snapshotting the product's current `stock_quantity` into `system_quantity_at_add`, `counted_quantity` starts as `null` (not yet counted) |
+| 3 | A line exists in the session | Staff/Owner enters the physical count for that product | `counted_quantity` is saved. The line displays `system_quantity_at_add` and `counted_quantity` side by side with the difference highlighted (color-coded: neutral if they match, a warning color if they don't) |
+| 4 | An in-progress session | — | Staff/Owner can add more product lines at any time, freely edit `counted_quantity`, and remove a line entirely — nothing here touches `product.stock_quantity` yet, it's all draft data |
+| 5 | An in-progress session | Owner/Staff clicks "Hủy kiểm kê" | The whole session (and its lines) is deleted — **zero effect on `stock_quantity`**, as if it never happened |
+| 6 | Multiple sessions exist over time | Staff/Owner views the Stocktake list | Shows in-progress sessions (resumable) separately from completed ones (historical, read-only) |
+
+**Access:** Both Owner and Staff (routine data-entry work, matches the reasoning for US-12/US-13).
+
+---
+
+### US-40: Complete a Stocktake (apply adjustments)
+
+**As** Owner, **I want to** finalize a Stocktake session, **so that** `stock_quantity` gets corrected in bulk to match physical reality, with every discrepancy logged to the ledger.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | A `stock_count` with `completed_at = null` | Owner clicks "Hoàn tất kiểm kê" | A confirmation shows a summary: how many products were counted, how many have a discrepancy, and the net effect (total units to be added/removed across all products) |
+| 2 | Owner confirms | — | `@Transactional`: for every line with `counted_quantity` **not null**, compute `delta = counted_quantity - product.stock_quantity` using the **live, current** `product.stock_quantity` at completion time (NOT the stale `system_quantity_at_add` snapshot — see AC #5). If `delta != 0`: set `product.stock_quantity = counted_quantity` and write one `stock_transaction` (`type = stock_adjustment`, `quantity_change = delta`, `note` referencing this session, `stock_count_id` = this session's id). If `delta == 0`, no adjustment is written for that line |
+| 3 | A line has `counted_quantity = null` (added to the session but never actually counted) | Completing the session | That line is **skipped entirely** — `null` means "wasn't counted," which is different from "counted as zero," and must not be treated as a real discrepancy |
+| 4 | Completion succeeds | — | `stock_count.completed_at` is set to now — the session becomes read-only/historical |
+| 5 | Time has passed between when a line was counted and when the session is completed, during which other operations changed `product.stock_quantity` (e.g. a new stock-in, a campaign lock) | Completing the session | The adjustment is still computed correctly, because AC #2 uses the **live** `stock_quantity` at completion time as the "before" value, not the earlier snapshot. The snapshot (`system_quantity_at_add`) exists **only** to give Staff a reference point while counting — it is never the basis for the actual correction |
+
+**Access:** Owner only (this is the step that actually mutates `stock_quantity` and the ledger, matching US-14's sensitivity level).
+
+**Dev note:** Because of AC #5, a Stocktake session that stays open a long time (spanning many other stock-affecting operations) can produce a less meaningful "difference" figure shown during counting (AC #3's color-coded comparison), since the system side of that comparison may have moved on since the line was added. This is an accepted limitation for an internal tool of this scale — encourage completing a session reasonably promptly after counting to keep the comparison meaningful, but the system does not enforce a time limit.
+
+---
+
 ## Permission Matrix (applies to every US above)
 
 | Module / Action | Owner | Staff |
@@ -1056,6 +1119,8 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | US-22 Create account / manage accounts | ✅ | ❌ (hidden from nav entirely) |
 | US-34 Create Direct Sale | ✅ | ✅ |
 | US-35 Cancel Direct Sale | ✅ | ❌ |
+| US-39 Start/Conduct Stocktake | ✅ | ✅ |
+| US-40 Complete Stocktake | ✅ | ❌ |
 
 **Critical implementation note:** Every restriction above must be enforced **on the backend** (`@PreAuthorize` or equivalent per-endpoint role check), not just hidden in the frontend UI. Hiding a button from Staff in the UI is a UX convenience only — a Staff member could otherwise call the API directly (e.g. via browser dev tools) and bypass a frontend-only restriction. Frontend hiding and backend enforcement are both required, independently.
 

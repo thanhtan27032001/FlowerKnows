@@ -183,7 +183,11 @@ public final class CampaignDtos {
             /** Count of pool rows skipped from totalPoolCostValue due to a null average_cost_price. */
             int excludedFromCostCount,
             /** Sum of total_bags_purchased * bag_price for CONFIRMED participants — same figure as US-11's prepaid_amount total (AC#5a). */
-            BigDecimal totalBagsSoldValue
+            BigDecimal totalBagsSoldValue,
+            /** Added in v5.6 — per-row messages for pool edit rows rejected because the row already
+             * had items recorded from it (US-24 AC#4). Non-blocking: other rows in the same
+             * submission are still applied. Empty outside a pool-edit mutation. */
+            List<String> poolWarnings
     ) {
     }
 

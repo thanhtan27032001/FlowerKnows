@@ -82,11 +82,9 @@ function StockCountSection({
   }
   if (stockCounts.length === 0) {
     return (
-      <Card className="border-border/70 bg-muted/20">
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">
-          {emptyLabel}
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-5 text-center text-sm text-muted-foreground">
+        {emptyLabel}
+      </div>
     );
   }
   return (
@@ -116,7 +114,7 @@ export function StockCountList() {
   const isLoading = inProgress.isLoading || completed.isLoading;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button type="button" onClick={() => setCreateOpen(true)}>
           <PlusIcon />
@@ -126,7 +124,7 @@ export function StockCountList() {
 
       <QueryProgressBar active={isFetching && !isLoading} />
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         <h2 className="text-sm font-medium text-muted-foreground">
           {tList("inProgress")}
         </h2>
@@ -140,7 +138,7 @@ export function StockCountList() {
         />
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         <h2 className="text-sm font-medium text-muted-foreground">
           {tList("completed")}
         </h2>

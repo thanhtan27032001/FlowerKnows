@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 5.6 (US-24: campaign_pool editing lock is now per-row, not whole-pool — Owner can always increase/add rows even after items are recorded; only decreasing/removing an already-consumed row is blocked, fixing the under-provisioned-pool problem)
+**Version:** 5.7 (Adds US-41 — Undo/Cancel an Order created by mistake, Owner-only, only while shipping_status is still order_created; tokens revert to holding, order deleted, no stock effect per the v2.7 no-stock-touch design)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -749,6 +749,25 @@ This is the single source of truth for schema design across the whole document.
 
 ---
 
+### US-41: Undo/Cancel an Order (created by mistake)
+
+**As** Owner, **I want to** undo an Order that was created by mistake — e.g. before the customer actually confirmed they wanted to ship — **so that** their tokens go back to `holding` and can be re-consolidated correctly later, without any lingering incorrect revenue.
+
+**Acceptance Criteria:**
+
+| # | Given | When | Then |
+|---|---|---|---|
+| 1 | An `order` has `shipping_status = order_created` (i.e. it has **not yet** progressed to `shipped`) | Owner clicks "Hủy đơn" (Cancel Order) on it | A confirmation shows what will happen: all included tokens return to `holding`, the order's `recognized_revenue`/`gross_margin` will no longer count anywhere |
+| 2 | An `order` has already progressed to `shipped` or `completed` | — | "Hủy đơn" is **not available** — once shipped, the goods have physically left the shop; undoing token status at that point would be misleading. (If a shipped/completed order genuinely needs correcting, that's outside this feature's scope — handle it manually/case-by-case, same as any real-world shipping mistake) |
+| 3 | Owner confirms | — | `@Transactional`: (a) every token linked via `order_token` has its `status` reverted from `ordered` back to **`holding`** (their `cost_basis`/`token_value` are untouched — only status changes), (b) the `order` row and its `order_token` join rows are **deleted entirely** — same "erase the mistake" treatment as US-28/US-29/US-33/US-35, not a preserved cancelled-status record |
+| 4 | Undo succeeds | — | Since Order creation (per the v2.7 bugfix) never touches `product.stock_quantity`, undoing it **also** never touches `stock_quantity` — nothing to reverse there. No `stock_transaction` is written |
+| 5 | Undo succeeds | Staff/Owner views the Customer Page | The tokens reappear in the "holding" list exactly as before, available for a future Create Order (US-09) just like any other holding token. The cancelled order disappears from order history/reports entirely — its `recognized_revenue` is gone from any revenue calculation that sums over `order` rows |
+| 6 | Undo succeeds | — | `customer.action_status` is **not** automatically changed by this undo (kept simple, consistent with how US-29's undo doesn't touch it either) — Owner/Staff can manually adjust it via US-18 if the customer's status should reflect that they're back to square one |
+
+**Access:** Owner only (same reasoning as every other undo feature in this spec — corrects already-recorded data).
+
+---
+
 ## MODULE 8 — Dashboard & Reports
 
 ### US-10: View Inventory Report
@@ -1099,6 +1118,7 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | US-08 Cancel Token (incl. overdue alerts) | ✅ | ❌ |
 | US-09 Create Order / update shipping status | ✅ | ❌ |
 | US-36 Export Orders as Image | ✅ | ❌ |
+| US-41 Undo/Cancel Order | ✅ | ❌ |
 | US-12 Create Product | ✅ | ✅ |
 | US-32 Search & Sort Product List | ✅ | ✅ |
 | US-13 Stock In | ✅ | ✅ |

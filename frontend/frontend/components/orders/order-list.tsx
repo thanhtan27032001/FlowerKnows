@@ -9,6 +9,7 @@ import { ListSkeleton } from "@/components/feedback/list-skeleton";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { QueryProgressBar } from "@/components/feedback/query-progress-bar";
 import { Spinner } from "@/components/feedback/spinner";
+import { CancelOrderDialog } from "@/components/orders/cancel-order-dialog";
 import { OrderExportPreview } from "@/components/orders/order-export-preview";
 import { useAuth } from "@/components/providers/auth-provider";
 import {
@@ -126,12 +127,16 @@ function OrderCard({
   selectable,
   selected,
   onToggleSelect,
+  canCancel,
+  onCancel,
 }: {
   order: Order;
   highlighted: boolean;
   selectable: boolean;
   selected: boolean;
   onToggleSelect: () => void;
+  canCancel: boolean;
+  onCancel: () => void;
 }) {
   const t = useTranslations("orders.list");
   const tCommon = useTranslations("common");
@@ -190,6 +195,17 @@ function OrderCard({
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
             >
+              {canCancel && order.shippingStatus === "ORDER_CREATED" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                  onClick={onCancel}
+                >
+                  {t("cancel")}
+                </Button>
+              )}
               <OrderStatusSelect order={order} />
               {selectable && (
                 <input
@@ -303,6 +319,7 @@ export function OrderList({ highlightId }: Props) {
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: orderKeys.lists(),
     queryFn: () => orderApi.list(),
@@ -409,6 +426,8 @@ export function OrderList({ highlightId }: Props) {
               selectable={isOwner && selecting}
               selected={selectedIds.has(order.id)}
               onToggleSelect={() => toggleSelect(order.id)}
+              canCancel={isOwner && !selecting}
+              onCancel={() => setCancelOrder(order)}
             />
           ))}
         </div>
@@ -419,6 +438,19 @@ export function OrderList({ highlightId }: Props) {
           open={previewOpen}
           onOpenChange={setPreviewOpen}
           orders={selectedOrders}
+        />
+      )}
+
+      {cancelOrder && (
+        <CancelOrderDialog
+          open={!!cancelOrder}
+          onOpenChange={(next) => {
+            if (!next) setCancelOrder(null);
+          }}
+          orderId={cancelOrder.id}
+          customerId={cancelOrder.customerId}
+          recognizedRevenue={cancelOrder.recognizedRevenue}
+          tokenCount={cancelOrder.tokens.length}
         />
       )}
     </div>

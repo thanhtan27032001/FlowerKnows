@@ -623,7 +623,8 @@
       "openInOrders": "Mở trong Đơn hàng",
       "hidePast": "Ẩn đơn cũ",
       "showPast": "{count, plural, =1 {Hiện # đơn cũ} other {Hiện # đơn cũ}}",
-      "carrierIdLabel": "Mã vận đơn: {id}"
+      "carrierIdLabel": "Mã vận đơn: {id}",
+      "cancel": "Hủy đơn"
     },
     "badges": {
       "noOrderYet": "Chưa có đơn"
@@ -845,7 +846,8 @@
       "itemsCount": "{count, plural, =1 {# món} other {# món}}",
       "costLabel": "Giá vốn/bán: {cost}/{price}",
       "selectOrder": "Chọn đơn hàng",
-      "enterSelectMode": "Chọn đơn để xuất"
+      "enterSelectMode": "Chọn đơn để xuất",
+      "cancel": "Hủy đơn"
     },
     "create": {
       "title": "Tạo đơn",
@@ -857,6 +859,15 @@
       "carrierPlaceholder": "Để trống và điền sau",
       "confirm": "Xác nhận tạo đơn",
       "failed": "Không tạo được đơn"
+    },
+    "cancelDialog": {
+      "title": "Hủy đơn?",
+      "intro": "Thao tác này sẽ đưa các token trong đơn về trạng thái đang giữ và xóa đơn này khỏi lịch sử/báo cáo — không giữ lại bản ghi đã hủy.",
+      "willRestoreTokens": "Trả về trạng thái đang giữ",
+      "willRemoveRevenue": "Gỡ khỏi doanh thu",
+      "itemsCount": "{count, plural, =1 {# món} other {# món}}",
+      "confirm": "Xác nhận hủy đơn",
+      "failed": "Không hủy được đơn — đơn có thể đã đi hoặc đã hoàn thành"
     }
   },
   "alerts": {

@@ -126,6 +126,31 @@ public class OrderService {
         return toResponse(order);
     }
 
+    /**
+     * US-41: undo an order created by mistake, while it is still {@code ORDER_CREATED}.
+     * Reverts every linked token back to {@code HOLDING} (cost_basis/token_value untouched)
+     * and deletes the order (and its order_token rows) entirely — same "erase the mistake"
+     * treatment as US-28/US-29/US-33/US-35. Never touches product.stock_quantity or writes
+     * a stock_transaction, since order creation never affects stock (v2.7). Does not touch
+     * customer.action_status (consistent with US-29's undo).
+     */
+    @Transactional
+    public void cancelOrder(UUID id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
+
+        if (order.getShippingStatus() != ShippingStatus.ORDER_CREATED) {
+            throw new IllegalStateException("Không thể hủy đơn đã đi/đã hoàn thành");
+        }
+
+        for (ItemToken token : order.getTokens()) {
+            token.setStatus(TokenStatus.HOLDING);
+        }
+        order.getTokens().clear();
+        orderRepository.saveAndFlush(order);
+        orderRepository.delete(order);
+    }
+
     private void validateShippingTransition(ShippingStatus current, ShippingStatus next) {
         boolean valid = switch (current) {
             case ORDER_CREATED -> next == ShippingStatus.SHIPPED || next == ShippingStatus.ORDER_CREATED;

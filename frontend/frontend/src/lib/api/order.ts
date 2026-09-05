@@ -60,6 +60,8 @@ export const orderApi = {
 
   updateShippingStatus: (id: string, input: UpdateShippingInput) =>
     apiClient.patch<Order>(`/api/orders/${id}/shipping-status`, input),
+
+  cancel: (id: string) => apiClient.post<void>(`/api/orders/${id}/cancel`),
 };
 
 /** Backend enum values — display labels live in messages via `common.status.shipping`. */

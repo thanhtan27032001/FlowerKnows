@@ -16,6 +16,7 @@ import { customerKeys } from "@/src/lib/api/customer";
 import { shippingStatusLabel } from "@/src/lib/i18n-labels";
 import { formatDateTime, vnd } from "@/src/lib/format";
 import { useAuth } from "@/components/providers/auth-provider";
+import { CancelOrderDialog } from "@/components/orders/cancel-order-dialog";
 import { PendingButton } from "@/components/feedback/pending-button";
 import {
   CopyButton,
@@ -52,10 +53,12 @@ function OrderShippingControls({
   const t = useTranslations("customers.orderStatus");
   const tStatus = useTranslations("common.status");
   const tCommon = useTranslations("common");
+  const { isOwner } = useAuth();
   const queryClient = useQueryClient();
   const [carrierOrderId, setCarrierOrderId] = useState(
     order.carrierOrderId ?? ""
   );
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   useEffect(() => {
     setCarrierOrderId(order.carrierOrderId ?? "");
@@ -172,6 +175,25 @@ function OrderShippingControls({
       {errorMessage && (
         <p className="text-xs text-destructive">{errorMessage}</p>
       )}
+      {isOwner && status === "ORDER_CREATED" && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+          onClick={() => setCancelOpen(true)}
+        >
+          {t("cancel")}
+        </Button>
+      )}
+      <CancelOrderDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        orderId={order.id}
+        customerId={customerId}
+        recognizedRevenue={order.recognizedRevenue}
+        tokenCount={order.tokenCount}
+      />
     </div>
   );
 }

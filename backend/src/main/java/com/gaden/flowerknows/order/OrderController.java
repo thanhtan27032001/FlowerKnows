@@ -56,4 +56,11 @@ public class OrderController {
     ) {
         return orderService.updateShippingStatus(id, request);
     }
+
+    @PostMapping("/{id}/cancel")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('OWNER')")
+    public void cancel(@PathVariable UUID id) {
+        orderService.cancelOrder(id);
+    }
 }

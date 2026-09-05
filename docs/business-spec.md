@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 5.7 (Adds US-41 — Undo/Cancel an Order created by mistake, Owner-only, only while shipping_status is still order_created; tokens revert to holding, order deleted, no stock effect per the v2.7 no-stock-touch design)
+**Version:** 5.8 (Stocktake (US-39/40): inline "Tạo sản phẩm mới" for physically-found-but-never-recorded products; optional cost_price per line so a quantity increase can properly update average_cost_price like a real Stock In, instead of always being a cost-blind adjustment)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -210,6 +210,7 @@ This is the single source of truth for schema design across the whole document.
 | `product_id` | FK → product | |
 | `system_quantity_at_add` | int | Snapshot of `product.stock_quantity` at the moment this line was added to the session — **for display during counting only**, NOT used as the basis for the final adjustment calculation (see US-40 AC #5) |
 | `counted_quantity` | int, nullable | The physically counted amount. Null means "not yet counted" (distinct from `0`, which means "counted, and there are zero") |
+| `cost_price` | decimal, nullable | **Added in v5.8.** Optional — only relevant when the count reveals **more** stock than the system has (e.g. previously-unrecorded/newly-discovered stock, or a brand-new product created inline during this session). If provided, completion (US-40) treats the increase like a proper Stock In (updates `average_cost_price` via the weighted-average formula) instead of a cost-blind adjustment. Left blank for ordinary miscounts/shrinkage, where there's no new cost to record. |
 | `note` | string, nullable | Per-line note (e.g. "hàng hỏng", "để nhầm kệ khác") |
 
 ---
@@ -1069,6 +1070,8 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | 4 | An in-progress session | — | Staff/Owner can add more product lines at any time, freely edit `counted_quantity`, and remove a line entirely — nothing here touches `product.stock_quantity` yet, it's all draft data |
 | 5 | An in-progress session | Owner/Staff clicks "Hủy kiểm kê" | The whole session (and its lines) is deleted — **zero effect on `stock_quantity`**, as if it never happened |
 | 6 | Multiple sessions exist over time | Staff/Owner views the Stocktake list | Shows in-progress sessions (resumable) separately from completed ones (historical, read-only) |
+| 7 | **Added in v5.8.** Staff/Owner is adding a line and the physical item found **doesn't exist as a `product` yet** (e.g. genuinely new/never-recorded stock) | Clicks "Tạo sản phẩm mới" (same inline overlay pattern as US-01 AC #8, US-13's v4.1 feature) | The Create Product form (US-12) opens as an overlay on top of the still-open Stocktake session. On success, the new product (created with default `stock_quantity = 0`, since the real count will be entered directly in this session) becomes immediately selectable for a new `stock_count_line` |
+| 8 | Adding or editing a line where the physical count is **higher** than the system currently shows | — | An optional `cost_price` field is available on that line — leave blank for an ordinary miscount/found-misplaced-item correction; fill it in if this represents genuinely new stock whose cost should be properly recorded (affects how completion applies it — see US-40 AC #6) |
 
 **Access:** Both Owner and Staff (routine data-entry work, matches the reasoning for US-12/US-13).
 
@@ -1087,6 +1090,8 @@ If `old_average_cost_price` is null (first-ever stock in for this product), `new
 | 3 | A line has `counted_quantity = null` (added to the session but never actually counted) | Completing the session | That line is **skipped entirely** — `null` means "wasn't counted," which is different from "counted as zero," and must not be treated as a real discrepancy |
 | 4 | Completion succeeds | — | `stock_count.completed_at` is set to now — the session becomes read-only/historical |
 | 5 | Time has passed between when a line was counted and when the session is completed, during which other operations changed `product.stock_quantity` (e.g. a new stock-in, a campaign lock) | Completing the session | The adjustment is still computed correctly, because AC #2 uses the **live** `stock_quantity` at completion time as the "before" value, not the earlier snapshot. The snapshot (`system_quantity_at_add`) exists **only** to give Staff a reference point while counting — it is never the basis for the actual correction |
+| 6 | **Added in v5.8.** A line has `delta > 0` (count came in higher than system) **and** a `cost_price` was provided for that line | Completing the session | That line is treated like a proper **Stock In** rather than a cost-blind adjustment: `product.average_cost_price` is recalculated using the same weighted-average formula as US-13, the written `stock_transaction` has `type = stock_in` (not `stock_adjustment`), storing `cost_price` and `average_cost_price_before` (same fields US-13/US-33 already use), plus `stock_count_id` for traceability back to this session |
+| 6a | A line has `delta > 0` but **no** `cost_price` was provided, OR `delta < 0` (shrinkage/loss) | Completing the session | Behaves exactly as AC #2 describes — a plain `stock_adjustment`, no cost/`average_cost_price` impact (there's no meaningful "cost" concept for a quantity decrease, matching US-14's existing behavior) |
 
 **Access:** Owner only (this is the step that actually mutates `stock_quantity` and the ledger, matching US-14's sensitivity level).
 

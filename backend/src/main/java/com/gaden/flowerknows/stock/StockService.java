@@ -35,6 +35,20 @@ public class StockService {
             StockTransactionType type,
             String note
     ) {
+        return applyStockChange(product, quantityChange, type, note, null);
+    }
+
+    /**
+     * Same as {@link #applyStockChange(Product, int, StockTransactionType, String)} but stamps
+     * {@code stockCountId} on the written ledger row (US-40 traceability back to a Stocktake session).
+     */
+    public StockTransaction applyStockChange(
+            Product product,
+            int quantityChange,
+            StockTransactionType type,
+            String note,
+            UUID stockCountId
+    ) {
         int newQuantity = product.getStockQuantity() + quantityChange;
         if (newQuantity < 0) {
             throw new BusinessException(
@@ -44,7 +58,7 @@ public class StockService {
         }
         product.setStockQuantity(newQuantity);
         return stockTransactionRepository.save(
-                new StockTransaction(product, type, quantityChange, note)
+                new StockTransaction(product, type, quantityChange, null, null, note, stockCountId)
         );
     }
 
@@ -53,6 +67,20 @@ public class StockService {
      * and snapshots {@code average_cost_price_before} for US-33 undo.
      */
     public StockTransaction applyStockIn(Product product, int quantityChange, BigDecimal costPrice, String note) {
+        return applyStockIn(product, quantityChange, costPrice, note, null);
+    }
+
+    /**
+     * Same as {@link #applyStockIn(Product, int, BigDecimal, String)} but stamps {@code stockCountId}
+     * on the written ledger row (US-40 AC#6: a Stocktake overage with a cost price is a proper Stock In).
+     */
+    public StockTransaction applyStockIn(
+            Product product,
+            int quantityChange,
+            BigDecimal costPrice,
+            String note,
+            UUID stockCountId
+    ) {
         int newQuantity = product.getStockQuantity() + quantityChange;
         if (quantityChange <= 0) {
             throw new BusinessException("quantity must be greater than 0");
@@ -84,7 +112,8 @@ public class StockService {
                         quantityChange,
                         costPrice,
                         averageCostPriceBefore,
-                        note
+                        note,
+                        stockCountId
                 )
         );
     }

@@ -50,6 +50,13 @@ public class StockTransaction {
     @Column(length = 500)
     private String note;
 
+    /**
+     * Set when this row originates from completing a Stocktake session (US-40),
+     * for traceability back to that session. Null for all other transactions.
+     */
+    @Column(name = "stock_count_id")
+    private UUID stockCountId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -57,7 +64,7 @@ public class StockTransaction {
     }
 
     public StockTransaction(Product product, StockTransactionType type, int quantityChange, String note) {
-        this(product, type, quantityChange, null, null, note);
+        this(product, type, quantityChange, null, null, note, null);
     }
 
     public StockTransaction(
@@ -67,7 +74,7 @@ public class StockTransaction {
             BigDecimal costPrice,
             String note
     ) {
-        this(product, type, quantityChange, costPrice, null, note);
+        this(product, type, quantityChange, costPrice, null, note, null);
     }
 
     public StockTransaction(
@@ -78,12 +85,25 @@ public class StockTransaction {
             BigDecimal averageCostPriceBefore,
             String note
     ) {
+        this(product, type, quantityChange, costPrice, averageCostPriceBefore, note, null);
+    }
+
+    public StockTransaction(
+            Product product,
+            StockTransactionType type,
+            int quantityChange,
+            BigDecimal costPrice,
+            BigDecimal averageCostPriceBefore,
+            String note,
+            UUID stockCountId
+    ) {
         this.product = product;
         this.type = type;
         this.quantityChange = quantityChange;
         this.costPrice = costPrice;
         this.averageCostPriceBefore = averageCostPriceBefore;
         this.note = note;
+        this.stockCountId = stockCountId;
         this.createdAt = Instant.now();
     }
 
@@ -113,6 +133,10 @@ public class StockTransaction {
 
     public BigDecimal getAverageCostPriceBefore() {
         return averageCostPriceBefore;
+    }
+
+    public UUID getStockCountId() {
+        return stockCountId;
     }
 
     public Instant getCreatedAt() {

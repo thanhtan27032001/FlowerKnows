@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   BarChart3Icon,
   BellIcon,
+  ClipboardListIcon,
   LayoutDashboardIcon,
   MegaphoneIcon,
   MoreHorizontalIcon,
@@ -26,6 +27,7 @@ export type NavLabelKey =
   | "orders"
   | "directSales"
   | "products"
+  | "stocktake"
   | "alerts"
   | "reports"
   | "accounts";
@@ -99,6 +101,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     labelKey: "products",
     shortLabelKey: "products",
     icon: PackageIcon,
+    section: "management",
+    mobile: "more",
+  },
+  {
+    href: "/stocktake",
+    labelKey: "stocktake",
+    shortLabelKey: "stocktake",
+    icon: ClipboardListIcon,
     section: "management",
     mobile: "more",
   },

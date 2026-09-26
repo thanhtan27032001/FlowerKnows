@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PlusIcon } from "lucide-react";
+import { toast } from "sonner";
+import { PlusIcon, XIcon } from "lucide-react";
 import { ApiError } from "@/src/lib/api/client";
 import { productApi, productKeys } from "@/src/lib/api/product";
 import { stockCountApi, stockCountKeys } from "@/src/lib/api/stock-count";
@@ -20,6 +21,7 @@ import { CancelStockCountDialog } from "@/components/stocktake/cancel-stock-coun
 import { CompleteStockCountDialog } from "@/components/stocktake/complete-stock-count-dialog";
 import { formatDateTime } from "@/src/lib/format";
 import { compareFolded } from "@/src/lib/text-search";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -27,6 +29,7 @@ import { useIsMobile } from "@/hooks/use-is-mobile";
 import { cn } from "@/lib/utils";
 
 const PRODUCT_SEARCH_ID = "stocktake-product-search";
+const NOT_COUNTED_SECTION_ID = "stocktake-not-counted";
 
 const focusCountedInput = (lineId: string) => {
   const input = document.getElementById(countedInputId(lineId)) as HTMLInputElement | null;
@@ -36,23 +39,28 @@ const focusCountedInput = (lineId: string) => {
   return true;
 };
 
+type PendingProduct = { id: string; name: string };
+
 type Props = {
   stockCountId: string;
 };
 
 export function StockCountDetail({ stockCountId }: Props) {
   const t = useTranslations("stocktake.detail");
+  const tTable = useTranslations("stocktake.table");
   const { isOwner } = useAuth();
   // Below md: card-per-line with autosave; md+: one editable table saved via "Lưu tất cả".
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
-  const [selectedProductId, setSelectedProductId] = useState("");
+  // Phone bulk add: picked products are staged as chips, then created in one call.
+  const [pendingProducts, setPendingProducts] = useState<PendingProduct[]>([]);
+  // Remounting the typeahead is the simplest way to clear its query after a pick.
+  const [searchResetKey, setSearchResetKey] = useState(0);
   const [createProductOpen, setCreateProductOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
   const [addLineError, setAddLineError] = useState<string | null>(null);
-  const [focusLineId, setFocusLineId] = useState<string | null>(null);
 
   const detailQuery = useQuery({
     queryKey: stockCountKeys.detail(stockCountId),
@@ -70,10 +78,11 @@ export function StockCountDetail({ stockCountId }: Props) {
   const availableProducts = useMemo(() => {
     if (!stockCount) return productsQuery.data ?? [];
     const usedIds = new Set(stockCount.lines.map((l) => l.productId));
+    const pendingIds = new Set(pendingProducts.map((p) => p.id));
     return (productsQuery.data ?? [])
-      .filter((p) => !usedIds.has(p.id))
+      .filter((p) => !usedIds.has(p.id) && !pendingIds.has(p.id))
       .sort((a, b) => compareFolded(a.name, b.name));
-  }, [productsQuery.data, stockCount]);
+  }, [productsQuery.data, stockCount, pendingProducts]);
 
   // Client-side split only: "not counted" first (what's left to do), then "counted".
   const { notCountedLines, countedLines } = useMemo(() => {
@@ -84,27 +93,40 @@ export function StockCountDetail({ stockCountId }: Props) {
     };
   }, [stockCount]);
 
-  const addLineMutation = useMutation({
-    mutationFn: () => stockCountApi.addLine(stockCountId, { productId: selectedProductId }),
-    onSuccess: async (newLine) => {
-      setSelectedProductId("");
+  const addLinesMutation = useMutation({
+    mutationFn: (products: PendingProduct[]) =>
+      stockCountApi.addLinesBulk(stockCountId, {
+        items: products.map((p) => ({ productId: p.id })),
+      }),
+    onSuccess: async (result) => {
+      setPendingProducts([]);
       setAddLineError(null);
       await queryClient.invalidateQueries({ queryKey: stockCountKeys.detail(stockCountId) });
-      setFocusLineId(newLine.id);
+      if (result.skippedProductIds.length > 0) {
+        toast.info(tTable("skipped", { count: result.skippedProductIds.length }));
+      }
+      // New lines land at the top of "Chưa đếm" (newest-first); bring that into view.
+      document
+        .getElementById(NOT_COUNTED_SECTION_ID)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
     onError: (err: unknown) => {
-      setAddLineError(err instanceof ApiError ? err.message : t("addLineFailed"));
+      // Keep the staged chips so a retry doesn't need re-searching.
+      const message = t("addLineFailed");
+      setAddLineError(err instanceof ApiError ? `${message}: ${err.message}` : message);
+      toast.error(message);
     },
   });
 
-  // Focus the freshly added line once its row has rendered.
-  useEffect(() => {
-    if (!focusLineId) return;
-    const frame = requestAnimationFrame(() => {
-      if (focusCountedInput(focusLineId)) setFocusLineId(null);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [focusLineId, stockCount]);
+  const stageProduct = (product: PendingProduct | null) => {
+    if (!product) return;
+    setPendingProducts((prev) =>
+      prev.some((p) => p.id === product.id)
+        ? prev
+        : [...prev, { id: product.id, name: product.name }]
+    );
+    setSearchResetKey((k) => k + 1);
+  };
 
   /** Enter in a counted field: next line in the same section, else the product search. */
   const focusNextCountedInput = useCallback(
@@ -208,23 +230,49 @@ export function StockCountDetail({ stockCountId }: Props) {
                 <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
                   <div className="grid gap-1.5">
                     <ProductTypeahead
+                      key={searchResetKey}
                       id={PRODUCT_SEARCH_ID}
                       products={availableProducts}
-                      productId={selectedProductId}
+                      productId=""
                       placeholder={t("productPlaceholder")}
                       showStock
-                      onSelect={(product) => setSelectedProductId(product?.id ?? "")}
+                      // Refocus after each pick so the next product can be typed right away.
+                      autoFocus={searchResetKey > 0}
+                      disabled={addLinesMutation.isPending}
+                      onSelect={stageProduct}
                     />
                   </div>
                   <Button
                     type="button"
-                    disabled={!selectedProductId || addLineMutation.isPending}
-                    onClick={() => addLineMutation.mutate()}
+                    disabled={pendingProducts.length === 0 || addLinesMutation.isPending}
+                    onClick={() => addLinesMutation.mutate(pendingProducts)}
                   >
                     <PlusIcon />
-                    {t("addButton")}
+                    {t("addNButton", { count: pendingProducts.length })}
                   </Button>
                 </div>
+                {pendingProducts.length > 0 && (
+                  <ul className="flex flex-wrap gap-1.5" aria-label={t("pendingProductsLabel")}>
+                    {pendingProducts.map((product) => (
+                      <li key={product.id} className="max-w-full">
+                        <Badge variant="secondary" className="h-7 max-w-full gap-1 pr-0.5 pl-2.5 text-sm">
+                          <span className="truncate">{product.name}</span>
+                          <button
+                            type="button"
+                            className="inline-flex size-6 shrink-0 items-center justify-center rounded-full hover:bg-foreground/10 disabled:opacity-50"
+                            disabled={addLinesMutation.isPending}
+                            onClick={() =>
+                              setPendingProducts((prev) => prev.filter((p) => p.id !== product.id))
+                            }
+                            aria-label={t("removePendingProduct", { product: product.name })}
+                          >
+                            <XIcon className="size-3.5" />
+                          </button>
+                        </Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <Button
                   type="button"
                   variant="outline"
@@ -233,7 +281,14 @@ export function StockCountDetail({ stockCountId }: Props) {
                 >
                   {t("createProductButton")}
                 </Button>
-                {addLineError && <p className="text-sm text-destructive">{addLineError}</p>}
+                {addLineError && (
+                  <p
+                    role="alert"
+                    className="rounded-lg border border-destructive bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive"
+                  >
+                    {addLineError}
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
@@ -251,6 +306,7 @@ export function StockCountDetail({ stockCountId }: Props) {
               {sections.flatMap((section) => [
                 <h2
                   key={`${section.key}-heading`}
+                  id={section.key === "not-counted" ? NOT_COUNTED_SECTION_ID : undefined}
                   className="pt-1 text-sm font-medium text-muted-foreground"
                 >
                   {section.label} ({section.lines.length})

@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlertTriangleIcon, CheckCircle2Icon } from "lucide-react";
+import { AlertTriangleIcon, CheckCircle2Icon, ImageIcon } from "lucide-react";
 import { ApiError } from "@/src/lib/api/client";
 import {
   campaignApi,
@@ -20,11 +20,14 @@ import {
   CreateCampaignForm,
   type CreateCampaignPrefill,
 } from "@/components/campaigns/create-campaign-form";
+import { ExportTablePreview } from "@/components/export/export-table-preview";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { campaignSuggestionExportFilename } from "@/src/lib/export/filename";
+import type { ExportItemQuantityRow } from "@/src/lib/export/types";
 import { vnd, vndCost } from "@/src/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +36,7 @@ type WishlistRow = CampaignPoolRow;
 export function SuggestCampaignForm() {
   const t = useTranslations("campaigns.suggest");
   const tCreate = useTranslations("campaigns.create");
+  const tExport = useTranslations("common.export");
 
   const [totalBags, setTotalBags] = useState("20");
   const [bagPrice, setBagPrice] = useState("89000");
@@ -51,6 +55,7 @@ export function SuggestCampaignForm() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createPrefill, setCreatePrefill] =
     useState<CreateCampaignPrefill | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const { data: products = [] } = useQuery({
     queryKey: productKeys.lists(),
@@ -110,6 +115,26 @@ export function SuggestCampaignForm() {
         0;
       return sum + unit * qty;
     }, 0);
+  }, [poolRows, products, result]);
+
+  // Export reflects the live (possibly edited) pool, not the original result.
+  const exportRows = useMemo<ExportItemQuantityRow[]>(() => {
+    if (!result) return [];
+    const nameByProduct = new Map<string, string>(
+      result.suggestedPool.map((row) => [row.productId, row.productName])
+    );
+    for (const product of products) nameByProduct.set(product.id, product.name);
+    return poolRows.flatMap((row) => {
+      const qty = Number(row.loadedQuantity);
+      if (!row.productId || !Number.isInteger(qty) || qty < 1) return [];
+      return [
+        {
+          key: row.key,
+          name: nameByProduct.get(row.productId) ?? row.productId,
+          quantity: qty,
+        },
+      ];
+    });
   }, [poolRows, products, result]);
 
   const validateInputs = (): SuggestPoolInput | null => {
@@ -348,18 +373,30 @@ export function SuggestCampaignForm() {
             <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
               {t("resultTitle")}
             </h2>
-            <Badge
-              variant={liveWithinTolerance ? "secondary" : "outline"}
-              className={cn(
-                liveWithinTolerance
-                  ? "border-transparent bg-emerald-500/15 text-emerald-900"
-                  : "border-amber-500/40 bg-amber-500/10 text-amber-950"
-              )}
-            >
-              {liveWithinTolerance
-                ? t("withinTolerance")
-                : t("outsideToleranceShort")}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant={liveWithinTolerance ? "secondary" : "outline"}
+                className={cn(
+                  liveWithinTolerance
+                    ? "border-transparent bg-emerald-500/15 text-emerald-900"
+                    : "border-amber-500/40 bg-amber-500/10 text-amber-950"
+                )}
+              >
+                {liveWithinTolerance
+                  ? t("withinTolerance")
+                  : t("outsideToleranceShort")}
+              </Badge>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={exportRows.length === 0}
+                onClick={() => setExportOpen(true)}
+              >
+                <ImageIcon data-icon="inline-start" />
+                {tExport("button")}
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
@@ -435,6 +472,14 @@ export function SuggestCampaignForm() {
           </div>
         </section>
       ) : null}
+
+      <ExportTablePreview
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        rows={exportRows}
+        filename={campaignSuggestionExportFilename()}
+        title={t("exportPreviewTitle")}
+      />
 
       <CreateCampaignForm
         open={createOpen}

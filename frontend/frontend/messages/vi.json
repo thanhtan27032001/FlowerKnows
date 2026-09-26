@@ -407,7 +407,8 @@
       "fillIncomplete": "Chưa đủ số túi — thêm sản phẩm hoặc tăng số lượng",
       "noWarnings": "Không có cảnh báo tồn kho / giá vốn",
       "createHint": "Bạn vẫn cần nhập tên và ngày sự kiện ở bước tạo.",
-      "createFromSuggestion": "Tạo Campaign từ gợi ý này"
+      "createFromSuggestion": "Tạo Campaign từ gợi ý này",
+      "exportPreviewTitle": "Xem trước danh sách pool gợi ý"
     },
     "recordParticipant": {
       "title": "Ghi nhận người tham gia",

@@ -1,7 +1,7 @@
 # User Stories & Acceptance Criteria
 ## Flower Knows — Internal Blind Bag Management System
 
-**Version:** 5.8 (Stocktake (US-39/40): inline "Tạo sản phẩm mới" for physically-found-but-never-recorded products; optional cost_price per line so a quantity increase can properly update average_cost_price like a real Stock In, instead of always being a cost-blind adjustment)
+**Version:** 5.9 (US-31: added export-as-image for the suggested Campaign pool list, reusing the same shared export utility as US-36/US-37 — item + quantity table, no customer grouping)
 **Users:** Shop staff only (internal tool), no customer-facing accounts
 **System goal:** Accurately manage inventory and revenue through the "Item Token" lifecycle
 
@@ -376,8 +376,13 @@ This is the single source of truth for schema design across the whole document.
 | 8 | The number of **distinct candidate products available** (with `stock_quantity` ≥ 1 and known cost) is fewer than the remaining bags needed | — | The system can't produce a full-size suggestion (since each auto-filled product can only contribute 1 unit) — fills as many distinct products as it can, then shows a distinct warning: "Chỉ tìm được X/Y sản phẩm khác nhau còn hàng — không đủ để lấp đầy N túi theo quy tắc mỗi sản phẩm 1 lần" so Owner knows they need more product variety in stock, not just more quantity of existing products |
 | 9 | A suggestion is shown (every row starts at `quantity = 1`, per AC #1) | Owner reviews it | The list is **fully editable** — Owner can manually **increase any row's quantity** (e.g. wants 3 of a particular wishlist item instead of 1), add new rows, or remove rows — before proceeding, exactly like manually composing a pool. The suggestion is a *starting point*, not a final answer — the algorithm never has to guess desired quantities beyond 1 per item, keeping it simple |
 | 10 | Owner is satisfied with the (possibly edited) list | Clicks "Tạo Campaign từ gợi ý này" | Pre-fills the existing **Create Campaign** form (US-01) with `total_bags`, `bag_price`, and the pool rows — Owner still provides `name`/`event_date` and goes through the normal US-01 creation flow and validation (this feature does not bypass or duplicate US-01's own logic, it only pre-fills the form) |
+| 11 | A suggested pool list is shown (whether freshly computed per AC #1, or after Owner has edited it per AC #9 — either state is exportable) | Owner clicks "Xuất ảnh" (Export Image) | Renders the pool list as an HTML table — **Item** column (product name) \| **Quantity** column — and converts it client-side into a downloadable image, using the **same shared export utility** built for US-36/US-37 (html2canvas capture, Web Share API share-sheet on iOS/devices that support file sharing, standard `<a download>` fallback elsewhere). No new backend endpoint — the pool list is already loaded client-side |
+| 12 | Image is generated | — | Filename like `campaign-suggestion-export-YYYY-MM-DD.png` |
+| 13 | No suggestion has been computed yet (Owner hasn't submitted the inputs, or a fresh form with no result) | — | The "Xuất ảnh" button is not shown / stays disabled — nothing to export yet |
 
 **Access:** Owner only.
+
+**Note on export (AC #11-13):** This reuses the exact same "export table as image" utility introduced in US-36 and used again in US-37 — do not build a third implementation. The only difference here is the source rows (the suggested pool list, two columns: item + quantity, no customer grouping since this is a planning tool, not a per-customer packing list) and the filename pattern.
 
 **Note on algorithm approach:** This is a heuristic "best-effort" suggestion tool, not a guaranteed-optimal solver. Since every row (wishlist and auto-filled alike) is fixed at `quantity = 1`, the problem simplifies to "pick exactly `total_bags` distinct products (wishlist ones guaranteed included) whose total `average_cost_price` best approximates `expected_total_cost`" — a fixed-count subset-sum approximation. For a shop-scale catalog, a greedy/local-search approach (e.g. sort candidates by cost, iteratively swap in/out products to narrow the gap toward the target) is sufficient and far simpler to implement/maintain than an exact optimization algorithm. Perfect optimality is not required since Owner can always edit quantities upward afterward (AC #9).
 

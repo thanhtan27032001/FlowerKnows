@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { ItemQuantityTable } from "@/components/export/item-quantity-table";
 import { PackingListTable } from "@/components/export/packing-list-table";
 import { Spinner } from "@/components/feedback/spinner";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -19,21 +20,31 @@ import {
   useExportTableAsImage,
   type PreparedExportImage,
 } from "@/hooks/use-export-table-as-image";
-import type { ExportCustomerGroup } from "@/src/lib/export/types";
+import type {
+  ExportCustomerGroup,
+  ExportItemQuantityRow,
+} from "@/src/lib/export/types";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  groups: ExportCustomerGroup[];
   filename: string;
-};
+  /** Overrides the default "packing list" dialog title. */
+  title?: string;
+} & (
+  | { groups: ExportCustomerGroup[]; rows?: never }
+  /** Flat Item | Quantity table (US-31) instead of the customer-grouped one. */
+  | { rows: ExportItemQuantityRow[]; groups?: never }
+);
 
-/** Shared US-36 / US-37 preview → native share / download dialog. */
+/** Shared US-36 / US-37 / US-31 preview → native share / download dialog. */
 export function ExportTablePreview({
   open,
   onOpenChange,
   groups,
+  rows,
   filename,
+  title,
 }: Props) {
   const t = useTranslations("common.export");
   const tCommon = useTranslations("common");
@@ -94,7 +105,7 @@ export function ExportTablePreview({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [open, groups, filename, prepareFromElement, t]);
+  }, [open, groups, rows, filename, prepareFromElement, t]);
 
   const busy = preparing || delivering;
 
@@ -133,7 +144,7 @@ export function ExportTablePreview({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{t("previewTitle")}</DialogTitle>
+          <DialogTitle>{title ?? t("previewTitle")}</DialogTitle>
           <DialogDescription>
             {supportsNativeShare
               ? t("previewDescriptionShare")
@@ -147,11 +158,19 @@ export function ExportTablePreview({
             aria-hidden
             className="pointer-events-none fixed top-0 left-[-10000px] w-[520px] bg-white"
           >
-            <PackingListTable
-              groups={groups}
-              labels={labels}
-              rootRef={tableRef}
-            />
+            {rows ? (
+              <ItemQuantityTable
+                rows={rows}
+                labels={labels}
+                rootRef={tableRef}
+              />
+            ) : (
+              <PackingListTable
+                groups={groups}
+                labels={labels}
+                rootRef={tableRef}
+              />
+            )}
           </div>
         )}
 

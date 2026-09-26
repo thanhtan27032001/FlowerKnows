@@ -26,3 +26,7 @@ export function campaignExportFilename(
 ): string {
   return `campaign-${sanitizeFilenamePart(campaignName)}-export-${ymd(date)}.png`;
 }
+
+export function campaignSuggestionExportFilename(date = new Date()): string {
+  return `campaign-suggestion-export-${ymd(date)}.png`;
+}

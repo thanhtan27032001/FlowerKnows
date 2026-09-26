@@ -21,3 +21,10 @@ export type ExportLineInput = {
   customerName: string;
   display: ExportItemDisplay;
 };
+
+/** One flat Item | Quantity row (US-31 suggested-pool export). */
+export type ExportItemQuantityRow = {
+  key: string;
+  name: string;
+  quantity: number;
+};

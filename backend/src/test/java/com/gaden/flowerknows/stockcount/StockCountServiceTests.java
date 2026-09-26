@@ -1,6 +1,7 @@
 package com.gaden.flowerknows.stockcount;
 
 import com.gaden.flowerknows.common.BusinessException;
+import com.gaden.flowerknows.common.ResourceNotFoundException;
 import com.gaden.flowerknows.product.Product;
 import com.gaden.flowerknows.product.ProductRepository;
 import com.gaden.flowerknows.stock.StockService;
@@ -16,6 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -207,6 +211,289 @@ class StockCountServiceTests {
         when(stockCountRepository.findByIdWithLines(stockCount.getId())).thenReturn(Optional.of(stockCount));
 
         assertThrows(BusinessException.class, () -> stockCountService.complete(stockCount.getId()));
+    }
+
+    // --- US-39 AC #9: bulk add ---
+
+    @Test
+    void bulkAddAddsAllNewProductsWithCountAtAddTime() {
+        Product rose = product("Rose", 10);
+        Product tulip = product("Tulip", 4);
+        StockCount stockCount = inProgress();
+        stubProducts(rose, tulip);
+
+        StockCountDtos.BulkAddLinesResponse response = stockCountService.addLinesBulk(
+                stockCount.getId(),
+                new StockCountDtos.BulkAddLinesRequest(List.of(
+                        new StockCountDtos.BulkAddLineItem(rose.getId(), 12, BigDecimal.valueOf(150), "shelf A"),
+                        new StockCountDtos.BulkAddLineItem(tulip.getId(), null, null, null)
+                ))
+        );
+
+        assertEquals(2, response.added().size());
+        assertTrue(response.skippedProductIds().isEmpty());
+        assertEquals(2, stockCount.getLines().size());
+        StockCountLine roseLine = stockCount.getLines().get(0);
+        assertEquals(rose, roseLine.getProduct());
+        assertEquals(10, roseLine.getSystemQuantityAtAdd());
+        assertEquals(12, roseLine.getCountedQuantity());
+        assertEquals(0, BigDecimal.valueOf(150).compareTo(roseLine.getCostPrice()));
+        assertEquals("shelf A", roseLine.getNote());
+        assertNull(stockCount.getLines().get(1).getCountedQuantity());
+        verify(stockCountRepository).save(stockCount);
+    }
+
+    @Test
+    void bulkAddSkipsProductsAlreadyInSessionAndAddsTheRest() {
+        Product rose = product("Rose", 10);
+        Product tulip = product("Tulip", 4);
+        StockCount stockCount = inProgress();
+        line(stockCount, rose, 10);
+        stubProducts(tulip);
+
+        StockCountDtos.BulkAddLinesResponse response = stockCountService.addLinesBulk(
+                stockCount.getId(),
+                new StockCountDtos.BulkAddLinesRequest(List.of(
+                        new StockCountDtos.BulkAddLineItem(rose.getId(), 5, null, null),
+                        new StockCountDtos.BulkAddLineItem(tulip.getId(), 3, null, null)
+                ))
+        );
+
+        assertEquals(List.of(rose.getId()), response.skippedProductIds());
+        assertEquals(1, response.added().size());
+        assertEquals(tulip.getId(), response.added().get(0).productId());
+        assertEquals(2, stockCount.getLines().size());
+        // the existing line must not be touched by the skipped row
+        assertNull(stockCount.getLines().get(0).getCountedQuantity());
+    }
+
+    @Test
+    void bulkAddRejectsDuplicateProductWithinRequestBeforeCreatingAnything() {
+        Product rose = product("Rose", 10);
+        StockCount stockCount = inProgress();
+
+        assertThrows(BusinessException.class, () -> stockCountService.addLinesBulk(
+                stockCount.getId(),
+                new StockCountDtos.BulkAddLinesRequest(List.of(
+                        new StockCountDtos.BulkAddLineItem(rose.getId(), 1, null, null),
+                        new StockCountDtos.BulkAddLineItem(rose.getId(), 2, null, null)
+                ))
+        ));
+
+        assertTrue(stockCount.getLines().isEmpty());
+        verify(productRepository, never()).findById(any());
+        verify(stockCountRepository, never()).save(any());
+    }
+
+    @Test
+    void bulkAddWithInvalidCostPriceAddsNothing() {
+        Product rose = product("Rose", 10);
+        Product tulip = product("Tulip", 4);
+        StockCount stockCount = inProgress();
+        stubProducts(rose, tulip);
+
+        assertThrows(BusinessException.class, () -> stockCountService.addLinesBulk(
+                stockCount.getId(),
+                new StockCountDtos.BulkAddLinesRequest(List.of(
+                        new StockCountDtos.BulkAddLineItem(rose.getId(), 12, null, null),
+                        new StockCountDtos.BulkAddLineItem(tulip.getId(), 5, BigDecimal.ZERO, null)
+                ))
+        ));
+
+        assertTrue(stockCount.getLines().isEmpty());
+        verify(stockCountRepository, never()).save(any());
+    }
+
+    @Test
+    void bulkAddWithUnknownProductAddsNothing() {
+        Product rose = product("Rose", 10);
+        UUID unknown = UUID.randomUUID();
+        StockCount stockCount = inProgress();
+        stubProducts(rose);
+        when(productRepository.findById(unknown)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> stockCountService.addLinesBulk(
+                stockCount.getId(),
+                new StockCountDtos.BulkAddLinesRequest(List.of(
+                        new StockCountDtos.BulkAddLineItem(rose.getId(), 12, null, null),
+                        new StockCountDtos.BulkAddLineItem(unknown, 1, null, null)
+                ))
+        ));
+
+        assertTrue(stockCount.getLines().isEmpty());
+        verify(stockCountRepository, never()).save(any());
+    }
+
+    @Test
+    void bulkAddRejectsCompletedSession() {
+        Product rose = product("Rose", 10);
+        StockCount stockCount = completed();
+
+        assertThrows(BusinessException.class, () -> stockCountService.addLinesBulk(
+                stockCount.getId(),
+                new StockCountDtos.BulkAddLinesRequest(List.of(
+                        new StockCountDtos.BulkAddLineItem(rose.getId(), 1, null, null)
+                ))
+        ));
+        assertTrue(stockCount.getLines().isEmpty());
+    }
+
+    // --- US-39 AC #10: bulk update ---
+
+    @Test
+    void bulkUpdateUpdatesManyLinesInOneCall() {
+        StockCount stockCount = inProgress();
+        StockCountLine rose = line(stockCount, product("Rose", 10), 10);
+        StockCountLine tulip = line(stockCount, product("Tulip", 4), 4);
+        tulip.setNote("keep me");
+
+        StockCountDtos.StockCountDetailResponse response = stockCountService.updateLinesBulk(
+                stockCount.getId(),
+                new StockCountDtos.BulkUpdateLinesRequest(List.of(
+                        new StockCountDtos.BulkUpdateLineItem(rose.getId(), 15, BigDecimal.valueOf(200), "extra box"),
+                        new StockCountDtos.BulkUpdateLineItem(tulip.getId(), 3, null, null)
+                ))
+        );
+
+        assertEquals(15, rose.getCountedQuantity());
+        assertEquals(0, BigDecimal.valueOf(200).compareTo(rose.getCostPrice()));
+        assertEquals("extra box", rose.getNote());
+        assertEquals(3, tulip.getCountedQuantity());
+        assertEquals("keep me", tulip.getNote()); // null = don't change
+        assertEquals(2, response.lines().size());
+    }
+
+    @Test
+    void bulkUpdateRejectsLineFromAnotherSession() {
+        StockCount stockCount = inProgress();
+        StockCountLine rose = line(stockCount, product("Rose", 10), 10);
+        StockCount other = stockCountSession(null);
+        StockCountLine foreign = line(other, product("Tulip", 4), 4);
+
+        assertThrows(ResourceNotFoundException.class, () -> stockCountService.updateLinesBulk(
+                stockCount.getId(),
+                new StockCountDtos.BulkUpdateLinesRequest(List.of(
+                        new StockCountDtos.BulkUpdateLineItem(rose.getId(), 15, null, null),
+                        new StockCountDtos.BulkUpdateLineItem(foreign.getId(), 3, null, null)
+                ))
+        ));
+
+        assertNull(rose.getCountedQuantity());
+        assertNull(foreign.getCountedQuantity());
+    }
+
+    @Test
+    void bulkUpdateWithOneInvalidItemChangesNothing() {
+        StockCount stockCount = inProgress();
+        StockCountLine rose = line(stockCount, product("Rose", 10), 10);
+        StockCountLine tulip = line(stockCount, product("Tulip", 4), 4);
+
+        assertThrows(BusinessException.class, () -> stockCountService.updateLinesBulk(
+                stockCount.getId(),
+                new StockCountDtos.BulkUpdateLinesRequest(List.of(
+                        new StockCountDtos.BulkUpdateLineItem(rose.getId(), 15, null, "counted"),
+                        new StockCountDtos.BulkUpdateLineItem(tulip.getId(), -1, null, null)
+                ))
+        ));
+
+        assertNull(rose.getCountedQuantity());
+        assertNull(rose.getNote());
+        assertNull(tulip.getCountedQuantity());
+    }
+
+    @Test
+    void bulkUpdateRejectsCompletedSession() {
+        StockCount stockCount = completed();
+        StockCountLine rose = line(stockCount, product("Rose", 10), 10);
+
+        assertThrows(BusinessException.class, () -> stockCountService.updateLinesBulk(
+                stockCount.getId(),
+                new StockCountDtos.BulkUpdateLinesRequest(List.of(
+                        new StockCountDtos.BulkUpdateLineItem(rose.getId(), 15, null, null)
+                ))
+        ));
+        assertNull(rose.getCountedQuantity());
+    }
+
+    // --- US-39 AC #11: newest-first ---
+
+    @Test
+    void detailListsLinesNewestFirst() {
+        StockCount stockCount = inProgress();
+        StockCountLine oldest = line(stockCount, product("Rose", 1), 1);
+        StockCountLine middle = line(stockCount, product("Tulip", 1), 1);
+        StockCountLine newest = line(stockCount, product("Lily", 1), 1);
+        Instant now = Instant.now();
+        setField(oldest, "createdAt", now.minusSeconds(20));
+        setField(middle, "createdAt", now.minusSeconds(10));
+        setField(newest, "createdAt", now);
+
+        List<UUID> ids = stockCountService.getDetail(stockCount.getId()).lines().stream()
+                .map(StockCountDtos.StockCountLineResponse::id)
+                .toList();
+
+        assertEquals(List.of(newest.getId(), middle.getId(), oldest.getId()), ids);
+    }
+
+    @Test
+    void bulkAddedLinesComeBeforeExistingOnesInDetail() {
+        StockCount stockCount = inProgress();
+        StockCountLine existing = line(stockCount, product("Rose", 1), 1);
+        setField(existing, "createdAt", Instant.now().minusSeconds(60));
+        Product tulip = product("Tulip", 4);
+        stubProducts(tulip);
+
+        stockCountService.addLinesBulk(stockCount.getId(), new StockCountDtos.BulkAddLinesRequest(List.of(
+                new StockCountDtos.BulkAddLineItem(tulip.getId(), null, null, null)
+        )));
+
+        List<StockCountDtos.StockCountLineResponse> lines = stockCountService.getDetail(stockCount.getId()).lines();
+        assertEquals(tulip.getId(), lines.get(0).productId());
+        assertEquals(existing.getId(), lines.get(1).id());
+    }
+
+    @Test
+    void equalTimestampsFallBackToIdOrder() {
+        StockCount stockCount = inProgress();
+        StockCountLine a = line(stockCount, product("Rose", 1), 1);
+        StockCountLine b = line(stockCount, product("Tulip", 1), 1);
+        Instant same = Instant.now();
+        setField(a, "createdAt", same);
+        setField(b, "createdAt", same);
+
+        List<UUID> ids = stockCountService.getDetail(stockCount.getId()).lines().stream()
+                .map(StockCountDtos.StockCountLineResponse::id)
+                .toList();
+
+        assertEquals(List.of(a.getId(), b.getId()).stream().sorted().toList(), ids);
+    }
+
+    private static void setField(Object entity, String name, Object value) {
+        try {
+            Field field = entity.getClass().getDeclaredField(name);
+            field.setAccessible(true);
+            field.set(entity, value);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private StockCount inProgress() {
+        StockCount stockCount = stockCountSession(null);
+        when(stockCountRepository.findByIdWithLines(stockCount.getId())).thenReturn(Optional.of(stockCount));
+        return stockCount;
+    }
+
+    private StockCount completed() {
+        StockCount stockCount = inProgress();
+        stockCount.setCompletedAt(java.time.Instant.now());
+        return stockCount;
+    }
+
+    private void stubProducts(Product... products) {
+        for (Product product : products) {
+            lenient().when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
+        }
     }
 
     private static Product product(String name, int stock) {

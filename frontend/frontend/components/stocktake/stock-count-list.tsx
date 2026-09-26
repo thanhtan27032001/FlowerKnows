@@ -50,11 +50,14 @@ function StockCountCard({
           </Link>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        <p className="text-sm text-muted-foreground">
-          {t("lineCount", { count: stockCount.lineCount })}
-        </p>
-      </CardContent>
+      {/* Without a note the title already shows the line count. */}
+      {stockCount.note?.trim() && (
+        <CardContent className="pt-0">
+          <p className="text-sm text-muted-foreground">
+            {t("lineCount", { count: stockCount.lineCount })}
+          </p>
+        </CardContent>
+      )}
     </Card>
   );
 }

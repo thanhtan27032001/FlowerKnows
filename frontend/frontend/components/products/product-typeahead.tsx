@@ -2,7 +2,6 @@
 
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -10,10 +9,8 @@ import {
 import { useTranslations } from "next-intl";
 import type { Product } from "@/src/lib/api/product";
 import { formatCostPrice } from "@/src/lib/format";
-import { containsFolded, foldText } from "@/src/lib/text-search";
 import { Input } from "@/components/ui/input";
-
-const SUGGESTION_LIMIT = 20;
+import { useProductSuggestions } from "@/hooks/use-product-suggestions";
 
 type Props = {
   id?: string;
@@ -69,12 +66,7 @@ export function ProductTypeahead({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open, selected]);
 
-  const suggestions = useMemo(() => {
-    const needle = foldText(query);
-    return products
-      .filter((p) => containsFolded(p.name, needle))
-      .slice(0, SUGGESTION_LIMIT);
-  }, [products, query]);
+  const suggestions = useProductSuggestions(products, query);
 
   useEffect(() => {
     setHighlightIndex(0);

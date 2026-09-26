@@ -60,6 +60,25 @@ public class StockCountController {
         return stockCountService.addLine(id, request);
     }
 
+    @PostMapping("/{id}/lines/bulk")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
+    public StockCountDtos.BulkAddLinesResponse addLinesBulk(
+            @PathVariable UUID id,
+            @Valid @RequestBody StockCountDtos.BulkAddLinesRequest request
+    ) {
+        return stockCountService.addLinesBulk(id, request);
+    }
+
+    @PatchMapping("/{id}/lines/bulk")
+    @PreAuthorize("hasAnyRole('OWNER','STAFF')")
+    public StockCountDtos.StockCountDetailResponse updateLinesBulk(
+            @PathVariable UUID id,
+            @Valid @RequestBody StockCountDtos.BulkUpdateLinesRequest request
+    ) {
+        return stockCountService.updateLinesBulk(id, request);
+    }
+
     @PatchMapping("/{id}/lines/{lineId}")
     @PreAuthorize("hasAnyRole('OWNER','STAFF')")
     public StockCountDtos.StockCountLineResponse updateLine(

@@ -1,5 +1,7 @@
 package com.gaden.flowerknows.stockcount;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
@@ -26,6 +28,40 @@ public final class StockCountDtos {
             Integer countedQuantity,
             BigDecimal costPrice,
             String note
+    ) {
+    }
+
+    public record BulkAddLineItem(
+            @NotNull(message = "productId is required") UUID productId,
+            Integer countedQuantity,
+            BigDecimal costPrice,
+            String note
+    ) {
+    }
+
+    public record BulkAddLinesRequest(
+            @NotEmpty(message = "items must not be empty")
+            @Valid List<BulkAddLineItem> items
+    ) {
+    }
+
+    public record BulkAddLinesResponse(
+            List<StockCountLineResponse> added,
+            List<UUID> skippedProductIds
+    ) {
+    }
+
+    public record BulkUpdateLineItem(
+            @NotNull(message = "lineId is required") UUID lineId,
+            Integer countedQuantity,
+            BigDecimal costPrice,
+            String note
+    ) {
+    }
+
+    public record BulkUpdateLinesRequest(
+            @NotEmpty(message = "items must not be empty")
+            @Valid List<BulkUpdateLineItem> items
     ) {
     }
 

@@ -13,7 +13,13 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -42,19 +48,66 @@ public class StockCountService {
     @Transactional
     public StockCountDtos.StockCountLineResponse addLine(UUID stockCountId, StockCountDtos.AddLineRequest request) {
         StockCount stockCount = requireInProgress(stockCountId);
-        Product product = productRepository.findById(request.productId())
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + request.productId()));
-
-        if (request.costPrice() != null && request.costPrice().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException("costPrice must be greater than 0");
-        }
-
-        StockCountLine line = new StockCountLine(product, product.getStockQuantity());
-        line.setCostPrice(request.costPrice());
-        line.setNote(request.note());
-        stockCount.addLine(line);
+        StockCountLine line = addLineInternal(stockCount, request);
         stockCountRepository.save(stockCount);
         return toLineResponse(line);
+    }
+
+    /**
+     * US-39 AC #9: adds many products in one all-or-nothing call (mirrors Stock In's batch).
+     * Products already in the session are skipped and reported; a product repeated within the
+     * request itself is rejected before anything is created.
+     */
+    @Transactional
+    public StockCountDtos.BulkAddLinesResponse addLinesBulk(
+            UUID stockCountId,
+            StockCountDtos.BulkAddLinesRequest request
+    ) {
+        StockCount stockCount = requireInProgress(stockCountId);
+
+        Set<UUID> requested = new HashSet<>();
+        for (StockCountDtos.BulkAddLineItem item : request.items()) {
+            if (!requested.add(item.productId())) {
+                throw new BusinessException("Sản phẩm trùng lặp trong danh sách gửi lên: " + item.productId());
+            }
+        }
+
+        Set<UUID> existingProductIds = new HashSet<>();
+        for (StockCountLine line : stockCount.getLines()) {
+            existingProductIds.add(line.getProduct().getId());
+        }
+
+        // Validate every row before creating anything so a bad row leaves the session untouched.
+        List<UUID> skippedProductIds = new ArrayList<>();
+        List<StockCountDtos.BulkAddLineItem> toAdd = new ArrayList<>();
+        Map<UUID, Product> products = new LinkedHashMap<>();
+        for (StockCountDtos.BulkAddLineItem item : request.items()) {
+            if (existingProductIds.contains(item.productId())) {
+                skippedProductIds.add(item.productId());
+                continue;
+            }
+            products.put(item.productId(), requireProduct(item.productId()));
+            validateCostPrice(item.costPrice());
+            validateCountedQuantity(item.countedQuantity());
+            toAdd.add(item);
+        }
+
+        for (StockCountDtos.BulkAddLineItem item : toAdd) {
+            StockCountLine line = addLineInternal(
+                    stockCount,
+                    products.get(item.productId()),
+                    item.costPrice(),
+                    item.note()
+            );
+            line.setCountedQuantity(item.countedQuantity());
+        }
+        stockCountRepository.save(stockCount);
+
+        List<StockCountDtos.StockCountLineResponse> added = newestFirst(stockCount.getLines()).stream()
+                .filter(l -> products.containsKey(l.getProduct().getId()))
+                .map(StockCountService::toLineResponse)
+                .toList();
+        return new StockCountDtos.BulkAddLinesResponse(added, skippedProductIds);
     }
 
     @Transactional
@@ -65,23 +118,37 @@ public class StockCountService {
     ) {
         StockCount stockCount = requireInProgress(stockCountId);
         StockCountLine line = requireLine(stockCount, lineId);
-
-        if (request.countedQuantity() != null) {
-            if (request.countedQuantity() < 0) {
-                throw new BusinessException("countedQuantity must be >= 0");
-            }
-            line.setCountedQuantity(request.countedQuantity());
-        }
-        if (request.costPrice() != null) {
-            if (request.costPrice().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new BusinessException("costPrice must be greater than 0");
-            }
-            line.setCostPrice(request.costPrice());
-        }
-        if (request.note() != null) {
-            line.setNote(request.note());
-        }
+        updateLineInternal(line, request);
         return toLineResponse(line);
+    }
+
+    /**
+     * US-39 AC #10: updates many lines of one session in a single all-or-nothing call.
+     * Every item is validated before any line is changed.
+     */
+    @Transactional
+    public StockCountDtos.StockCountDetailResponse updateLinesBulk(
+            UUID stockCountId,
+            StockCountDtos.BulkUpdateLinesRequest request
+    ) {
+        StockCount stockCount = requireInProgress(stockCountId);
+
+        Map<StockCountLine, StockCountDtos.UpdateLineRequest> updates = new LinkedHashMap<>();
+        for (StockCountDtos.BulkUpdateLineItem item : request.items()) {
+            StockCountLine line = requireLine(stockCount, item.lineId());
+            StockCountDtos.UpdateLineRequest update = new StockCountDtos.UpdateLineRequest(
+                    item.countedQuantity(),
+                    item.costPrice(),
+                    item.note()
+            );
+            validateLineUpdate(update);
+            if (updates.put(line, update) != null) {
+                throw new BusinessException("Dòng kiểm kê trùng lặp trong danh sách gửi lên: " + item.lineId());
+            }
+        }
+
+        updates.forEach(StockCountService::applyLineUpdate);
+        return toDetailResponse(stockCount);
     }
 
     @Transactional
@@ -159,6 +226,65 @@ public class StockCountService {
         return toDetailResponse(stockCount);
     }
 
+    private StockCountLine addLineInternal(StockCount stockCount, StockCountDtos.AddLineRequest request) {
+        Product product = requireProduct(request.productId());
+        validateCostPrice(request.costPrice());
+        return addLineInternal(stockCount, product, request.costPrice(), request.note());
+    }
+
+    private static StockCountLine addLineInternal(
+            StockCount stockCount,
+            Product product,
+            BigDecimal costPrice,
+            String note
+    ) {
+        StockCountLine line = new StockCountLine(product, product.getStockQuantity());
+        line.setCostPrice(costPrice);
+        line.setNote(note);
+        stockCount.addLine(line);
+        return line;
+    }
+
+    private static void updateLineInternal(StockCountLine line, StockCountDtos.UpdateLineRequest request) {
+        validateLineUpdate(request);
+        applyLineUpdate(line, request);
+    }
+
+    private static void validateLineUpdate(StockCountDtos.UpdateLineRequest request) {
+        validateCountedQuantity(request.countedQuantity());
+        validateCostPrice(request.costPrice());
+    }
+
+    /** null fields mean "don't change". */
+    private static void applyLineUpdate(StockCountLine line, StockCountDtos.UpdateLineRequest request) {
+        if (request.countedQuantity() != null) {
+            line.setCountedQuantity(request.countedQuantity());
+        }
+        if (request.costPrice() != null) {
+            line.setCostPrice(request.costPrice());
+        }
+        if (request.note() != null) {
+            line.setNote(request.note());
+        }
+    }
+
+    private static void validateCountedQuantity(Integer countedQuantity) {
+        if (countedQuantity != null && countedQuantity < 0) {
+            throw new BusinessException("countedQuantity must be >= 0");
+        }
+    }
+
+    private static void validateCostPrice(BigDecimal costPrice) {
+        if (costPrice != null && costPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException("costPrice must be greater than 0");
+        }
+    }
+
+    private Product requireProduct(UUID productId) {
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + productId));
+    }
+
     private static String sessionDate(StockCount stockCount) {
         return DateTimeFormatter.ISO_LOCAL_DATE.format(
                 stockCount.getCreatedAt().atZone(ZoneId.systemDefault())
@@ -185,13 +311,21 @@ public class StockCountService {
                 .orElseThrow(() -> new ResourceNotFoundException("Stock count line not found: " + lineId));
     }
 
+    /** US-39 AC #11: display order only; id breaks ties (unsaved lines have no id yet). */
+    private static List<StockCountLine> newestFirst(List<StockCountLine> lines) {
+        return lines.stream()
+                .sorted(Comparator.comparing(StockCountLine::getCreatedAt).reversed()
+                        .thenComparing(StockCountLine::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+    }
+
     private static StockCountDtos.StockCountDetailResponse toDetailResponse(StockCount stockCount) {
         return new StockCountDtos.StockCountDetailResponse(
                 stockCount.getId(),
                 stockCount.getCreatedAt(),
                 stockCount.getCompletedAt(),
                 stockCount.getNote(),
-                stockCount.getLines().stream().map(StockCountService::toLineResponse).toList()
+                newestFirst(stockCount.getLines()).stream().map(StockCountService::toLineResponse).toList()
         );
     }
 

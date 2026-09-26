@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -41,6 +42,9 @@ public class StockCountLine {
 
     @Column(length = 500)
     private String note;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt = Instant.now();
 
     protected StockCountLine() {
     }
@@ -92,5 +96,9 @@ public class StockCountLine {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
     }
 }

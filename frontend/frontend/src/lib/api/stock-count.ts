@@ -38,6 +38,30 @@ export type UpdateStockCountLineInput = {
   note?: string;
 };
 
+export type BulkAddStockCountLineItem = {
+  productId: string;
+  countedQuantity?: number;
+  costPrice?: number;
+  note?: string;
+};
+
+export type BulkAddStockCountLinesInput = {
+  items: BulkAddStockCountLineItem[];
+};
+
+export type BulkAddStockCountLinesResponse = {
+  added: StockCountLine[];
+  skippedProductIds: string[];
+};
+
+export type BulkUpdateStockCountLineItem = UpdateStockCountLineInput & {
+  lineId: string;
+};
+
+export type BulkUpdateStockCountLinesInput = {
+  items: BulkUpdateStockCountLineItem[];
+};
+
 export const stockCountKeys = {
   all: ["stock-counts"] as const,
   lists: () => [...stockCountKeys.all, "list"] as const,
@@ -63,6 +87,18 @@ export const stockCountApi = {
   addLine: (stockCountId: string, input: AddStockCountLineInput) =>
     apiClient.post<StockCountLine>(
       `/api/stock-counts/${stockCountId}/lines`,
+      input
+    ),
+
+  addLinesBulk: (stockCountId: string, input: BulkAddStockCountLinesInput) =>
+    apiClient.post<BulkAddStockCountLinesResponse>(
+      `/api/stock-counts/${stockCountId}/lines/bulk`,
+      input
+    ),
+
+  updateLinesBulk: (stockCountId: string, input: BulkUpdateStockCountLinesInput) =>
+    apiClient.patch<StockCountDetail>(
+      `/api/stock-counts/${stockCountId}/lines/bulk`,
       input
     ),
 

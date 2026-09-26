@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ItemQuantityTable } from "@/components/export/item-quantity-table";
+import { ItemCostTable } from "@/components/export/item-cost-table";
 import { PackingListTable } from "@/components/export/packing-list-table";
 import { Spinner } from "@/components/feedback/spinner";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -21,8 +21,8 @@ import {
   type PreparedExportImage,
 } from "@/hooks/use-export-table-as-image";
 import type {
+  ExportCostRow,
   ExportCustomerGroup,
-  ExportItemQuantityRow,
 } from "@/src/lib/export/types";
 
 type Props = {
@@ -33,8 +33,8 @@ type Props = {
   title?: string;
 } & (
   | { groups: ExportCustomerGroup[]; rows?: never }
-  /** Flat Item | Quantity table (US-31) instead of the customer-grouped one. */
-  | { rows: ExportItemQuantityRow[]; groups?: never }
+  /** Flat Item | Unit Cost | Quantity | Line Total table (US-31) instead of the customer-grouped one. */
+  | { rows: ExportCostRow[]; groups?: never }
 );
 
 /** Shared US-36 / US-37 / US-31 preview → native share / download dialog. */
@@ -65,6 +65,9 @@ export function ExportTablePreview({
     customer: t("columns.customer"),
     item: t("columns.item"),
     quantity: t("columns.quantity"),
+    unitCost: t("columns.unitCost"),
+    lineTotal: t("columns.lineTotal"),
+    total: t("columns.total"),
   };
 
   const clearPrepared = () => {
@@ -159,7 +162,7 @@ export function ExportTablePreview({
             className="pointer-events-none fixed top-0 left-[-10000px] w-[520px] bg-white"
           >
             {rows ? (
-              <ItemQuantityTable
+              <ItemCostTable
                 rows={rows}
                 labels={labels}
                 rootRef={tableRef}

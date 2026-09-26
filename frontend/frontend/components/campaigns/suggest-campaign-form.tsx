@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { campaignSuggestionExportFilename } from "@/src/lib/export/filename";
-import type { ExportItemQuantityRow } from "@/src/lib/export/types";
+import type { ExportCostRow } from "@/src/lib/export/types";
 import { vnd, vndCost } from "@/src/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -118,19 +118,24 @@ export function SuggestCampaignForm() {
   }, [poolRows, products, result]);
 
   // Export reflects the live (possibly edited) pool, not the original result.
-  const exportRows = useMemo<ExportItemQuantityRow[]>(() => {
+  const exportRows = useMemo<ExportCostRow[]>(() => {
     if (!result) return [];
-    const nameByProduct = new Map<string, string>(
+    const suggestedName = new Map(
       result.suggestedPool.map((row) => [row.productId, row.productName])
     );
-    for (const product of products) nameByProduct.set(product.id, product.name);
+    const productById = new Map(products.map((p) => [p.id, p]));
     return poolRows.flatMap((row) => {
       const qty = Number(row.loadedQuantity);
       if (!row.productId || !Number.isInteger(qty) || qty < 1) return [];
+      const product = productById.get(row.productId);
       return [
         {
           key: row.key,
-          name: nameByProduct.get(row.productId) ?? row.productId,
+          name:
+            product?.name ??
+            suggestedName.get(row.productId) ??
+            row.productId,
+          unitCost: product?.averageCostPrice ?? null,
           quantity: qty,
         },
       ];

@@ -65,7 +65,10 @@
       "columns": {
         "customer": "Khách hàng",
         "item": "Món",
-        "quantity": "Số lượng"
+        "quantity": "Số lượng",
+        "unitCost": "Giá vốn",
+        "lineTotal": "Thành tiền",
+        "total": "Tổng"
       }
     },
     "copy": {

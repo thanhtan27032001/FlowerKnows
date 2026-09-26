@@ -22,9 +22,11 @@ export type ExportLineInput = {
   display: ExportItemDisplay;
 };
 
-/** One flat Item | Quantity row (US-31 suggested-pool export). */
-export type ExportItemQuantityRow = {
+/** One flat Item | Unit Cost | Quantity row (US-31 suggested-pool export). */
+export type ExportCostRow = {
   key: string;
   name: string;
+  /** `null` when the product has no known average cost price. */
+  unitCost: number | null;
   quantity: number;
 };
